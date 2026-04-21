@@ -109,7 +109,7 @@ export default function NewProductPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {categories?.map((cat: any) => (
-                    <SelectItem key={cat._id} value={cat._id}>
+                    <SelectItem key={cat._id} value={cat._id} label={cat.name}>
                       {cat.name}
                     </SelectItem>
                   ))}

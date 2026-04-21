@@ -184,7 +184,7 @@ export default function NewSalePage() {
               </SelectTrigger>
               <SelectContent>
                 {availableProducts?.map((p: any) => (
-                  <SelectItem key={p._id} value={p._id}>
+                  <SelectItem key={p._id} value={p._id} label={p.name}>
                     {p.name} — {formatCurrency(p.sellingPrice)} ({p.quantity} in stock)
                   </SelectItem>
                 ))}

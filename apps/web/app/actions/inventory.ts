@@ -187,3 +187,49 @@ export async function createCategory(storeId: string, formData: FormData) {
     };
   }
 }
+
+export async function bulkImportProducts(
+  storeId: string,
+  products: Array<{
+    name: string;
+    description?: string;
+    categoryId?: string;
+    sku?: string;
+    barcode?: string;
+    costPrice: number;
+    sellingPrice: number;
+    quantity: number;
+    lowStockThreshold: number;
+  }>
+) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
+  let created = 0;
+  let failed = 0;
+  const errors: string[] = [];
+
+  for (const product of products) {
+    try {
+      await convex.mutation(api.products.create, {
+        storeId: storeId as any,
+        userId: session.user.id as any,
+        name: product.name.trim(),
+        description: product.description?.trim(),
+        categoryId: product.categoryId ? (product.categoryId as any) : undefined,
+        sku: product.sku?.trim() || undefined,
+        barcode: product.barcode?.trim() || undefined,
+        quantity: product.quantity,
+        costPrice: product.costPrice,
+        sellingPrice: product.sellingPrice,
+        lowStockThreshold: product.lowStockThreshold,
+      });
+      created++;
+    } catch (e: any) {
+      failed++;
+      errors.push(`"${product.name}": ${e.message}`);
+    }
+  }
+
+  return { success: true, created, failed, errors };
+}

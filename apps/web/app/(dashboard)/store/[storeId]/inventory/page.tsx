@@ -22,6 +22,7 @@ import {
   History,
   Package,
 } from "lucide-react";
+import { InventoryImportExport } from "@/components/inventory-import-export";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -150,6 +151,11 @@ export default function InventoryPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <InventoryImportExport
+            storeId={storeId}
+            categories={categories ?? []}
+            products={products ?? []}
+          />
           <Dialog
             open={categoryDialogOpen}
             onOpenChange={setCategoryDialogOpen}
@@ -219,7 +225,7 @@ export default function InventoryPage() {
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
             {categories?.map((cat: any) => (
-              <SelectItem key={cat._id} value={cat._id}>
+              <SelectItem key={cat._id} value={cat._id} label={cat.name}>
                 {cat.name}
               </SelectItem>
             ))}

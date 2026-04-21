@@ -31,7 +31,7 @@ export const listByProduct = query({
     const users: Record<string, string> = {};
     for (const uid of userIds) {
       const user = await ctx.db.get(uid as any);
-      if (user) users[uid as string] = user.name;
+      if (user) users[uid as string] = (user as any).name;
     }
 
     return movements.map((m: any) => ({
