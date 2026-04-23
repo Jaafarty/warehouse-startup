@@ -2,29 +2,15 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // ============ AUTH & USERS ============
+  // ============ USERS (synced from Clerk) ============
   users: defineTable({
+    clerkId: v.string(),
     email: v.string(),
     name: v.string(),
-    passwordHash: v.string(),
-    emailVerified: v.boolean(),
-    emailVerificationToken: v.optional(v.string()),
-    emailVerificationExpiry: v.optional(v.float64()),
-    passwordResetToken: v.optional(v.string()),
-    passwordResetExpiry: v.optional(v.float64()),
     image: v.optional(v.string()),
   })
-    .index("by_email", ["email"])
-    .index("by_verification_token", ["emailVerificationToken"])
-    .index("by_reset_token", ["passwordResetToken"]),
-
-  sessions: defineTable({
-    userId: v.id("users"),
-    sessionToken: v.string(),
-    expiresAt: v.float64(),
-  })
-    .index("by_session_token", ["sessionToken"])
-    .index("by_user", ["userId"]),
+    .index("by_clerkId", ["clerkId"])
+    .index("by_email", ["email"]),
 
   // ============ STORES & MEMBERSHIP ============
   stores: defineTable({

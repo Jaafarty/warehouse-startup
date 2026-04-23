@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useClerk } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
-import { signOut } from "next-auth/react";
 import { api } from "@/convex/_generated/api";
 import { Bell, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useCurrentUser } from "@/lib/use-current-user";
 
 interface TopbarProps {
   userName: string;
@@ -24,12 +24,12 @@ interface TopbarProps {
 
 export function Topbar({ userName, userEmail }: TopbarProps) {
   const router = useRouter();
-  const { data: session } = useSession();
-  const userId = session?.user?.id;
+  const { signOut } = useClerk();
+  const { userId } = useCurrentUser();
 
   const unreadCount = useQuery(
     api.notifications.unreadCount,
-    userId ? { userId: userId as any } : "skip"
+    userId ? { userId } : "skip"
   );
 
   const initials = userName
@@ -74,7 +74,7 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => signOut({ callbackUrl: "/" })}
+              onClick={() => signOut({ redirectUrl: "/" })}
               variant="destructive"
             >
               <LogOut className="h-4 w-4 mr-2" />

@@ -1,36 +1,22 @@
-import { auth } from "@/auth";
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-export async function proxy(request: NextRequest) {
-  const session = await auth();
+const isPublicRoute = createRouteMatcher([
+    "/",
+    "/auth/sign-in(.*)",
+    "/auth/sign-up(.*)",
+    "/invite/(.*)",
+    "/api/webhooks/(.*)",
+]);
 
-  const isAuthPage = request.nextUrl.pathname.startsWith("/auth");
-  const isProtectedRoute =
-    request.nextUrl.pathname.startsWith("/dashboard") ||
-    request.nextUrl.pathname.startsWith("/store") ||
-    request.nextUrl.pathname.startsWith("/settings") ||
-    request.nextUrl.pathname.startsWith("/notifications");
-
-  // Redirect authenticated users away from auth pages
-  if (isAuthPage && session?.user) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-
-  // Redirect unauthenticated users to login
-  if (isProtectedRoute && !session?.user) {
-    return NextResponse.redirect(new URL("/auth/login", request.url));
-  }
-
-  return NextResponse.next();
-}
+export default clerkMiddleware(async (auth, req) => {
+    if (!isPublicRoute(req)) {
+        await auth.protect();
+    }
+});
 
 export const config = {
-  matcher: [
-    "/dashboard/:path*",
-    "/store/:path*",
-    "/settings/:path*",
-    "/notifications/:path*",
-    "/auth/:path*",
-  ],
+    matcher: [
+        "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+        "/(api|trpc)(.*)",
+    ],
 };

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { acceptInvitation, declineInvitation } from "@/app/actions/stores";
@@ -21,14 +21,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function InviteContent() {
   const { token } = useParams<{ token: string }>();
-  const { data: session, status: authStatus } = useSession();
+  const { isSignedIn, isLoaded } = useUser();
 
   const invite = useQuery(api.invitations.getByToken, { token });
 
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (authStatus === "loading" || invite === undefined) {
+  if (!isLoaded || invite === undefined) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <Skeleton className="h-48 w-full max-w-md" />
@@ -36,7 +36,7 @@ function InviteContent() {
     );
   }
 
-  if (!session?.user) {
+  if (!isSignedIn) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <Card className="w-full max-w-md">
@@ -48,12 +48,12 @@ function InviteContent() {
             </CardDescription>
           </CardHeader>
           <CardFooter className="gap-2">
-            <Link href="/auth/login" className="flex-1">
+            <Link href={`/auth/sign-in?redirect_url=/invite/${token}`} className="flex-1">
               <Button variant="outline" className="w-full">
                 Sign In
               </Button>
             </Link>
-            <Link href="/auth/signup" className="flex-1">
+            <Link href={`/auth/sign-up?redirect_url=/invite/${token}`} className="flex-1">
               <Button className="w-full">Sign Up</Button>
             </Link>
           </CardFooter>

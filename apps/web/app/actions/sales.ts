@@ -2,7 +2,7 @@
 
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
-import { auth } from "@/auth";
+import { requireCurrentUserId } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -12,8 +12,7 @@ export async function createSale(
   items: { productId: string; quantity: number }[],
   note?: string
 ) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await requireCurrentUserId();
 
   if (items.length === 0) {
     return { success: false, error: "Add at least one item" };
@@ -22,7 +21,7 @@ export async function createSale(
   try {
     const result = await convex.mutation(api.sales.create, {
       storeId: storeId as any,
-      userId: session.user.id as any,
+      userId,
       items: items.map((i) => ({
         productId: i.productId as any,
         quantity: i.quantity,
@@ -44,8 +43,7 @@ export async function returnSaleItems(
   items: { saleItemId: string; quantity: number }[],
   note?: string
 ) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await requireCurrentUserId();
 
   if (items.length === 0) {
     return { success: false, error: "Select items to return" };
@@ -54,7 +52,7 @@ export async function returnSaleItems(
   try {
     await convex.mutation(api.sales.returnItems, {
       saleId: saleId as any,
-      userId: session.user.id as any,
+      userId,
       items: items.map((i) => ({
         saleItemId: i.saleItemId as any,
         quantity: i.quantity,

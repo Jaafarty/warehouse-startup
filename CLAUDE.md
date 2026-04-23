@@ -9,7 +9,8 @@ A modern, cloud-based inventory and sales management SaaS for small/medium busin
 - **Monorepo**: Turborepo + npm workspaces
 - **Frontend**: Next.js 16.2.3 (App Router), shadcn/ui v4 (@base-ui/react), Tailwind CSS v4
 - **Backend**: Convex (database, real-time subscriptions, backend logic)
-- **Auth**: Auth.js (next-auth@5.0.0-beta.30) — credentials provider, email/password + email verification, JWT strategy
+- **Auth**: Clerk (`@clerk/nextjs` ^7.2.3) — hosted sign-in/up pages, JWT issuer wired into Convex via `auth.config.ts`. Convex `users` table keyed by `clerkId` (upserted on first authenticated request).
+- **Email**: Resend (via Convex `internalAction` in `convex/email.ts`) — used for store invitations
 - **Validation**: TypeScript + Zod
 - **Shared code**: `packages/shared` (`@ware-house/shared`) for types, Zod schemas, constants
 - **Package Manager**: npm (v10.9.2), Node.js v22
@@ -31,19 +32,21 @@ Ware-House/
 │   │   │   ├── settings/           # User settings (profile + password)
 │   │   │   ├── error.tsx           # Error boundary
 │   │   │   └── loading.tsx         # Loading skeleton
-│   │   ├── auth/                   # Login, signup, verify, error
+│   │   ├── auth/sign-in/           # Clerk <SignIn /> catch-all route
+│   │   ├── auth/sign-up/           # Clerk <SignUp /> catch-all route
 │   │   ├── invite/[token]/         # Accept/decline invitation
-│   │   ├── actions/                # Server actions (auth.ts, stores.ts, inventory.ts, sales.ts)
-│   │   └── api/auth/[...nextauth]/ # Auth.js route handler
+│   │   └── actions/                # Server actions (auth.ts, stores.ts, inventory.ts, sales.ts)
 │   ├── components/
 │   │   ├── ui/                     # shadcn/ui v4 components (+ chart.tsx for recharts)
 │   │   └── layout/                 # sidebar.tsx, topbar.tsx (with notification badge)
 │   ├── convex/                     # Convex schema + functions
-│   │   ├── schema.ts              # Full schema (11 tables)
-│   │   ├── users.ts               # Auth user functions
+│   │   ├── schema.ts              # Full schema (11 tables) — users keyed by clerkId
+│   │   ├── auth.config.ts         # Clerk JWT issuer config (CLERK_JWT_ISSUER_DOMAIN)
+│   │   ├── users.ts               # users.store (upsert by clerkId), current, getById, updateProfile
 │   │   ├── stores.ts              # Store CRUD
 │   │   ├── members.ts             # Member management
-│   │   ├── invitations.ts         # Invite system
+│   │   ├── invitations.ts         # Invite system (schedules email.sendInviteEmail)
+│   │   ├── email.ts               # internalAction: Resend transactional email (invites)
 │   │   ├── products.ts            # Product CRUD (create, list, get, update, archive, restore)
 │   │   ├── categories.ts          # Category CRUD
 │   │   ├── stockMovements.ts      # Stock movement queries + manual adjust
@@ -52,9 +55,12 @@ Ware-House/
 │   │   ├── analytics.ts           # Analytics (overview, topProducts, salesTrend)
 │   │   ├── _helpers/              # audit.ts, permissions.ts, stock.ts
 │   │   └── _generated/            # Stub files (replaced by npx convex dev)
-│   ├── lib/                       # auth-utils, convex provider, utils
-│   ├── auth.ts                    # NextAuth config
-│   └── proxy.ts                   # Route protection (Next.js 16 proxy, not middleware)
+│   ├── lib/
+│   │   ├── auth.ts                # getCurrentUserId / requireCurrentUserId (server-only, Clerk → Convex users._id)
+│   │   ├── use-current-user.ts    # useCurrentUser() client hook (useConvexAuth + api.users.current)
+│   │   ├── convex.tsx             # ConvexProviderWithClerk wrapper
+│   │   └── utils.ts
+│   └── proxy.ts                   # Clerk middleware for route protection (Next.js 16 "proxy" filename)
 ├── packages/shared/src/           # @ware-house/shared
 │   ├── types/                     # auth, store, product, sale
 │   ├── validation/                # Zod schemas
@@ -67,12 +73,13 @@ Ware-House/
 ## Implementation Progress
 
 ### Phase 0: Monorepo Setup & Tooling — COMPLETE
-### Phase 1: Authentication — COMPLETE
-- Auth.js with credentials provider, JWT strategy
-- Signup, login, email verification flows
-- Server actions for auth mutations
-- proxy.ts for route protection (Next.js 16 pattern)
-- ConvexProvider + SessionProvider wrapping app
+### Phase 1: Authentication — COMPLETE (migrated to Clerk)
+- **Clerk** (`@clerk/nextjs`) hosts sign-in/sign-up UI at `/auth/sign-in` and `/auth/sign-up` (catch-all routes using `<SignIn />` / `<SignUp />`)
+- `convex/auth.config.ts` registers the Clerk JWT issuer (`CLERK_JWT_ISSUER_DOMAIN`) so Convex validates Clerk sessions
+- `users` table keyed by `clerkId` (indexed `by_clerkId`); `lib/auth.ts` `getCurrentUserId()` upserts the Convex user row from Clerk identity on each server-side call
+- `proxy.ts` uses `clerkMiddleware` + `createRouteMatcher` — protects everything except `/`, `/auth/sign-in(.*)`, `/auth/sign-up(.*)`, `/invite/(.*)`, `/api/webhooks/(.*)`
+- Client tree wrapped by `ConvexProviderWithClerk` (in `lib/convex.tsx`)
+- No password storage, no custom verification flow, no `/api/auth/[...nextauth]` route — all handled by Clerk
 
 ### Phase 2: Store Management & Membership — COMPLETE
 - Convex functions: stores (create, list, get, update), members (list, updateRole, remove), invitations (create, accept, decline, list)
@@ -118,12 +125,18 @@ Ware-House/
 - Top products table ranked by revenue
 
 ### Phase 7: Polish & Hardening — COMPLETE
-- User settings page (`/settings`) with profile update and password change
+- User settings page (`/settings`) with profile (display name) update — email and password are managed by Clerk's hosted user profile
 - Error boundary (`error.tsx`) for dashboard route group
 - Loading skeleton (`loading.tsx`) for dashboard route group
 - Confirmation dialog (AlertDialog) on member removal
-- Server actions: `updateProfile()` and `changePassword()` added to `actions/auth.ts`
+- Server action: `updateProfile()` in `actions/auth.ts` (calls `api.users.updateProfile`)
 - Build verified: 21 routes compile successfully
+
+### Phase 8: Clerk migration + Resend invite email — COMPLETE
+- Removed: `auth.ts` (NextAuth config), `lib/auth-utils.ts`, `/api/auth/[...nextauth]/route.ts`, `/auth/login`, `/auth/signup`, `/auth/verify`, `/auth/error`
+- Added: `convex/auth.config.ts`, `convex/email.ts` (Resend `internalAction` scheduled from `invitations.create`), `lib/auth.ts`, `lib/use-current-user.ts`, `/auth/sign-in`, `/auth/sign-up`
+- Schema change: `users.clerkId` + `by_clerkId` index (no more local `passwordHash`/`emailVerified` fields for auth)
+- Clerk sandbox note for Resend: free tier restricts delivery to the account owner until a domain is verified — `email.ts` handles 403 `validation_error` as a soft failure so the invite row is still created and admins can copy the link from the UI
 
 ## Critical Notes for Next Session
 
@@ -142,10 +155,17 @@ Ware-House/
 - Convex functions use `any` type casts for query index callbacks (e.g., `(q: any) =>`) because stubs don't provide full types
 - **User must run `npx convex dev`** in apps/web to set up their Convex project and generate real types
 
-### Auth Pattern
-- Server actions call `auth()` to get session, pass `userId` to Convex mutations (hybrid pattern)
-- Client components use `useQuery`/`useSession` from convex/react and next-auth/react
-- `.env.local` exists with placeholder CONVEX_URL — must be replaced with real project URL
+### Auth Pattern (Clerk + Convex)
+- **Server actions**: call `requireCurrentUserId()` from `@/lib/auth` — resolves the Clerk identity, upserts the Convex `users` row via `api.users.store`, and returns the `users._id` to pass into Convex mutations. `getCurrentUserId()` is the nullable variant.
+- **Client components**: use `useCurrentUser()` from `@/lib/use-current-user` (returns `{ user, userId, isLoading, isAuthenticated }`) or `useQuery(api.users.current)` directly. Auth state comes from `useConvexAuth()` (via `ConvexProviderWithClerk`).
+- **Convex functions**: authenticated functions read `ctx.auth.getUserIdentity()` and match against `users.clerkId` (see `users.current`).
+- **Required env vars** (`apps/web/.env.local`):
+  - `NEXT_PUBLIC_CONVEX_URL` — Convex deployment URL
+  - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` — Clerk keys
+  - `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/auth/sign-in`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/auth/sign-up`
+- **Required Convex deployment env vars** (`npx convex env set ...`):
+  - `CLERK_JWT_ISSUER_DOMAIN` — the Clerk JWT issuer (matches the Clerk instance)
+  - `RESEND_API_KEY`, `RESEND_FROM`, `SITE_URL` — for invite emails (soft-skipped with a warn log if unset)
 
 ### Stock Movement Invariant
 - **ALL stock changes MUST go through `adjustStock()` helper** in `convex/_helpers/stock.ts` — no direct `db.patch(productId, { quantity })` allowed
@@ -171,8 +191,8 @@ Detailed plan at `.claude/plans/bubbly-churning-zebra.md`
 
 ```
 / (static)                                    — Landing page
-/auth/login, /auth/signup, /auth/verify, /auth/error (static)
-/api/auth/[...nextauth]                       — Auth.js handler
+/auth/sign-in/[[...sign-in]]                  — Clerk hosted sign-in
+/auth/sign-up/[[...sign-up]]                  — Clerk hosted sign-up
 /dashboard                                    — Store selector/creator
 /invite/[token]                               — Accept/decline invitation
 /notifications                                — User notifications (real-time)
@@ -188,5 +208,7 @@ Detailed plan at `.claude/plans/bubbly-churning-zebra.md`
 /store/[storeId]/members                      — Member management + confirmation dialogs
 /store/[storeId]/settings                     — Store settings
 ```
+
+> Note: route count above reflects pre-Clerk snapshot. Re-run `npx next build` after the Clerk migration to confirm the current total — the `/api/auth/[...nextauth]` and the four flat `/auth/*` pages have been replaced by the two Clerk catch-all routes.
 
 ## No git commits have been made yet.

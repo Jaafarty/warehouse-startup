@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -51,8 +51,7 @@ export default function SaleDetailPage() {
     storeId: string;
     saleId: string;
   }>();
-  const { data: session } = useSession();
-  const userId = session?.user?.id;
+  const { userId } = useCurrentUser();
 
   const sale = useQuery(
     api.sales.get,

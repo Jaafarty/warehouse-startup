@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -46,8 +46,7 @@ interface CartItem {
 
 export default function NewSalePage() {
   const { storeId } = useParams<{ storeId: string }>();
-  const { data: session } = useSession();
-  const userId = session?.user?.id;
+  const { userId } = useCurrentUser();
 
   const products = useQuery(
     api.products.list,

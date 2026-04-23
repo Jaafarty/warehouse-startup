@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
@@ -57,8 +57,7 @@ const chartConfig = {
 
 export default function StoreDashboardPage() {
   const { storeId } = useParams<{ storeId: string }>();
-  const { data: session } = useSession();
-  const userId = session?.user?.id;
+  const { userId } = useCurrentUser();
 
   const overview = useQuery(
     api.analytics.overview,

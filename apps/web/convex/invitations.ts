@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { assertStorePermission } from "./_helpers/permissions";
 import { createAuditLog } from "./_helpers/audit";
 
@@ -69,9 +70,10 @@ export const create = mutation({
       expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
+    const store = await ctx.db.get(args.storeId);
+
     // Create notification if user exists
     if (existingUser) {
-      const store = await ctx.db.get(args.storeId);
       await ctx.db.insert("notifications", {
         userId: existingUser._id,
         storeId: args.storeId,
@@ -83,6 +85,16 @@ export const create = mutation({
         createdAt: Date.now(),
       });
     }
+
+    // Send the invitation email (scheduled because mutations can't do HTTP).
+    const inviter = await ctx.db.get(args.userId);
+    await ctx.scheduler.runAfter(0, internal.email.sendInviteEmail, {
+      to: args.email,
+      token,
+      storeName: store?.name ?? "a store",
+      inviterName: inviter?.name ?? "A teammate",
+      role: args.role,
+    });
 
     console.log(`[DEV] Invitation link: /invite/${token}`);
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Link from "next/link";
@@ -30,8 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
-    const { data: session } = useSession();
-    const userId = session?.user?.id;
+    const { userId } = useCurrentUser();
 
     const stores = useQuery(
         api.stores.listByUser,

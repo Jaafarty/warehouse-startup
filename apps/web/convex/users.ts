@@ -1,39 +1,62 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
-export const create = mutation({
+// Upsert a user record for the currently authenticated Clerk identity.
+// Server actions call this (with the Clerk identity already verified) to
+// obtain the Convex `users._id` used throughout the app.
+export const store = mutation({
   args: {
+    clerkId: v.string(),
     email: v.string(),
     name: v.string(),
-    passwordHash: v.string(),
+    image: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .withIndex("by_clerkId", (q: any) => q.eq("clerkId", args.clerkId))
       .unique();
 
     if (existing) {
-      throw new Error("A user with this email already exists");
+      const patch: Record<string, string | undefined> = {};
+      if (existing.email !== args.email) patch.email = args.email;
+      if (existing.name !== args.name) patch.name = args.name;
+      if (existing.image !== args.image) patch.image = args.image;
+      if (Object.keys(patch).length > 0) {
+        await ctx.db.patch(existing._id, patch);
+      }
+      return existing._id;
     }
 
-    const userId = await ctx.db.insert("users", {
+    return await ctx.db.insert("users", {
+      clerkId: args.clerkId,
       email: args.email,
       name: args.name,
-      passwordHash: args.passwordHash,
-      emailVerified: true,
+      image: args.image,
     });
-
-    return userId;
   },
 });
 
-export const getByEmail = query({
-  args: { email: v.string() },
+// Returns the Convex user document matching the current Clerk identity,
+// or null when unauthenticated.
+export const current = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    return ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q: any) => q.eq("clerkId", identity.subject))
+      .unique();
+  },
+});
+
+export const getByClerkId = query({
+  args: { clerkId: v.string() },
   handler: async (ctx, args) => {
     return ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .withIndex("by_clerkId", (q: any) => q.eq("clerkId", args.clerkId))
       .unique();
   },
 });
@@ -42,37 +65,6 @@ export const getById = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     return ctx.db.get(args.userId);
-  },
-});
-
-export const verifyEmail = mutation({
-  args: { token: v.string() },
-  handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_verification_token", (q) =>
-        q.eq("emailVerificationToken", args.token)
-      )
-      .unique();
-
-    if (!user) {
-      throw new Error("Invalid verification token");
-    }
-
-    if (
-      user.emailVerificationExpiry &&
-      Date.now() > user.emailVerificationExpiry
-    ) {
-      throw new Error("Verification token has expired");
-    }
-
-    await ctx.db.patch(user._id, {
-      emailVerified: true,
-      emailVerificationToken: undefined,
-      emailVerificationExpiry: undefined,
-    });
-
-    return { success: true };
   },
 });
 
@@ -92,23 +84,6 @@ export const updateProfile = mutation({
     if (updates.image !== undefined) patch.image = updates.image;
 
     await ctx.db.patch(userId, patch);
-    return { success: true };
-  },
-});
-
-export const updatePassword = mutation({
-  args: {
-    userId: v.id("users"),
-    newPasswordHash: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
-    if (!user) throw new Error("User not found");
-
-    await ctx.db.patch(args.userId, {
-      passwordHash: args.newPasswordHash,
-    });
-
     return { success: true };
   },
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -49,8 +49,7 @@ export default function StockHistoryPage() {
     storeId: string;
     productId: string;
   }>();
-  const { data: session } = useSession();
-  const userId = session?.user?.id;
+  const { userId } = useCurrentUser();
 
   const product = useQuery(
     api.products.get,

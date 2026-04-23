@@ -2,14 +2,13 @@
 
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
-import { auth } from "@/auth";
+import { requireCurrentUserId } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function createStore(formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await requireCurrentUserId();
 
   const name = formData.get("name") as string;
   const description = (formData.get("description") as string) || undefined;
@@ -20,7 +19,7 @@ export async function createStore(formData: FormData) {
 
   try {
     const storeId = await convex.mutation(api.stores.create, {
-      userId: session.user.id as any,
+      userId,
       name: name.trim(),
       description: description?.trim(),
     });
@@ -34,12 +33,8 @@ export async function createStore(formData: FormData) {
   }
 }
 
-export async function updateStore(
-  storeId: string,
-  formData: FormData
-) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+export async function updateStore(storeId: string, formData: FormData) {
+  const userId = await requireCurrentUserId();
 
   const name = (formData.get("name") as string) || undefined;
   const description = (formData.get("description") as string) || undefined;
@@ -47,7 +42,7 @@ export async function updateStore(
   try {
     await convex.mutation(api.stores.update, {
       storeId: storeId as any,
-      userId: session.user.id as any,
+      userId,
       name: name?.trim(),
       description: description?.trim(),
     });
@@ -60,12 +55,8 @@ export async function updateStore(
   }
 }
 
-export async function inviteMember(
-  storeId: string,
-  formData: FormData
-) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+export async function inviteMember(storeId: string, formData: FormData) {
+  const userId = await requireCurrentUserId();
 
   const email = formData.get("email") as string;
   const role = formData.get("role") as "admin" | "editor" | "viewer";
@@ -75,7 +66,7 @@ export async function inviteMember(
   try {
     const result = await convex.mutation(api.invitations.create, {
       storeId: storeId as any,
-      userId: session.user.id as any,
+      userId,
       email,
       role: role || "viewer",
     });
@@ -93,13 +84,12 @@ export async function updateMemberRole(
   memberId: string,
   newRole: "admin" | "editor" | "viewer"
 ) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await requireCurrentUserId();
 
   try {
     await convex.mutation(api.members.updateRole, {
       storeId: storeId as any,
-      userId: session.user.id as any,
+      userId,
       targetMemberId: memberId as any,
       newRole,
     });
@@ -113,13 +103,12 @@ export async function updateMemberRole(
 }
 
 export async function removeMember(storeId: string, memberId: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await requireCurrentUserId();
 
   try {
     await convex.mutation(api.members.remove, {
       storeId: storeId as any,
-      userId: session.user.id as any,
+      userId,
       targetMemberId: memberId as any,
     });
     return { success: true };
@@ -132,13 +121,12 @@ export async function removeMember(storeId: string, memberId: string) {
 }
 
 export async function acceptInvitation(token: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await requireCurrentUserId();
 
   try {
     const result = await convex.mutation(api.invitations.accept, {
       token,
-      userId: session.user.id as any,
+      userId,
     });
     redirect(`/store/${result.storeId}`);
   } catch (error) {
@@ -151,13 +139,12 @@ export async function acceptInvitation(token: string) {
 }
 
 export async function declineInvitation(token: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await requireCurrentUserId();
 
   try {
     await convex.mutation(api.invitations.decline, {
       token,
-      userId: session.user.id as any,
+      userId,
     });
     return { success: true };
   } catch (error) {

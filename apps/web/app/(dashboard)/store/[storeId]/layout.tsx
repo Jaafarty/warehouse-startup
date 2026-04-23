@@ -1,8 +1,8 @@
-import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 import { Sidebar } from "@/components/layout/sidebar";
+import { getCurrentUserId } from "@/lib/auth";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -13,14 +13,14 @@ export default async function StoreLayout({
   children: React.ReactNode;
   params: Promise<{ storeId: string }>;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/auth/login");
+  const userId = await getCurrentUserId();
+  if (!userId) redirect("/auth/sign-in");
 
   const { storeId } = await params;
 
   const store = await convex.query(api.stores.getById, {
     storeId: storeId as any,
-    userId: session.user.id as any,
+    userId,
   });
 
   if (!store) {

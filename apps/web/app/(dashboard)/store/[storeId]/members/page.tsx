@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
@@ -10,7 +10,7 @@ import {
   updateMemberRole,
   removeMember,
 } from "@/app/actions/stores";
-import { UserPlus, MoreHorizontal } from "lucide-react";
+import { UserPlus, MoreHorizontal, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,8 +68,7 @@ import { toast } from "sonner";
 
 export default function MembersPage() {
   const { storeId } = useParams<{ storeId: string }>();
-  const { data: session } = useSession();
-  const userId = session?.user?.id;
+  const { userId } = useCurrentUser();
 
   const members = useQuery(
     api.members.listByStore,
@@ -89,10 +88,28 @@ export default function MembersPage() {
     const result = await inviteMember(storeId, formData);
     setPending(false);
     if (result.success) {
-      toast.success("Invitation sent!");
+      const link = `${window.location.origin}/invite/${result.token}`;
+      try {
+        await navigator.clipboard.writeText(link);
+        toast.success("Invitation created. Link copied to clipboard.", {
+          description: link,
+        });
+      } catch {
+        toast.success("Invitation created.", { description: link });
+      }
       setInviteOpen(false);
     } else {
       toast.error(result.error ?? "Failed to invite");
+    }
+  }
+
+  async function copyInviteLink(token: string) {
+    const link = `${window.location.origin}/invite/${token}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success("Link copied");
+    } catch {
+      toast.error("Could not copy");
     }
   }
 
@@ -300,6 +317,7 @@ export default function MembersPage() {
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="w-20 text-right">Link</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -313,6 +331,16 @@ export default function MembersPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">Pending</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyInviteLink(invite.token)}
+                          title="Copy invite link"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

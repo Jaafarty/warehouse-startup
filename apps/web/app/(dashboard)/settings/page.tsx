@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
-import { updateProfile, changePassword } from "@/app/actions/auth";
+import { useUser } from "@clerk/nextjs";
+import { updateProfile } from "@/app/actions/auth";
 import { User, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,13 +14,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 
 export default function UserSettingsPage() {
-  const { data: session, update: updateSession } = useSession();
+  const { user } = useUser();
   const [profilePending, setProfilePending] = useState(false);
-  const [passwordPending, setPasswordPending] = useState(false);
+
+  const displayName =
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
+    user?.username ||
+    "";
+  const email =
+    user?.primaryEmailAddress?.emailAddress ??
+    user?.emailAddresses[0]?.emailAddress ??
+    "";
 
   async function handleProfileUpdate(formData: FormData) {
     setProfilePending(true);
@@ -28,20 +35,8 @@ export default function UserSettingsPage() {
     setProfilePending(false);
     if (result.success) {
       toast.success("Profile updated");
-      updateSession();
     } else {
       toast.error(result.error ?? "Failed to update profile");
-    }
-  }
-
-  async function handlePasswordChange(formData: FormData) {
-    setPasswordPending(true);
-    const result = await changePassword(formData);
-    setPasswordPending(false);
-    if (result.success) {
-      toast.success("Password changed successfully");
-    } else {
-      toast.error(result.error ?? "Failed to change password");
     }
   }
 
@@ -69,15 +64,15 @@ export default function UserSettingsPage() {
               <Input
                 id="name"
                 name="name"
-                defaultValue={session?.user?.name ?? ""}
+                defaultValue={displayName}
                 required
               />
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input value={session?.user?.email ?? ""} disabled />
+              <Input value={email} disabled />
               <p className="text-xs text-muted-foreground">
-                Email cannot be changed.
+                Email is managed by your account provider.
               </p>
             </div>
             <Button type="submit" disabled={profilePending}>
@@ -91,38 +86,14 @@ export default function UserSettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Lock className="h-4 w-4" />
-            Change Password
+            Security
           </CardTitle>
           <CardDescription>
-            Update your password. Must be at least 8 characters.
+            Passwords, connected accounts, and two-factor authentication are
+            managed through Clerk. Open your account menu in the top-right to
+            access these settings.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form action={handlePasswordChange} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="currentPassword">Current Password</Label>
-              <Input
-                id="currentPassword"
-                name="currentPassword"
-                type="password"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password</Label>
-              <Input
-                id="newPassword"
-                name="newPassword"
-                type="password"
-                minLength={8}
-                required
-              />
-            </div>
-            <Button type="submit" disabled={passwordPending}>
-              {passwordPending ? "Changing..." : "Change Password"}
-            </Button>
-          </form>
-        </CardContent>
       </Card>
     </div>
   );

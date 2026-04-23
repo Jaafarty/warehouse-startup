@@ -2,14 +2,13 @@
 
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
-import { auth } from "@/auth";
+import { requireCurrentUserId } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function createProduct(storeId: string, formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await requireCurrentUserId();
 
   const name = formData.get("name") as string;
   const description = (formData.get("description") as string) || undefined;
@@ -31,7 +30,7 @@ export async function createProduct(storeId: string, formData: FormData) {
   try {
     const productId = await convex.mutation(api.products.create, {
       storeId: storeId as any,
-      userId: session.user.id as any,
+      userId,
       name: name.trim(),
       description: description?.trim(),
       categoryId: categoryId ? (categoryId as any) : undefined,
@@ -53,8 +52,7 @@ export async function createProduct(storeId: string, formData: FormData) {
 }
 
 export async function updateProduct(productId: string, formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await requireCurrentUserId();
 
   const name = (formData.get("name") as string) || undefined;
   const description = (formData.get("description") as string) || undefined;
@@ -74,7 +72,7 @@ export async function updateProduct(productId: string, formData: FormData) {
   try {
     await convex.mutation(api.products.update, {
       productId: productId as any,
-      userId: session.user.id as any,
+      userId,
       name: name?.trim(),
       description: description?.trim(),
       categoryId: categoryId ? (categoryId as any) : undefined,
@@ -94,13 +92,12 @@ export async function updateProduct(productId: string, formData: FormData) {
 }
 
 export async function archiveProduct(productId: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await requireCurrentUserId();
 
   try {
     await convex.mutation(api.products.archive, {
       productId: productId as any,
-      userId: session.user.id as any,
+      userId,
     });
     return { success: true };
   } catch (error) {
@@ -112,13 +109,12 @@ export async function archiveProduct(productId: string) {
 }
 
 export async function restoreProduct(productId: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await requireCurrentUserId();
 
   try {
     await convex.mutation(api.products.restore, {
       productId: productId as any,
-      userId: session.user.id as any,
+      userId,
     });
     return { success: true };
   } catch (error) {
@@ -135,8 +131,7 @@ export async function adjustProductStock(
   quantity: number,
   note?: string
 ) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await requireCurrentUserId();
 
   if (quantity <= 0) {
     return { success: false, error: "Quantity must be greater than 0" };
@@ -145,7 +140,7 @@ export async function adjustProductStock(
   try {
     await convex.mutation(api.stockMovements.manualAdjust, {
       productId: productId as any,
-      userId: session.user.id as any,
+      userId,
       type,
       quantity,
       note,
@@ -161,8 +156,7 @@ export async function adjustProductStock(
 }
 
 export async function createCategory(storeId: string, formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await requireCurrentUserId();
 
   const name = formData.get("name") as string;
   const description = (formData.get("description") as string) || undefined;
@@ -174,7 +168,7 @@ export async function createCategory(storeId: string, formData: FormData) {
   try {
     await convex.mutation(api.categories.create, {
       storeId: storeId as any,
-      userId: session.user.id as any,
+      userId,
       name: name.trim(),
       description: description?.trim(),
     });
@@ -202,8 +196,12 @@ export async function bulkImportProducts(
     lowStockThreshold: number;
   }>
 ) {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+  let userId;
+  try {
+    userId = await requireCurrentUserId();
+  } catch {
+    return { success: false, error: "Unauthorized" };
+  }
 
   let created = 0;
   let failed = 0;
@@ -213,7 +211,7 @@ export async function bulkImportProducts(
     try {
       await convex.mutation(api.products.create, {
         storeId: storeId as any,
-        userId: session.user.id as any,
+        userId,
         name: product.name.trim(),
         description: product.description?.trim(),
         categoryId: product.categoryId ? (product.categoryId as any) : undefined,

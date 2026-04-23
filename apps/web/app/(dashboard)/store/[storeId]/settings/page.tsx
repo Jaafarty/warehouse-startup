@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { updateStore } from "@/app/actions/stores";
@@ -21,8 +21,7 @@ import { toast } from "sonner";
 
 export default function StoreSettingsPage() {
   const { storeId } = useParams<{ storeId: string }>();
-  const { data: session } = useSession();
-  const userId = session?.user?.id;
+  const { userId } = useCurrentUser();
 
   const store = useQuery(
     api.stores.getById,

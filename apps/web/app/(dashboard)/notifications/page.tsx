@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { formatDate } from "@ware-house/shared";
@@ -34,8 +34,7 @@ const TYPE_CONFIG: Record<
 };
 
 export default function NotificationsPage() {
-  const { data: session } = useSession();
-  const userId = session?.user?.id;
+  const { userId } = useCurrentUser();
 
   const notifications = useQuery(
     api.notifications.list,
