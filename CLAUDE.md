@@ -38,7 +38,8 @@ Ware-House/
 │   │   └── actions/                # Server actions (auth.ts, stores.ts, inventory.ts, sales.ts)
 │   ├── components/
 │   │   ├── ui/                     # shadcn/ui v4 components (+ chart.tsx for recharts)
-│   │   └── layout/                 # sidebar.tsx, topbar.tsx (with notification badge)
+│   │   ├── layout/                 # sidebar.tsx, topbar.tsx (with notification badge)
+│   │   └── analytics/              # Phase 9: analytics-view, kpi-grid/card, range-filter, product-filter, insights-section, top-products-table, daily-summary-table, export-csv-button, charts/*
 │   ├── convex/                     # Convex schema + functions
 │   │   ├── schema.ts              # Full schema (11 tables) — users keyed by clerkId
 │   │   ├── auth.config.ts         # Clerk JWT issuer config (CLERK_JWT_ISSUER_DOMAIN)
@@ -132,6 +133,26 @@ Ware-House/
 - Server action: `updateProfile()` in `actions/auth.ts` (calls `api.users.updateProfile`)
 - Build verified: 21 routes compile successfully
 
+### Phase 9: Full Analytics Page — COMPLETE
+- New route at `/store/[storeId]/analytics` (the existing `/store/[storeId]` landing dashboard stays as a quick overview)
+- Convex (`convex/analytics.ts`) — added 9 reactive queries: `kpis`, `dailyRevenue`, `weeklyRevenue`, `monthlyRevenue`, `topProductsRanked`, `productShare`, `quantityTrend`, `ordersByDayOfWeek`, `insights`, `dailySummary`. All revenue numbers respect partial returns via `unitPrice * (quantity - returnedQuantity)`.
+- Components under `components/analytics/`:
+  - `analytics-view.tsx` — client orchestrator (filter state + all `useQuery` calls)
+  - `kpi-card.tsx`, `kpi-grid.tsx` — 12 KPI cards (today/yesterday/week/month/total revenue, total orders, AOV, best/lowest seller, units today, growth-vs-yesterday %, growth-vs-last-month %)
+  - `range-filter.tsx` (Today / 7d / 30d / Month / Custom range), `product-filter.tsx` (native `<select>`)
+  - `insights-section.tsx` — 8 cards (highest/lowest sales day, top revenue product, fastest growing, slow movers, recent 7d-vs-prior-7d trend, avg daily/monthly revenue)
+  - `top-products-table.tsx`, `daily-summary-table.tsx` — sortable; daily summary paginates at 30 rows
+  - `export-csv-button.tsx` — generates CSV from `dailySummary` via `Blob` + anchor (no dependency)
+  - `charts/{daily-revenue,weekly-revenue,monthly-revenue,top-products-bar,product-share-pie,quantity-trend,dow-orders}.tsx` — recharts wrapped in shadcn `ChartContainer`, themed via `--chart-1`…`--chart-5`
+- **KPI cards ignore filters** (fixed absolute periods); charts/insights/tables respect range + product filter
+- **"Top Revenue Product"** label is used instead of "most profitable" because cost data isn't tracked per sale (only `unitPrice` lives on `saleItems`); margin can't be computed
+- "Fastest growing" = largest positive % change in revenue last 30d vs prior 30d, with both periods having sales
+- "Slow moving" = active products with ≤2 units sold in the last 30 days
+- Real-time: Convex subscriptions auto-refresh the dashboard when new sales are created
+- Build verified: 19 routes compile successfully (`npx next build`)
+- **Deferred to a future phase**: PDF export, print, chart-image download, revenue forecast, peak selling hours
+- Spec at `docs/superpowers/specs/2026-04-26-analytics-page-design.md`
+
 ### Phase 8: Clerk migration + Resend invite email — COMPLETE
 - Removed: `auth.ts` (NextAuth config), `lib/auth-utils.ts`, `/api/auth/[...nextauth]/route.ts`, `/auth/login`, `/auth/signup`, `/auth/verify`, `/auth/error`
 - Added: `convex/auth.config.ts`, `convex/email.ts` (Resend `internalAction` scheduled from `invitations.create`), `lib/auth.ts`, `lib/use-current-user.ts`, `/auth/sign-in`, `/auth/sign-up`
@@ -187,7 +208,7 @@ Detailed plan at `.claude/plans/bubbly-churning-zebra.md`
 - From `apps/web`: `npx next build` — Verify build
 - `npx shadcn@latest add <component>` — Add shadcn components (run from apps/web)
 
-## Current Route Map (21 routes, build verified)
+## Current Route Map (19 routes after Clerk migration; build verified post-Phase 9)
 
 ```
 / (static)                                    — Landing page
@@ -197,7 +218,8 @@ Detailed plan at `.claude/plans/bubbly-churning-zebra.md`
 /invite/[token]                               — Accept/decline invitation
 /notifications                                — User notifications (real-time)
 /settings                                     — User settings (profile + password)
-/store/[storeId]                              — Store analytics dashboard
+/store/[storeId]                              — Store quick-overview dashboard
+/store/[storeId]/analytics                    — Full analytics page (KPIs, charts, insights, tables, CSV export)
 /store/[storeId]/inventory                    — Product list with search/filter
 /store/[storeId]/inventory/new                — Create product form
 /store/[storeId]/inventory/[productId]        — Product detail/edit + stock adjust
@@ -209,6 +231,6 @@ Detailed plan at `.claude/plans/bubbly-churning-zebra.md`
 /store/[storeId]/settings                     — Store settings
 ```
 
-> Note: route count above reflects pre-Clerk snapshot. Re-run `npx next build` after the Clerk migration to confirm the current total — the `/api/auth/[...nextauth]` and the four flat `/auth/*` pages have been replaced by the two Clerk catch-all routes.
+> Routes confirmed via `npx next build` after Phase 9.
 
 ## No git commits have been made yet.
