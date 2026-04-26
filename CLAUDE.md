@@ -53,7 +53,7 @@ Ware-House/
 │   │   ├── stockMovements.ts      # Stock movement queries + manual adjust
 │   │   ├── sales.ts               # Sales (create with stock decrement, returnItems)
 │   │   ├── notifications.ts       # Notifications (list, unreadCount, markAsRead, markAllAsRead)
-│   │   ├── analytics.ts           # Analytics (overview, topProducts, salesTrend)
+│   │   ├── analytics.ts           # Analytics: legacy (overview, topProducts, salesTrend) + Phase 9 (kpis, dailyRevenue, weeklyRevenue, monthlyRevenue, topProductsRanked, productShare, quantityTrend, ordersByDayOfWeek, insights, dailySummary)
 │   │   ├── _helpers/              # audit.ts, permissions.ts, stock.ts
 │   │   └── _generated/            # Stub files (replaced by npx convex dev)
 │   ├── lib/
