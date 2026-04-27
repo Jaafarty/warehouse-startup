@@ -116,3 +116,52 @@ export const remove = mutation({
     return { success: true };
   },
 });
+
+export const ensureMany = mutation({
+  args: {
+    storeId: v.id("stores"),
+    userId: v.id("users"),
+    names: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await assertStorePermission(
+      ctx.db,
+      args.userId,
+      args.storeId,
+      "inventory",
+      "edit"
+    );
+
+    const existing = await ctx.db
+      .query("categories")
+      .withIndex("by_store", (q: any) => q.eq("storeId", args.storeId))
+      .collect();
+
+    const byLowerName = new Map<string, any>(
+      existing.map((c: any) => [c.name.toLowerCase(), c._id])
+    );
+
+    const result: Record<string, any> = {};
+    const seen = new Set<string>();
+
+    for (const raw of args.names) {
+      const name = raw.trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      let id = byLowerName.get(key);
+      if (!id) {
+        id = await ctx.db.insert("categories", {
+          storeId: args.storeId,
+          name,
+        });
+        byLowerName.set(key, id);
+      }
+      result[key] = id;
+    }
+
+    return result;
+  },
+});
