@@ -132,6 +132,9 @@ export const ensureMany = mutation({
       "edit"
     );
 
+    if (args.names.length === 0) return {};
+
+    // Fetch all at once for batched lookup; one round-trip beats one-per-name.
     const existing = await ctx.db
       .query("categories")
       .withIndex("by_store", (q: any) => q.eq("storeId", args.storeId))
@@ -157,7 +160,6 @@ export const ensureMany = mutation({
           storeId: args.storeId,
           name,
         });
-        byLowerName.set(key, id);
       }
       result[key] = id;
     }
