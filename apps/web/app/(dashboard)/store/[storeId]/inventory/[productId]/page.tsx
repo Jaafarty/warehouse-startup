@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
@@ -52,6 +52,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { NewCategoryDialog } from "@/components/new-category-dialog";
 
 export default function ProductDetailPage() {
   const { storeId, productId } = useParams<{
@@ -71,6 +72,16 @@ export default function ProductDetailPage() {
     api.categories.list,
     userId ? { storeId: storeId as any, userId: userId as any } : "skip"
   );
+
+  const [categoryId, setCategoryId] = useState<string>("");
+
+  useEffect(() => {
+    if (product && product.categoryId) {
+      setCategoryId(product.categoryId as string);
+    } else if (product) {
+      setCategoryId("");
+    }
+  }, [product]);
 
   const [editPending, setEditPending] = useState(false);
   const [stockDialogOpen, setStockDialogOpen] = useState(false);
@@ -320,11 +331,22 @@ export default function ProductDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="categoryId">Category</Label>
-              <Select
-                name="categoryId"
-                defaultValue={product.categoryId ?? undefined}
-              >
+              <div className="flex items-center justify-between">
+                <Label htmlFor="categoryId">Category</Label>
+                <NewCategoryDialog
+                  storeId={storeId}
+                  triggerLabel="+ New"
+                  triggerClassName="text-xs font-medium text-muted-foreground hover:text-foreground"
+                  onCreated={(name) => {
+                    const created = categories?.find(
+                      (c: any) => c.name.toLowerCase() === name.toLowerCase()
+                    );
+                    if (created) setCategoryId(created._id as string);
+                  }}
+                />
+              </div>
+              <input type="hidden" name="categoryId" value={categoryId} />
+              <Select value={categoryId} onValueChange={(v) => setCategoryId(v ?? "")}>
                 <SelectTrigger>
                   <SelectValue placeholder="No category" />
                 </SelectTrigger>
