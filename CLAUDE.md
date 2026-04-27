@@ -4,7 +4,7 @@
 
 A modern, cloud-based inventory and sales management SaaS for small/medium businesses. Enables stock tracking, sales processing, role-based access, and real-time business insights.
 
-## Tech Stack
+## Tech StackA
 
 - **Monorepo**: Turborepo + npm workspaces
 - **Frontend**: Next.js 16.2.3 (App Router), shadcn/ui v4 (@base-ui/react), Tailwind CSS v4
@@ -38,6 +38,8 @@ Ware-House/
 │   │   └── actions/                # Server actions (auth.ts, stores.ts, inventory.ts, sales.ts)
 │   ├── components/
 │   │   ├── ui/                     # shadcn/ui v4 components (+ chart.tsx for recharts)
+│   │   ├── new-category-dialog.tsx # Shared "+ New Category" dialog (used by inventory list + edit pages)
+│   │   ├── inventory-import-export.tsx # Spreadsheet import/export (xlsx) with auto-category-creation and restock-on-match
 │   │   ├── layout/                 # sidebar.tsx, topbar.tsx (with notification badge)
 │   │   └── analytics/              # Phase 9: analytics-view, kpi-grid/card, range-filter, product-filter, insights-section, top-products-table, daily-summary-table, export-csv-button, charts/*
 │   ├── convex/                     # Convex schema + functions
@@ -48,8 +50,8 @@ Ware-House/
 │   │   ├── members.ts             # Member management
 │   │   ├── invitations.ts         # Invite system (schedules email.sendInviteEmail)
 │   │   ├── email.ts               # internalAction: Resend transactional email (invites)
-│   │   ├── products.ts            # Product CRUD (create, list, get, update, archive, restore)
-│   │   ├── categories.ts          # Category CRUD
+│   │   ├── products.ts            # Product CRUD (create, list, get, update, archive, restore) + importRow (match-or-create for spreadsheet import)
+│   │   ├── categories.ts          # Category CRUD + ensureMany (batched get-or-create for import)
 │   │   ├── stockMovements.ts      # Stock movement queries + manual adjust
 │   │   ├── sales.ts               # Sales (create with stock decrement, returnItems)
 │   │   ├── notifications.ts       # Notifications (list, unreadCount, markAsRead, markAllAsRead)
@@ -74,7 +76,9 @@ Ware-House/
 ## Implementation Progress
 
 ### Phase 0: Monorepo Setup & Tooling — COMPLETE
+
 ### Phase 1: Authentication — COMPLETE (migrated to Clerk)
+
 - **Clerk** (`@clerk/nextjs`) hosts sign-in/sign-up UI at `/auth/sign-in` and `/auth/sign-up` (catch-all routes using `<SignIn />` / `<SignUp />`)
 - `convex/auth.config.ts` registers the Clerk JWT issuer (`CLERK_JWT_ISSUER_DOMAIN`) so Convex validates Clerk sessions
 - `users` table keyed by `clerkId` (indexed `by_clerkId`); `lib/auth.ts` `getCurrentUserId()` upserts the Convex user row from Clerk identity on each server-side call
@@ -83,6 +87,7 @@ Ware-House/
 - No password storage, no custom verification flow, no `/api/auth/[...nextauth]` route — all handled by Clerk
 
 ### Phase 2: Store Management & Membership — COMPLETE
+
 - Convex functions: stores (create, list, get, update), members (list, updateRole, remove), invitations (create, accept, decline, list)
 - Permission helpers: `_helpers/permissions.ts` (assertStorePermission, assertStoreMember)
 - Audit log helper: `_helpers/audit.ts`
@@ -94,16 +99,19 @@ Ware-House/
 - Build verified: 14 routes compile successfully
 
 ### Phase 3: Inventory Management — COMPLETE
-- Convex functions: `products.ts` (create, list, get, update, archive, restore), `categories.ts` (list, create, update, remove), `stockMovements.ts` (listByProduct, listByStore, manualAdjust)
+
+- Convex functions: `products.ts` (create, list, get, update, archive, restore, **importRow**), `categories.ts` (list, create, update, remove, **ensureMany**), `stockMovements.ts` (listByProduct, listByStore, manualAdjust)
 - Stock movement helper: `_helpers/stock.ts` — `adjustStock()` enforces all stock changes go through one path (records movement, updates quantity, checks low stock threshold, creates admin notifications)
-- Server actions: `actions/inventory.ts` (createProduct, updateProduct, archiveProduct, restoreProduct, adjustProductStock, createCategory)
+- Server actions: `actions/inventory.ts` (createProduct, updateProduct, archiveProduct, restoreProduct, adjustProductStock, createCategory, **ensureCategories**, **bulkImportProducts**)
 - Product list page with search, category filter, archive toggle, inline status badges (Low Stock / In Stock / Archived)
 - New product form with basic info, identification (SKU/barcode), pricing, and initial stock
-- Product detail/edit page with inline stock adjustment dialog (add/remove with note)
+- Product detail/edit page with inline stock adjustment dialog (add/remove with note); category Select is controlled and the inline `<NewCategoryDialog>` "+ New" button auto-selects the newly created category on success
 - Stock history page showing full movement log with type icons, quantity changes, before/after, performer name
+- **Spreadsheet import** (`components/inventory-import-export.tsx`, xlsx): unknown categories auto-created via `ensureCategories`; rows matching an existing product (by SKU → barcode → name with no-identifier guard) restock the existing product via `adjustStock(type: "manual_add", note: "Imported via spreadsheet")` instead of duplicating; toast surfaces `created · restocked · skipped · failed` counts. Restocks appear on the stock history page automatically.
 - Build verified: 19 routes compile successfully
 
 ### Phase 4: Sales Management — COMPLETE
+
 - Convex functions: `sales.ts` (list, get, create with atomic multi-item stock decrement, returnItems with partial/full return tracking)
 - Sale creation: generates sale number (S-YYYYMMDD-XXXX), validates stock availability for all items before committing, uses `adjustStock()` for each line item
 - Returns: per-item return quantity tracking on `saleItems.returnedQuantity`, auto-updates sale status to `partially_returned` or `returned`
@@ -114,18 +122,21 @@ Ware-House/
 - Build verified: 19 routes compile successfully
 
 ### Phase 5: Notifications & Alerts — COMPLETE
+
 - Convex functions: `notifications.ts` (list, unreadCount, markAsRead, markAllAsRead)
 - Topbar updated with real-time unread notification count badge
 - Low stock notifications created automatically by `adjustStock()` helper
 - Notifications page with mark-as-read (individual + bulk), type-specific icons
 
 ### Phase 6: Analytics Dashboard — COMPLETE
+
 - Convex functions: `analytics.ts` (overview with 30d revenue/sales/products/stock alerts, topProducts by revenue, salesTrend with daily bucketing)
 - Store dashboard page with 4 summary cards (revenue, sales, products, stock alerts)
 - Sales trend bar chart (14 days) using shadcn/ui chart component + recharts
 - Top products table ranked by revenue
 
 ### Phase 7: Polish & Hardening — COMPLETE
+
 - User settings page (`/settings`) with profile (display name) update — email and password are managed by Clerk's hosted user profile
 - Error boundary (`error.tsx`) for dashboard route group
 - Loading skeleton (`loading.tsx`) for dashboard route group
@@ -134,16 +145,17 @@ Ware-House/
 - Build verified: 21 routes compile successfully
 
 ### Phase 9: Full Analytics Page — COMPLETE
+
 - New route at `/store/[storeId]/analytics` (the existing `/store/[storeId]` landing dashboard stays as a quick overview)
 - Convex (`convex/analytics.ts`) — added 9 reactive queries: `kpis`, `dailyRevenue`, `weeklyRevenue`, `monthlyRevenue`, `topProductsRanked`, `productShare`, `quantityTrend`, `ordersByDayOfWeek`, `insights`, `dailySummary`. All revenue numbers respect partial returns via `unitPrice * (quantity - returnedQuantity)`.
 - Components under `components/analytics/`:
-  - `analytics-view.tsx` — client orchestrator (filter state + all `useQuery` calls)
-  - `kpi-card.tsx`, `kpi-grid.tsx` — 12 KPI cards (today/yesterday/week/month/total revenue, total orders, AOV, best/lowest seller, units today, growth-vs-yesterday %, growth-vs-last-month %)
-  - `range-filter.tsx` (Today / 7d / 30d / Month / Custom range), `product-filter.tsx` (native `<select>`)
-  - `insights-section.tsx` — 8 cards (highest/lowest sales day, top revenue product, fastest growing, slow movers, recent 7d-vs-prior-7d trend, avg daily/monthly revenue)
-  - `top-products-table.tsx`, `daily-summary-table.tsx` — sortable; daily summary paginates at 30 rows
-  - `export-csv-button.tsx` — generates CSV from `dailySummary` via `Blob` + anchor (no dependency)
-  - `charts/{daily-revenue,weekly-revenue,monthly-revenue,top-products-bar,product-share-pie,quantity-trend,dow-orders}.tsx` — recharts wrapped in shadcn `ChartContainer`, themed via `--chart-1`…`--chart-5`
+    - `analytics-view.tsx` — client orchestrator (filter state + all `useQuery` calls)
+    - `kpi-card.tsx`, `kpi-grid.tsx` — 12 KPI cards (today/yesterday/week/month/total revenue, total orders, AOV, best/lowest seller, units today, growth-vs-yesterday %, growth-vs-last-month %)
+    - `range-filter.tsx` (Today / 7d / 30d / Month / Custom range), `product-filter.tsx` (native `<select>`)
+    - `insights-section.tsx` — 8 cards (highest/lowest sales day, top revenue product, fastest growing, slow movers, recent 7d-vs-prior-7d trend, avg daily/monthly revenue)
+    - `top-products-table.tsx`, `daily-summary-table.tsx` — sortable; daily summary paginates at 30 rows
+    - `export-csv-button.tsx` — generates CSV from `dailySummary` via `Blob` + anchor (no dependency)
+    - `charts/{daily-revenue,weekly-revenue,monthly-revenue,top-products-bar,product-share-pie,quantity-trend,dow-orders}.tsx` — recharts wrapped in shadcn `ChartContainer`, themed via `--chart-1`…`--chart-5`
 - **KPI cards ignore filters** (fixed absolute periods); charts/insights/tables respect range + product filter
 - **"Top Revenue Product"** label is used instead of "most profitable" because cost data isn't tracked per sale (only `unitPrice` lives on `saleItems`); margin can't be computed
 - "Fastest growing" = largest positive % change in revenue last 30d vs prior 30d, with both periods having sales
@@ -154,6 +166,7 @@ Ware-House/
 - Spec at `docs/superpowers/specs/2026-04-26-analytics-page-design.md`
 
 ### Phase 8: Clerk migration + Resend invite email — COMPLETE
+
 - Removed: `auth.ts` (NextAuth config), `lib/auth-utils.ts`, `/api/auth/[...nextauth]/route.ts`, `/auth/login`, `/auth/signup`, `/auth/verify`, `/auth/error`
 - Added: `convex/auth.config.ts`, `convex/email.ts` (Resend `internalAction` scheduled from `invitations.create`), `lib/auth.ts`, `lib/use-current-user.ts`, `/auth/sign-in`, `/auth/sign-up`
 - Schema change: `users.clerkId` + `by_clerkId` index (no more local `passwordHash`/`emailVerified` fields for auth)
@@ -162,6 +175,7 @@ Ware-House/
 ## Critical Notes for Next Session
 
 ### Next.js 16 Breaking Changes
+
 - **middleware.ts is DEPRECATED** — renamed to `proxy.ts`, function export is `proxy` not `middleware`
 - **shadcn/ui v4 uses @base-ui/react** — NO `asChild` prop. Triggers are native buttons. Use `className` directly on triggers or `render` prop for custom elements. Do NOT use Radix patterns.
 - **shadcn/ui v4 Select `onValueChange` can pass `null`** — wrap with `(v) => setter(v ?? "default")` instead of passing setter directly
@@ -170,6 +184,7 @@ Ware-House/
 - `apps/web/AGENTS.md` warns about breaking changes
 
 ### Convex Architecture
+
 - `convex/` directory lives inside `apps/web/` (consolidated, no separate apps/backend)
 - `convex/_generated/` has **stub files** that allow TypeScript to compile without running `npx convex dev`
 - The `convex/` directory is excluded from Next.js tsconfig (`"exclude": ["node_modules", "convex"]`)
@@ -177,22 +192,25 @@ Ware-House/
 - **User must run `npx convex dev`** in apps/web to set up their Convex project and generate real types
 
 ### Auth Pattern (Clerk + Convex)
+
 - **Server actions**: call `requireCurrentUserId()` from `@/lib/auth` — resolves the Clerk identity, upserts the Convex `users` row via `api.users.store`, and returns the `users._id` to pass into Convex mutations. `getCurrentUserId()` is the nullable variant.
 - **Client components**: use `useCurrentUser()` from `@/lib/use-current-user` (returns `{ user, userId, isLoading, isAuthenticated }`) or `useQuery(api.users.current)` directly. Auth state comes from `useConvexAuth()` (via `ConvexProviderWithClerk`).
 - **Convex functions**: authenticated functions read `ctx.auth.getUserIdentity()` and match against `users.clerkId` (see `users.current`).
 - **Required env vars** (`apps/web/.env.local`):
-  - `NEXT_PUBLIC_CONVEX_URL` — Convex deployment URL
-  - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` — Clerk keys
-  - `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/auth/sign-in`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/auth/sign-up`
+    - `NEXT_PUBLIC_CONVEX_URL` — Convex deployment URL
+    - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` — Clerk keys
+    - `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/auth/sign-in`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/auth/sign-up`
 - **Required Convex deployment env vars** (`npx convex env set ...`):
-  - `CLERK_JWT_ISSUER_DOMAIN` — the Clerk JWT issuer (matches the Clerk instance)
-  - `RESEND_API_KEY`, `RESEND_FROM`, `SITE_URL` — for invite emails (soft-skipped with a warn log if unset)
+    - `CLERK_JWT_ISSUER_DOMAIN` — the Clerk JWT issuer (matches the Clerk instance)
+    - `RESEND_API_KEY`, `RESEND_FROM`, `SITE_URL` — for invite emails (soft-skipped with a warn log if unset)
 
 ### Stock Movement Invariant
+
 - **ALL stock changes MUST go through `adjustStock()` helper** in `convex/_helpers/stock.ts` — no direct `db.patch(productId, { quantity })` allowed
 - `adjustStock()` records a `stockMovements` entry, updates product quantity, and auto-creates low-stock notifications for admins when threshold is crossed
 
 ### Shared Package
+
 - `packages/shared/src/index.ts` barrel exports from: `types/`, `validation/`, `constants/`, `utils/`
 - `utils/index.ts` exports `formatCurrency()` and `formatDate()` — used across inventory and sales UI
 
