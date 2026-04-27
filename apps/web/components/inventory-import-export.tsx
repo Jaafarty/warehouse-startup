@@ -13,7 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { bulkImportProducts } from "@/app/actions/inventory";
+import { bulkImportProducts, ensureCategories } from "@/app/actions/inventory";
 import { formatCurrency } from "@ware-house/shared";
 
 interface Category {
@@ -166,31 +166,85 @@ export function InventoryImportExport({ storeId, categories, products }: Props) 
     if (!parsed.length) return;
     setImporting(true);
 
-    const mapped = parsed.map((row) => {
-      // Normalise header variations (case-insensitive, ignore spaces/*)
-      const get = (keys: string[]): unknown => {
-        for (const k of Object.keys(row)) {
-          const norm = k.toLowerCase().replace(/[^a-z]/g, "");
-          if (keys.some((t) => norm.includes(t))) return row[k];
-        }
-        return "";
-      };
+    // Strict whole-token header matcher (no substring fallback — that was the
+    // source of the cost/selling-price collision).
+    const get = (row: Record<string, unknown>, keys: string[]): unknown => {
+      for (const k of Object.keys(row)) {
+        const norm = k.toLowerCase().replace(/[^a-z]/g, "");
+        if (keys.some((t) => norm === t)) return row[k];
+      }
+      return "";
+    };
 
-      const categoryName = String(get(["category"])).trim().toLowerCase();
-      const categoryId = categoryByName[categoryName];
+    type RawRow = {
+      name: string;
+      description?: string;
+      sku?: string;
+      barcode?: string;
+      categoryName: string;
+      costPrice: number;
+      sellingPrice: number;
+      quantity: number;
+      lowStockThreshold: number;
+    };
 
-      return {
-        name: String(get(["name"])).trim(),
-        description: String(get(["description", "desc"])).trim() || undefined,
-        sku: String(get(["sku"])).trim() || undefined,
-        barcode: String(get(["barcode"])).trim() || undefined,
-        categoryId,
-        costPrice: Number(get(["costprice", "cost"])) || 0,
-        sellingPrice: Number(get(["sellingprice", "price", "selling"])) || 0,
-        quantity: Math.max(0, Math.floor(Number(get(["quantity", "qty"])) || 0)),
-        lowStockThreshold: Math.max(0, Math.floor(Number(get(["lowstock", "threshold"])) || 5)),
-      };
-    });
+    const raw: RawRow[] = parsed.map((row) => ({
+      name: String(get(row, ["name", "productname", "product"])).trim(),
+      description:
+        String(get(row, ["description", "desc"])).trim() || undefined,
+      sku: String(get(row, ["sku"])).trim() || undefined,
+      barcode: String(get(row, ["barcode", "ean", "upc"])).trim() || undefined,
+      categoryName: String(get(row, ["category"])).trim(),
+      costPrice: Number(get(row, ["costprice", "cost"])) || 0,
+      sellingPrice:
+        Number(
+          get(row, ["sellingprice", "sellprice", "saleprice", "salesprice", "price"])
+        ) || 0,
+      quantity: Math.max(
+        0,
+        Math.floor(Number(get(row, ["quantity", "qty", "stock"])) || 0)
+      ),
+      lowStockThreshold: Math.max(
+        0,
+        Math.floor(
+          Number(
+            get(row, ["lowstockthreshold", "lowstock", "threshold", "minstock"])
+          ) || 5
+        )
+      ),
+    }));
+
+    // Resolve unknown categories in one batch round-trip
+    const unknown = Array.from(
+      new Set(
+        raw
+          .map((r) => r.categoryName)
+          .filter((n) => n && !categoryByName[n.toLowerCase()])
+      )
+    );
+
+    let resolved: Record<string, string> = { ...categoryByName };
+    if (unknown.length) {
+      const ec = await ensureCategories(storeId, unknown);
+      if (!ec.success) {
+        toast.error(ec.error);
+        setImporting(false);
+        return;
+      }
+      resolved = { ...resolved, ...ec.map };
+    }
+
+    const mapped = raw.map((r) => ({
+      name: r.name,
+      description: r.description,
+      sku: r.sku,
+      barcode: r.barcode,
+      categoryId: r.categoryName ? resolved[r.categoryName.toLowerCase()] : undefined,
+      costPrice: r.costPrice,
+      sellingPrice: r.sellingPrice,
+      quantity: r.quantity,
+      lowStockThreshold: r.lowStockThreshold,
+    }));
 
     const valid = mapped.filter((p) => p.name && p.sellingPrice > 0);
     const skipped = mapped.length - valid.length;
@@ -209,14 +263,24 @@ export function InventoryImportExport({ storeId, categories, products }: Props) 
       return;
     }
 
-    const msgs: string[] = [`${result.created} product${result.created !== 1 ? "s" : ""} imported`];
-    if (skipped) msgs.push(`${skipped} row${skipped !== 1 ? "s" : ""} skipped (missing name/price)`);
-    if (result.failed) msgs.push(`${result.failed} failed`);
+    const parts: string[] = [];
+    if (result.created)
+      parts.push(`${result.created} created`);
+    if (result.updated)
+      parts.push(`${result.updated} restocked`);
+    if (skipped)
+      parts.push(`${skipped} skipped (missing name/price)`);
+    if (result.failed)
+      parts.push(`${result.failed} failed`);
+
+    const summary = parts.join(" · ") || "Nothing imported";
 
     if (result.failed && result.errors?.length) {
-      toast.warning(msgs.join(" · "), { description: result.errors.slice(0, 3).join("\n") });
+      toast.warning(summary, {
+        description: result.errors.slice(0, 3).join("\n"),
+      });
     } else {
-      toast.success(msgs.join(" · "));
+      toast.success(summary);
     }
 
     setImportOpen(false);
@@ -283,10 +347,13 @@ export function InventoryImportExport({ storeId, categories, products }: Props) 
             {/* Preview */}
             {parsed.length > 0 && (
               <div className="rounded-lg border p-3 bg-muted/20 text-sm space-y-1">
-                <p className="font-medium">{parsed.length} row{parsed.length !== 1 ? "s" : ""} detected</p>
+                <p className="font-medium">
+                  {parsed.length} row{parsed.length !== 1 ? "s" : ""} detected
+                </p>
                 <p className="text-muted-foreground text-xs">
-                  Rows missing Name or Selling Price will be skipped.
-                  Category must match an existing category name exactly.
+                  Rows missing Name or Selling Price will be skipped. Unknown categories
+                  will be created automatically. Existing products (matched by SKU,
+                  barcode, or name) will be restocked instead of duplicated.
                 </p>
               </div>
             )}
