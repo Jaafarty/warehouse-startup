@@ -7,7 +7,6 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
 import {
-  createCategory,
   archiveProduct,
   restoreProduct,
 } from "@/app/actions/inventory";
@@ -23,9 +22,9 @@ import {
   Package,
 } from "lucide-react";
 import { InventoryImportExport } from "@/components/inventory-import-export";
+import { NewCategoryDialog } from "@/components/new-category-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -33,14 +32,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -73,9 +64,6 @@ export default function InventoryPage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [showArchived, setShowArchived] = useState(false);
-  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
-  const [categoryPending, setCategoryPending] = useState(false);
-
   const products = useQuery(
     api.products.list,
     userId
@@ -115,18 +103,6 @@ export default function InventoryPage() {
     }
   }
 
-  async function handleCreateCategory(formData: FormData) {
-    setCategoryPending(true);
-    const result = await createCategory(storeId, formData);
-    setCategoryPending(false);
-    if (result.success) {
-      toast.success("Category created");
-      setCategoryDialogOpen(false);
-    } else {
-      toast.error(result.error ?? "Failed to create category");
-    }
-  }
-
   const lowStockCount =
     products?.filter(
       (p: any) => !p.isArchived && p.quantity <= p.lowStockThreshold
@@ -155,48 +131,11 @@ export default function InventoryPage() {
             categories={categories ?? []}
             products={products ?? []}
           />
-          <Dialog
-            open={categoryDialogOpen}
-            onOpenChange={setCategoryDialogOpen}
-          >
-            <DialogTrigger className="inline-flex items-center justify-center rounded-lg border px-2.5 h-8 text-sm font-medium hover:bg-muted">
-              + Category
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>New Category</DialogTitle>
-                <DialogDescription>
-                  Create a product category for this store.
-                </DialogDescription>
-              </DialogHeader>
-              <form action={handleCreateCategory} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cat-name">Name</Label>
-                  <Input
-                    id="cat-name"
-                    name="name"
-                    placeholder="e.g. Electronics"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cat-desc">Description (optional)</Label>
-                  <Input
-                    id="cat-desc"
-                    name="description"
-                    placeholder="Category description"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={categoryPending}
-                >
-                  {categoryPending ? "Creating..." : "Create Category"}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <NewCategoryDialog
+            storeId={storeId}
+            triggerLabel="+ Category"
+            triggerClassName="inline-flex items-center justify-center rounded-lg border px-2.5 h-8 text-sm font-medium hover:bg-muted"
+          />
           <Link href={`/store/${storeId}/inventory/new`}>
             <Button size="sm">
               <Plus className="h-4 w-4 mr-2" />
