@@ -297,3 +297,138 @@ export const restore = mutation({
     return { success: true };
   },
 });
+
+export const importRow = mutation({
+  args: {
+    storeId: v.id("stores"),
+    userId: v.id("users"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    categoryId: v.optional(v.id("categories")),
+    sku: v.optional(v.string()),
+    barcode: v.optional(v.string()),
+    costPrice: v.number(),
+    sellingPrice: v.number(),
+    quantity: v.number(),
+    lowStockThreshold: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await assertStorePermission(
+      ctx.db,
+      args.userId,
+      args.storeId,
+      "inventory",
+      "edit"
+    );
+
+    const sku = args.sku?.trim() || undefined;
+    const barcode = args.barcode?.trim() || undefined;
+    const name = args.name.trim();
+
+    // Match: SKU first
+    let match: any = null;
+    if (sku) {
+      const all = await ctx.db
+        .query("products")
+        .withIndex("by_store", (q: any) => q.eq("storeId", args.storeId))
+        .collect();
+      match = all.find((p: any) => p.sku && p.sku.toLowerCase() === sku.toLowerCase()) ?? null;
+    }
+    // Then barcode
+    if (!match && barcode) {
+      match = await ctx.db
+        .query("products")
+        .withIndex("by_store_and_barcode", (q: any) =>
+          q.eq("storeId", args.storeId).eq("barcode", barcode)
+        )
+        .unique();
+    }
+    // Then name — only when neither side has any identifier
+    if (!match && !sku && !barcode) {
+      const all = await ctx.db
+        .query("products")
+        .withIndex("by_store", (q: any) => q.eq("storeId", args.storeId))
+        .collect();
+      match = all.find(
+        (p: any) =>
+          !p.sku && !p.barcode && p.name.toLowerCase() === name.toLowerCase()
+      ) ?? null;
+    }
+
+    if (match) {
+      if (args.quantity > 0) {
+        await adjustStock(ctx.db, {
+          storeId: args.storeId,
+          productId: match._id,
+          type: "manual_add",
+          quantityChange: args.quantity,
+          performedBy: args.userId,
+          referenceType: "manual",
+          note: "Imported via spreadsheet",
+        });
+      }
+
+      await createAuditLog(ctx.db, {
+        storeId: args.storeId,
+        userId: args.userId,
+        action: "product_restocked_via_import",
+        entityType: "product",
+        entityId: match._id,
+        details: { addedQuantity: args.quantity, source: "import" },
+      });
+
+      return { outcome: "updated" as const, productId: match._id };
+    }
+
+    // No match — insert new product (mirrors products.create)
+    if (barcode) {
+      const dupe = await ctx.db
+        .query("products")
+        .withIndex("by_store_and_barcode", (q: any) =>
+          q.eq("storeId", args.storeId).eq("barcode", barcode)
+        )
+        .unique();
+      if (dupe) {
+        throw new Error("A product with this barcode already exists");
+      }
+    }
+
+    const productId = await ctx.db.insert("products", {
+      storeId: args.storeId,
+      name,
+      description: args.description?.trim(),
+      categoryId: args.categoryId,
+      barcode,
+      sku,
+      quantity: 0,
+      costPrice: args.costPrice,
+      sellingPrice: args.sellingPrice,
+      lowStockThreshold: args.lowStockThreshold,
+      isArchived: false,
+      createdBy: args.userId,
+      updatedAt: Date.now(),
+    });
+
+    if (args.quantity > 0) {
+      await adjustStock(ctx.db, {
+        storeId: args.storeId,
+        productId,
+        type: "initial",
+        quantityChange: args.quantity,
+        performedBy: args.userId,
+        note: "Initial stock from import",
+      });
+    }
+
+    await createAuditLog(ctx.db, {
+      storeId: args.storeId,
+      userId: args.userId,
+      action: "product_created",
+      entityType: "product",
+      entityId: productId,
+      details: { name, initialQuantity: args.quantity, source: "import" },
+    });
+
+    return { outcome: "created" as const, productId };
+  },
+});
