@@ -182,6 +182,35 @@ export async function createCategory(storeId: string, formData: FormData) {
   }
 }
 
+export async function ensureCategories(
+  storeId: string,
+  names: string[]
+): Promise<
+  | { success: true; map: Record<string, string> }
+  | { success: false; error: string }
+> {
+  let userId;
+  try {
+    userId = await requireCurrentUserId();
+  } catch {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  try {
+    const map = await convex.mutation(api.categories.ensureMany, {
+      storeId: storeId as any,
+      userId,
+      names,
+    });
+    return { success: true, map: map as Record<string, string> };
+  } catch (e: any) {
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Failed to resolve categories",
+    };
+  }
+}
+
 export async function bulkImportProducts(
   storeId: string,
   products: Array<{
@@ -200,16 +229,17 @@ export async function bulkImportProducts(
   try {
     userId = await requireCurrentUserId();
   } catch {
-    return { success: false, error: "Unauthorized" };
+    return { success: false, error: "Unauthorized" } as const;
   }
 
   let created = 0;
+  let updated = 0;
   let failed = 0;
   const errors: string[] = [];
 
   for (const product of products) {
     try {
-      await convex.mutation(api.products.create, {
+      const result = await convex.mutation(api.products.importRow, {
         storeId: storeId as any,
         userId,
         name: product.name.trim(),
@@ -222,12 +252,13 @@ export async function bulkImportProducts(
         sellingPrice: product.sellingPrice,
         lowStockThreshold: product.lowStockThreshold,
       });
-      created++;
+      if (result.outcome === "created") created++;
+      else if (result.outcome === "updated") updated++;
     } catch (e: any) {
       failed++;
       errors.push(`"${product.name}": ${e.message}`);
     }
   }
 
-  return { success: true, created, failed, errors };
+  return { success: true, created, updated, failed, errors } as const;
 }
