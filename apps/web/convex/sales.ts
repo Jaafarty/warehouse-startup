@@ -15,6 +15,7 @@ export const list = query({
         v.literal("partially_returned")
       )
     ),
+    search: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await assertStorePermission(
@@ -44,7 +45,7 @@ export const list = query({
         .take(200);
     }
 
-    // Attach creator names
+    // Resolve creators
     const userCache: Record<string, string> = {};
     for (const sale of sales) {
       if (!userCache[sale.createdBy]) {
@@ -53,10 +54,37 @@ export const list = query({
       }
     }
 
-    return sales.map((s: any) => ({
+    // Resolve customers
+    const customerCache: Record<string, { name: string; phone: string }> = {};
+    for (const sale of sales) {
+      if (sale.customerId && !customerCache[sale.customerId]) {
+        const c = await ctx.db.get(sale.customerId);
+        if (c) {
+          customerCache[sale.customerId] = { name: c.name, phone: c.phone };
+        }
+      }
+    }
+
+    const enriched = sales.map((s: any) => ({
       ...s,
       createdByName: userCache[s.createdBy],
+      customerName: s.customerId
+        ? customerCache[s.customerId]?.name ?? null
+        : null,
+      customerPhone: s.customerId
+        ? customerCache[s.customerId]?.phone ?? null
+        : null,
     }));
+
+    const term = (args.search ?? "").trim().toLowerCase();
+    if (!term) return enriched;
+
+    return enriched.filter(
+      (s: any) =>
+        s.saleNumber.toLowerCase().includes(term) ||
+        (s.customerName && s.customerName.toLowerCase().includes(term)) ||
+        (s.customerPhone && s.customerPhone.toLowerCase().includes(term))
+    );
   },
 });
 
@@ -83,10 +111,14 @@ export const get = query({
       .collect();
 
     const creator = await ctx.db.get(sale.createdBy);
+    const customer = sale.customerId ? await ctx.db.get(sale.customerId) : null;
 
     return {
       ...sale,
       createdByName: creator?.name ?? "Unknown",
+      customer: customer
+        ? { _id: customer._id, name: customer.name, phone: customer.phone }
+        : null,
       items,
     };
   },
@@ -103,6 +135,7 @@ export const create = mutation({
       })
     ),
     note: v.optional(v.string()),
+    customerId: v.optional(v.id("customers")),
   },
   handler: async (ctx, args) => {
     await assertStorePermission(
@@ -115,6 +148,13 @@ export const create = mutation({
 
     if (args.items.length === 0) {
       throw new Error("Sale must have at least one item");
+    }
+
+    if (args.customerId) {
+      const customer = await ctx.db.get(args.customerId);
+      if (!customer || customer.storeId !== args.storeId) {
+        throw new Error("Customer does not belong to this store");
+      }
     }
 
     // Generate sale number: S-YYYYMMDD-XXXX
@@ -165,6 +205,7 @@ export const create = mutation({
       totalAmount,
       itemCount: totalItems,
       note: args.note,
+      customerId: args.customerId,
       createdBy: args.userId,
       createdAt: now,
       updatedAt: now,
@@ -205,102 +246,5 @@ export const create = mutation({
     });
 
     return { saleId, saleNumber };
-  },
-});
-
-export const returnItems = mutation({
-  args: {
-    saleId: v.id("sales"),
-    userId: v.id("users"),
-    items: v.array(
-      v.object({
-        saleItemId: v.id("saleItems"),
-        quantity: v.number(),
-      })
-    ),
-    note: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const sale = await ctx.db.get(args.saleId);
-    if (!sale) throw new Error("Sale not found");
-
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      sale.storeId,
-      "sales",
-      "edit"
-    );
-
-    if (sale.status === "returned") {
-      throw new Error("This sale has already been fully returned");
-    }
-
-    for (const item of args.items) {
-      if (item.quantity <= 0) {
-        throw new Error("Return quantity must be positive");
-      }
-
-      const saleItem = await ctx.db.get(item.saleItemId);
-      if (!saleItem) throw new Error("Sale item not found");
-      if (saleItem.saleId !== args.saleId) {
-        throw new Error("Sale item does not belong to this sale");
-      }
-
-      const maxReturnable = saleItem.quantity - saleItem.returnedQuantity;
-      if (item.quantity > maxReturnable) {
-        throw new Error(
-          `Cannot return ${item.quantity} of "${saleItem.productName}". Max returnable: ${maxReturnable}`
-        );
-      }
-
-      // Update returned quantity on sale item
-      await ctx.db.patch(item.saleItemId, {
-        returnedQuantity: saleItem.returnedQuantity + item.quantity,
-      });
-
-      // Restore stock
-      await adjustStock(ctx.db, {
-        storeId: sale.storeId,
-        productId: saleItem.productId,
-        type: "return",
-        quantityChange: item.quantity,
-        performedBy: args.userId,
-        referenceId: args.saleId,
-        referenceType: "sale_return",
-        note: args.note || `Return for sale ${sale.saleNumber}`,
-      });
-    }
-
-    // Determine new sale status
-    const allItems = await ctx.db
-      .query("saleItems")
-      .withIndex("by_sale", (q: any) => q.eq("saleId", args.saleId))
-      .collect();
-
-    const fullyReturned = allItems.every(
-      (i: any) => i.returnedQuantity >= i.quantity
-    );
-
-    const newStatus = fullyReturned ? "returned" : "partially_returned";
-    await ctx.db.patch(args.saleId, {
-      status: newStatus as any,
-      updatedAt: Date.now(),
-    });
-
-    await createAuditLog(ctx.db, {
-      storeId: sale.storeId,
-      userId: args.userId,
-      action: "sale_return",
-      entityType: "sale",
-      entityId: args.saleId,
-      details: {
-        saleNumber: sale.saleNumber,
-        returnedItems: args.items.length,
-        newStatus,
-      },
-    });
-
-    return { success: true, newStatus };
   },
 });
