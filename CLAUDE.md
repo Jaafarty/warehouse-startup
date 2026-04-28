@@ -25,7 +25,8 @@ Ware-House/
 │   │   │   ├── dashboard/          # Store selector
 │   │   │   └── store/[storeId]/    # Store-scoped pages (sidebar layout)
 │   │   │       ├── inventory/      # Product list, create, detail/edit, stock history
-│   │   │       ├── sales/          # Sales list, new sale, sale detail with returns
+│   │   │       ├── sales/          # Sales list, new sale, sale detail with returns history, return form
+│   │   │       ├── returns/        # Store-wide returns list, return detail
 │   │   │       ├── members/        # Full CRUD with confirmation dialogs
 │   │   │       └── settings/       # Store settings
 │   │   │   ├── notifications/      # Notifications page
@@ -35,13 +36,14 @@ Ware-House/
 │   │   ├── auth/sign-in/           # Clerk <SignIn /> catch-all route
 │   │   ├── auth/sign-up/           # Clerk <SignUp /> catch-all route
 │   │   ├── invite/[token]/         # Accept/decline invitation
-│   │   └── actions/                # Server actions (auth.ts, stores.ts, inventory.ts, sales.ts)
+│   │   └── actions/                # Server actions (auth.ts, stores.ts, inventory.ts, sales.ts, customers.ts, returns.ts)
 │   ├── components/
-│   │   ├── ui/                     # shadcn/ui v4 components (+ chart.tsx for recharts)
+│   │   ├── ui/                     # shadcn/ui v4 components (+ chart.tsx for recharts, checkbox.tsx)
+│   │   ├── customer-picker.tsx     # Search combobox + "+ New customer" dialog (Phase 10)
 │   │   ├── layout/                 # sidebar.tsx, topbar.tsx (with notification badge)
 │   │   └── analytics/              # Phase 9: analytics-view, kpi-grid/card, range-filter, product-filter, insights-section, top-products-table, daily-summary-table, export-csv-button, charts/*
 │   ├── convex/                     # Convex schema + functions
-│   │   ├── schema.ts              # Full schema (11 tables) — users keyed by clerkId
+│   │   ├── schema.ts              # Full schema (14 tables) — users keyed by clerkId; customers, saleReturns, saleReturnItems added in Phase 10
 │   │   ├── auth.config.ts         # Clerk JWT issuer config (CLERK_JWT_ISSUER_DOMAIN)
 │   │   ├── users.ts               # users.store (upsert by clerkId), current, getById, updateProfile
 │   │   ├── stores.ts              # Store CRUD
@@ -51,7 +53,9 @@ Ware-House/
 │   │   ├── products.ts            # Product CRUD (create, list, get, update, archive, restore)
 │   │   ├── categories.ts          # Category CRUD
 │   │   ├── stockMovements.ts      # Stock movement queries + manual adjust
-│   │   ├── sales.ts               # Sales (create with stock decrement, returnItems)
+│   │   ├── customers.ts           # Customer CRUD (list with search, getByPhone, create) — Phase 10
+│   │   ├── returns.ts             # Returns (listByStore, getBySale, get, create) — Phase 10
+│   │   ├── sales.ts               # Sales (create with stock decrement, optional customerId); returnItems removed in Phase 10
 │   │   ├── notifications.ts       # Notifications (list, unreadCount, markAsRead, markAllAsRead)
 │   │   ├── analytics.ts           # Analytics: legacy (overview, topProducts, salesTrend) + Phase 9 (kpis, dailyRevenue, weeklyRevenue, monthlyRevenue, topProductsRanked, productShare, quantityTrend, ordersByDayOfWeek, insights, dailySummary)
 │   │   ├── _helpers/              # audit.ts, permissions.ts, stock.ts
@@ -110,8 +114,9 @@ Ware-House/
 - Server actions: `actions/sales.ts` (createSale, returnSaleItems)
 - Sales list page with status filter (completed / partially returned / returned)
 - New sale page with product selector, cart with quantity editing, running total
-- Sale detail page with summary cards, line items table, and return dialog
+- Sale detail page with summary cards, line items table, and inline return dialog
 - Build verified: 19 routes compile successfully
+- Note: the inline return dialog and `returnSaleItems` action were superseded by the first-class returns flow in Phase 10
 
 ### Phase 5: Notifications & Alerts — COMPLETE
 - Convex functions: `notifications.ts` (list, unreadCount, markAsRead, markAllAsRead)
@@ -152,6 +157,29 @@ Ware-House/
 - Build verified: 19 routes compile successfully (`npx next build`)
 - **Deferred to a future phase**: PDF export, print, chart-image download, revenue forecast, peak selling hours
 - Spec at `docs/superpowers/specs/2026-04-26-analytics-page-design.md`
+
+### Phase 10: Customer-Linked Sales & Returns — COMPLETE
+
+- Schema: 3 new tables (`customers`, `saleReturns`, `saleReturnItems`); `sales.customerId` added (optional, walk-in still allowed)
+- Convex `customers.ts` (`list` with search, `getByPhone`, `create`) — phone is the dedupe key per store
+- Convex `returns.ts` (`listByStore` with search/reason/date filters, `getBySale`, `get`, `create`)
+- `convex/sales.ts` — `create` accepts optional `customerId`; `list` accepts `search` (matches sale #, customer name, customer phone) and resolves customer per row; `get` resolves customer. The old `returnItems` mutation was removed
+- Server actions: `actions/customers.ts` (`createCustomer`), `actions/returns.ts` (`createReturn`). `actions/sales.ts` `createSale` accepts optional `customerId`; old `returnSaleItems` removed
+- Reusable `components/customer-picker.tsx` — search combobox (matches name OR phone) + "+ New customer" dialog
+- New shadcn component: `components/ui/checkbox.tsx`
+- New sale page (`/sales/new`) — customer picker at top, walk-in is the default empty state
+- Sales list (`/sales`) — search input + "Customer" column (shows name/phone or "Walk-in")
+- Sale detail (`/sales/[saleId]`) — Customer summary card; "Process Return" now links to a dedicated page (no inline dialog); "Returns history" section lists all `saleReturns` for the sale
+- New return form page (`/sales/[saleId]/return`) — per-line **checkbox** + quantity input (defaults to remaining returnable qty), reason dropdown (5 preset options + "Other"), note textarea (required when reason = Other), live refund total, "Save return" → redirects to the return detail
+- Returns list page (`/returns`) — search by return # / sale # / customer name / phone; reason filter; from/to date filter
+- Return detail page (`/returns/[returnId]`) — read-only audit record (totals, customer, note, returned items)
+- Sidebar gains a "Returns" link (visible when `sales !== "none"`)
+- Returns are first-class records: `returns.create` inserts `saleReturns` + `saleReturnItems`, bumps `saleItems.returnedQuantity` (running total), recomputes `sales.status` (`partially_returned` | `returned`), and calls `adjustStock(type: "return", referenceType: "sale_return", referenceId: returnId)` per line so stock-history rows trace back to the specific return
+- Reasons union: `defective | wrong_item | damaged_in_transit | customer_changed_mind | other`. `note` required when `reason === "other"` (enforced in the mutation, server action, AND form)
+- No backfill: pre-existing `saleItems.returnedQuantity` patches from before this feature don't have corresponding `saleReturns` rows and don't appear on the new returns page
+- Build verified: 22 routes compile successfully
+- Spec at `docs/superpowers/specs/2026-04-28-customer-returns-design.md`
+- Plan at `docs/superpowers/plans/2026-04-28-customer-returns.md`
 
 ### Phase 8: Clerk migration + Resend invite email — COMPLETE
 - Removed: `auth.ts` (NextAuth config), `lib/auth-utils.ts`, `/api/auth/[...nextauth]/route.ts`, `/auth/login`, `/auth/signup`, `/auth/verify`, `/auth/error`
@@ -208,7 +236,7 @@ Detailed plan at `.claude/plans/bubbly-churning-zebra.md`
 - From `apps/web`: `npx next build` — Verify build
 - `npx shadcn@latest add <component>` — Add shadcn components (run from apps/web)
 
-## Current Route Map (19 routes after Clerk migration; build verified post-Phase 9)
+## Current Route Map (22 routes; build verified post-Phase 10)
 
 ```
 / (static)                                    — Landing page
@@ -224,13 +252,16 @@ Detailed plan at `.claude/plans/bubbly-churning-zebra.md`
 /store/[storeId]/inventory/new                — Create product form
 /store/[storeId]/inventory/[productId]        — Product detail/edit + stock adjust
 /store/[storeId]/inventory/[productId]/history — Stock movement log
-/store/[storeId]/sales                        — Sales list with status filter
-/store/[storeId]/sales/new                    — New sale (product selector + cart)
-/store/[storeId]/sales/[saleId]               — Sale detail + return processing
+/store/[storeId]/sales                        — Sales list with search + customer column
+/store/[storeId]/sales/new                    — New sale (customer picker + product selector + cart)
+/store/[storeId]/sales/[saleId]               — Sale detail with customer card + returns history
+/store/[storeId]/sales/[saleId]/return        — Process return form (checkbox + qty + reason)
+/store/[storeId]/returns                       — Store-wide returns list
+/store/[storeId]/returns/[returnId]            — Return detail (read-only)
 /store/[storeId]/members                      — Member management + confirmation dialogs
 /store/[storeId]/settings                     — Store settings
 ```
 
-> Routes confirmed via `npx next build` after Phase 9.
+> Routes confirmed via `npx next build` after Phase 10.
 
 ## No git commits have been made yet.
