@@ -219,10 +219,10 @@ export async function bulkImportProducts(
     categoryId?: string;
     sku?: string;
     barcode?: string;
-    costPrice: number;
+    costPrice?: number;
     sellingPrice: number;
     quantity: number;
-    lowStockThreshold: number;
+    lowStockThreshold?: number;
   }>
 ) {
   let userId;

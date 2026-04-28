@@ -348,7 +348,15 @@ export default function ProductDetailPage() {
               <input type="hidden" name="categoryId" value={categoryId} />
               <Select value={categoryId} onValueChange={(v) => setCategoryId(v ?? "")}>
                 <SelectTrigger>
-                  <SelectValue placeholder="No category" />
+                  <SelectValue placeholder="No category">
+                    {(value: string | null) => {
+                      if (!value) return null;
+                      const cat = categories?.find(
+                        (c: any) => c._id === value
+                      );
+                      return cat?.name ?? "…";
+                    }}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {categories?.map((cat: any) => (

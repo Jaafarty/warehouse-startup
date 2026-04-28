@@ -307,10 +307,10 @@ export const importRow = mutation({
     categoryId: v.optional(v.id("categories")),
     sku: v.optional(v.string()),
     barcode: v.optional(v.string()),
-    costPrice: v.number(),
+    costPrice: v.optional(v.number()),
     sellingPrice: v.number(),
     quantity: v.number(),
-    lowStockThreshold: v.number(),
+    lowStockThreshold: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await assertStorePermission(
@@ -324,6 +324,7 @@ export const importRow = mutation({
     const sku = args.sku?.trim() || undefined;
     const barcode = args.barcode?.trim() || undefined;
     const name = args.name.trim();
+    const description = args.description?.trim() || undefined;
 
     // Match: SKU first
     let match: any = null;
@@ -356,6 +357,32 @@ export const importRow = mutation({
     }
 
     if (match) {
+      // Patch updateable fields. Skip undefined so missing columns preserve
+      // existing values; always update sellingPrice (required by client).
+      const patch: Record<string, any> = { updatedAt: Date.now() };
+      if (name) patch.name = name;
+      if (description !== undefined) patch.description = description;
+      if (args.categoryId !== undefined) patch.categoryId = args.categoryId;
+      if (sku !== undefined) patch.sku = sku;
+      if (barcode !== undefined && barcode !== match.barcode) {
+        const dupe = await ctx.db
+          .query("products")
+          .withIndex("by_store_and_barcode", (q: any) =>
+            q.eq("storeId", args.storeId).eq("barcode", barcode)
+          )
+          .unique();
+        if (dupe && dupe._id !== match._id) {
+          throw new Error("A product with this barcode already exists");
+        }
+        patch.barcode = barcode;
+      }
+      if (args.costPrice !== undefined) patch.costPrice = args.costPrice;
+      patch.sellingPrice = args.sellingPrice;
+      if (args.lowStockThreshold !== undefined)
+        patch.lowStockThreshold = args.lowStockThreshold;
+
+      await ctx.db.patch(match._id, patch);
+
       if (args.quantity > 0) {
         await adjustStock(ctx.db, {
           storeId: args.storeId,
@@ -371,10 +398,14 @@ export const importRow = mutation({
       await createAuditLog(ctx.db, {
         storeId: args.storeId,
         userId: args.userId,
-        action: "product_restocked_via_import",
+        action: "product_updated_via_import",
         entityType: "product",
         entityId: match._id,
-        details: { addedQuantity: args.quantity, source: "import" },
+        details: {
+          addedQuantity: args.quantity,
+          patched: Object.keys(patch).filter((k) => k !== "updatedAt"),
+          source: "import",
+        },
       });
 
       return { outcome: "updated" as const, productId: match._id };
@@ -396,14 +427,14 @@ export const importRow = mutation({
     const productId = await ctx.db.insert("products", {
       storeId: args.storeId,
       name,
-      description: args.description?.trim(),
+      description,
       categoryId: args.categoryId,
       barcode,
       sku,
       quantity: 0,
-      costPrice: args.costPrice,
+      costPrice: args.costPrice ?? 0,
       sellingPrice: args.sellingPrice,
-      lowStockThreshold: args.lowStockThreshold,
+      lowStockThreshold: args.lowStockThreshold ?? 5,
       isArchived: false,
       createdBy: args.userId,
       updatedAt: Date.now(),

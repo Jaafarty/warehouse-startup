@@ -105,9 +105,9 @@ Ware-House/
 - Server actions: `actions/inventory.ts` (createProduct, updateProduct, archiveProduct, restoreProduct, adjustProductStock, createCategory, **ensureCategories**, **bulkImportProducts**)
 - Product list page with search, category filter, archive toggle, inline status badges (Low Stock / In Stock / Archived)
 - New product form with basic info, identification (SKU/barcode), pricing, and initial stock
-- Product detail/edit page with inline stock adjustment dialog (add/remove with note); category Select is controlled and the inline `<NewCategoryDialog>` "+ New" button auto-selects the newly created category on success
+- Product detail/edit page with inline stock adjustment dialog (add/remove with note); category Select is controlled and the inline `<NewCategoryDialog>` "+ New" button auto-selects the newly created category on success. `<SelectValue>` uses a render-prop child `(value) => categoryName` to display the selected category's name (base-ui passes the raw id to children, not the trigger label)
 - Stock history page showing full movement log with type icons, quantity changes, before/after, performer name
-- **Spreadsheet import** (`components/inventory-import-export.tsx`, xlsx): unknown categories auto-created via `ensureCategories`; rows matching an existing product (by SKU → barcode → name with no-identifier guard) restock the existing product via `adjustStock(type: "manual_add", note: "Imported via spreadsheet")` instead of duplicating; toast surfaces `created · restocked · skipped · failed` counts. Restocks appear on the stock history page automatically.
+- **Spreadsheet import** (`components/inventory-import-export.tsx`, xlsx): unknown categories auto-created via `ensureCategories`; rows matching an existing product (by SKU → barcode → name with no-identifier guard) **patch the existing product's fields** (name, description, categoryId, sku, barcode with uniqueness check, costPrice, sellingPrice, lowStockThreshold) and add any positive `quantity` as a restock via `adjustStock(type: "manual_add")`. Missing columns preserve existing values: the client uses `getNum`/`getStr` helpers so an absent column → `undefined` → server skips that field in the patch (only `sellingPrice` is always patched, since the client validates `> 0`). Toast surfaces `created · updated · skipped · failed` counts.
 - Build verified: 19 routes compile successfully
 
 ### Phase 4: Sales Management — COMPLETE
@@ -179,6 +179,7 @@ Ware-House/
 - **middleware.ts is DEPRECATED** — renamed to `proxy.ts`, function export is `proxy` not `middleware`
 - **shadcn/ui v4 uses @base-ui/react** — NO `asChild` prop. Triggers are native buttons. Use `className` directly on triggers or `render` prop for custom elements. Do NOT use Radix patterns.
 - **shadcn/ui v4 Select `onValueChange` can pass `null`** — wrap with `(v) => setter(v ?? "default")` instead of passing setter directly
+- **shadcn/ui v4 `<SelectValue>` does not auto-render the selected option's label** — pass a render-prop child `{(value) => lookupLabel(value)}` to map the raw id/value to a display string; the `placeholder` prop is only used when `value` is empty
 - **useSearchParams()** must be wrapped in `<Suspense>` boundaries
 - Check `node_modules/next/dist/docs/` for current API docs before writing Next.js code
 - `apps/web/AGENTS.md` warns about breaking changes
