@@ -1,33 +1,20 @@
 "use client";
 
-import { useState } from "react";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
-import { returnSaleItems } from "@/app/actions/sales";
 import { formatCurrency, formatDate } from "@ware-house/shared";
-import { ArrowLeft, RotateCcw } from "lucide-react";
+import { ArrowLeft, RotateCcw, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -37,13 +24,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
-import { toast } from "sonner";
 
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+const STATUS_VARIANT: Record<
+  string,
+  "default" | "secondary" | "destructive" | "outline"
+> = {
   completed: "default",
   partially_returned: "secondary",
   returned: "outline",
+};
+
+const REASON_LABEL: Record<string, string> = {
+  defective: "Defective",
+  wrong_item: "Wrong item",
+  damaged_in_transit: "Damaged in transit",
+  customer_changed_mind: "Customer changed mind",
+  other: "Other",
 };
 
 export default function SaleDetailPage() {
@@ -58,42 +54,10 @@ export default function SaleDetailPage() {
     userId ? { saleId: saleId as any, userId: userId as any } : "skip"
   );
 
-  const [returnOpen, setReturnOpen] = useState(false);
-  const [returnQtys, setReturnQtys] = useState<Record<string, number>>({});
-  const [returnNote, setReturnNote] = useState("");
-  const [returnPending, setReturnPending] = useState(false);
-
-  function setReturnQty(itemId: string, qty: number) {
-    setReturnQtys((prev) => ({ ...prev, [itemId]: qty }));
-  }
-
-  async function handleReturn() {
-    const items = Object.entries(returnQtys)
-      .filter(([, qty]) => qty > 0)
-      .map(([saleItemId, quantity]) => ({ saleItemId, quantity }));
-
-    if (items.length === 0) {
-      toast.error("Enter quantities to return");
-      return;
-    }
-
-    setReturnPending(true);
-    const result = await returnSaleItems(
-      saleId,
-      items,
-      returnNote || undefined
-    );
-    setReturnPending(false);
-
-    if (result.success) {
-      toast.success("Return processed successfully");
-      setReturnOpen(false);
-      setReturnQtys({});
-      setReturnNote("");
-    } else {
-      toast.error(result.error ?? "Failed to process return");
-    }
-  }
+  const returns = useQuery(
+    api.returns.getBySale,
+    userId ? { saleId: saleId as any, userId: userId as any } : "skip"
+  );
 
   if (sale === undefined) {
     return (
@@ -147,76 +111,18 @@ export default function SaleDetailPage() {
           </div>
         </div>
         {hasReturnableItems && sale.status !== "returned" && (
-          <Dialog open={returnOpen} onOpenChange={setReturnOpen}>
-            <DialogTrigger className="inline-flex items-center justify-center rounded-lg border px-2.5 h-8 text-sm font-medium hover:bg-muted">
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Process Return
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Process Return</DialogTitle>
-                <DialogDescription>
-                  Enter the quantity to return for each item.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                {sale.items
-                  .filter((i: any) => i.returnedQuantity < i.quantity)
-                  .map((item: any) => {
-                    const maxReturn = item.quantity - item.returnedQuantity;
-                    return (
-                      <div
-                        key={item._id}
-                        className="flex items-center justify-between gap-4"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">
-                            {item.productName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Sold: {item.quantity} | Already returned:{" "}
-                            {item.returnedQuantity} | Max: {maxReturn}
-                          </p>
-                        </div>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={maxReturn}
-                          value={returnQtys[item._id] ?? 0}
-                          onChange={(e) =>
-                            setReturnQty(
-                              item._id,
-                              Math.min(Number(e.target.value), maxReturn)
-                            )
-                          }
-                          className="w-20"
-                        />
-                      </div>
-                    );
-                  })}
-                <div className="space-y-2">
-                  <Label>Note (optional)</Label>
-                  <Input
-                    value={returnNote}
-                    onChange={(e) => setReturnNote(e.target.value)}
-                    placeholder="Reason for return"
-                  />
-                </div>
-                <Button
-                  className="w-full"
-                  onClick={handleReturn}
-                  disabled={returnPending}
-                >
-                  {returnPending ? "Processing..." : "Confirm Return"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Link
+            href={`/store/${storeId}/sales/${saleId}/return`}
+            className="inline-flex items-center justify-center rounded-lg border px-2.5 h-8 text-sm font-medium hover:bg-muted"
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Process Return
+          </Link>
         )}
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">Total Amount</p>
@@ -240,6 +146,24 @@ export default function SaleDetailPage() {
             >
               {sale.status.replace(/_/g, " ")}
             </Badge>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">Customer</p>
+            {sale.customer ? (
+              <div className="mt-1">
+                <p className="font-medium truncate">{sale.customer.name}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {sale.customer.phone}
+                </p>
+              </div>
+            ) : (
+              <p className="text-muted-foreground mt-1 flex items-center gap-1">
+                <User className="h-3.5 w-3.5" />
+                Walk-in
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -295,6 +219,62 @@ export default function SaleDetailPage() {
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      {/* Returns History */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Returns history</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {returns === undefined ? (
+            <div className="p-4">
+              <Skeleton className="h-12" />
+            </div>
+          ) : returns.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground">
+              No returns processed for this sale yet.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Return #</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead className="text-right">Items</TableHead>
+                  <TableHead className="text-right">Refund</TableHead>
+                  <TableHead>Processed by</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {returns.map((r: any) => (
+                  <TableRow key={r._id}>
+                    <TableCell>
+                      <Link
+                        href={`/store/${storeId}/returns/${r._id}`}
+                        className="font-mono font-medium hover:underline"
+                      >
+                        {r.returnNumber}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {formatDate(r.createdAt)}
+                    </TableCell>
+                    <TableCell>{REASON_LABEL[r.reason] ?? r.reason}</TableCell>
+                    <TableCell className="text-right">{r.itemCount}</TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(r.totalRefund)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {r.processedByName}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

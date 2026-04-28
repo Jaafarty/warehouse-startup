@@ -61,7 +61,7 @@ export const listByStore = query({
       const sale = saleCache[r.saleId];
       if (sale?.customerId && !customerCache[sale.customerId]) {
         const c = await ctx.db.get(sale.customerId);
-        if (c) customerCache[sale.customerId] = { name: c.name, phone: c.phone };
+        if (c) customerCache[sale.customerId] = { name: (c as any).name, phone: (c as any).phone };
       }
     }
 
@@ -297,7 +297,7 @@ export const create = mutation({
       const fresh = await ctx.db.get(v.saleItemId);
       if (fresh) {
         await ctx.db.patch(v.saleItemId, {
-          returnedQuantity: fresh.returnedQuantity + v.quantity,
+          returnedQuantity: (fresh as any).returnedQuantity + v.quantity,
         });
       }
 
