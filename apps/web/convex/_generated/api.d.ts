@@ -19,6 +19,7 @@ import type * as invitations from "../invitations.js";
 import type * as members from "../members.js";
 import type * as notifications from "../notifications.js";
 import type * as products from "../products.js";
+import type * as returns from "../returns.js";
 import type * as sales from "../sales.js";
 import type * as stockMovements from "../stockMovements.js";
 import type * as stores from "../stores.js";
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   members: typeof members;
   notifications: typeof notifications;
   products: typeof products;
+  returns: typeof returns;
   sales: typeof sales;
   stockMovements: typeof stockMovements;
   stores: typeof stores;
