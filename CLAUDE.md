@@ -224,9 +224,12 @@ Ware-House/
 - `packages/shared/src/index.ts` barrel exports from: `types/`, `validation/`, `constants/`, `utils/`
 - `utils/index.ts` exports `formatCurrency()` and `formatDate()` — used across inventory and sales UI
 
-## Full Implementation Plan
+## Specs & Plans
 
-Detailed plan at `.claude/plans/bubbly-churning-zebra.md`
+Per-feature specs and plans live under `docs/superpowers/`:
+- `specs/2026-04-26-analytics-page-design.md` — Phase 9 analytics
+- `specs/2026-04-28-customer-returns-design.md` — Phase 10 customer + returns
+- `plans/2026-04-28-customer-returns.md` — Phase 10 implementation plan
 
 ## Commands
 
@@ -263,5 +266,3 @@ Detailed plan at `.claude/plans/bubbly-churning-zebra.md`
 ```
 
 > Routes confirmed via `npx next build` after Phase 10.
-
-## No git commits have been made yet.
