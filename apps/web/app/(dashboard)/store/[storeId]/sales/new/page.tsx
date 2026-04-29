@@ -35,6 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
+import { CustomerPicker, SelectedCustomer } from "@/components/customer-picker";
 
 interface CartItem {
   productId: string;
@@ -64,6 +65,7 @@ export default function NewSalePage() {
   const [note, setNote] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [customer, setCustomer] = useState<SelectedCustomer | null>(null);
 
   function addToCart() {
     if (!selectedProduct || !products) return;
@@ -134,7 +136,8 @@ export default function NewSalePage() {
     const result = await createSale(
       storeId,
       cart.map((i) => ({ productId: i.productId, quantity: i.quantity })),
-      note || undefined
+      note || undefined,
+      customer?._id
     );
     setPending(false);
     if (result && !result.success) {
@@ -163,6 +166,22 @@ export default function NewSalePage() {
           </p>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Customer</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CustomerPicker
+            storeId={storeId}
+            value={customer}
+            onChange={setCustomer}
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            Optional. Leave empty for a walk-in sale.
+          </p>
+        </CardContent>
+      </Card>
 
       {error && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">

@@ -10,6 +10,7 @@ import {
   Settings,
   Bell,
   BarChart3,
+  RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,12 @@ export function Sidebar({ storeId, storeName, permissions }: SidebarProps) {
       href: `${base}/sales`,
       label: "Sales",
       icon: ShoppingCart,
+      show: permissions.sales !== "none",
+    },
+    {
+      href: `${base}/returns`,
+      label: "Returns",
+      icon: RotateCcw,
       show: permissions.sales !== "none",
     },
     {

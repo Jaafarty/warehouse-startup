@@ -6,8 +6,9 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
 import { formatCurrency, formatDate } from "@ware-house/shared";
-import { Plus, ShoppingCart } from "lucide-react";
+import { Plus, ShoppingCart, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -43,6 +44,7 @@ export default function SalesPage() {
   const { storeId } = useParams<{ storeId: string }>();
   const { userId } = useCurrentUser();
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [search, setSearch] = useState<string>("");
 
   const sales = useQuery(
     api.sales.list,
@@ -51,6 +53,7 @@ export default function SalesPage() {
           storeId: storeId as any,
           userId: userId as any,
           status: statusFilter !== "all" ? (statusFilter as any) : undefined,
+          search: search || undefined,
         }
       : "skip"
   );
@@ -72,8 +75,20 @@ export default function SalesPage() {
         </Link>
       </div>
 
-      <div className="flex items-center gap-3">
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search sale #, customer name or phone"
+            className="pl-8"
+          />
+        </div>
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v ?? "all")}
+        >
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
@@ -116,6 +131,7 @@ export default function SalesPage() {
                   <TableHead className="text-right">Items</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Customer</TableHead>
                   <TableHead>Created By</TableHead>
                   <TableHead>Date</TableHead>
                 </TableRow>
@@ -139,6 +155,18 @@ export default function SalesPage() {
                       <Badge variant={STATUS_VARIANT[sale.status] ?? "outline"}>
                         {sale.status.replace(/_/g, " ")}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {sale.customerName ? (
+                        <div>
+                          <p className="font-medium">{sale.customerName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {sale.customerPhone}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">Walk-in</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {sale.createdByName}

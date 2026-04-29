@@ -78,6 +78,19 @@ export default defineSchema({
     .index("by_token", ["token"])
     .index("by_store_and_email", ["storeId", "email"]),
 
+  // ============ CUSTOMERS ============
+  customers: defineTable({
+    storeId: v.id("stores"),
+    name: v.string(),
+    phone: v.string(),
+    createdBy: v.id("users"),
+    createdAt: v.float64(),
+    updatedAt: v.float64(),
+  })
+    .index("by_store", ["storeId"])
+    .index("by_store_and_phone", ["storeId", "phone"])
+    .index("by_store_and_name", ["storeId", "name"]),
+
   // ============ PRODUCTS & CATEGORIES ============
   categories: defineTable({
     storeId: v.id("stores"),
@@ -152,6 +165,7 @@ export default defineSchema({
     totalAmount: v.float64(),
     itemCount: v.float64(),
     note: v.optional(v.string()),
+    customerId: v.optional(v.id("customers")),
     createdBy: v.id("users"),
     createdAt: v.float64(),
     updatedAt: v.float64(),
@@ -159,7 +173,8 @@ export default defineSchema({
     .index("by_store", ["storeId"])
     .index("by_store_and_status", ["storeId", "status"])
     .index("by_store_and_date", ["storeId", "createdAt"])
-    .index("by_sale_number", ["storeId", "saleNumber"]),
+    .index("by_sale_number", ["storeId", "saleNumber"])
+    .index("by_store_and_customer", ["storeId", "customerId"]),
 
   saleItems: defineTable({
     saleId: v.id("sales"),
@@ -173,6 +188,41 @@ export default defineSchema({
   })
     .index("by_sale", ["saleId"])
     .index("by_store_and_product", ["storeId", "productId"]),
+
+  // ============ SALE RETURNS ============
+  saleReturns: defineTable({
+    storeId: v.id("stores"),
+    saleId: v.id("sales"),
+    returnNumber: v.string(),
+    reason: v.union(
+      v.literal("defective"),
+      v.literal("wrong_item"),
+      v.literal("damaged_in_transit"),
+      v.literal("customer_changed_mind"),
+      v.literal("other")
+    ),
+    note: v.optional(v.string()),
+    totalRefund: v.float64(),
+    itemCount: v.float64(),
+    createdBy: v.id("users"),
+    createdAt: v.float64(),
+  })
+    .index("by_store", ["storeId"])
+    .index("by_store_and_date", ["storeId", "createdAt"])
+    .index("by_sale", ["saleId"])
+    .index("by_return_number", ["storeId", "returnNumber"]),
+
+  saleReturnItems: defineTable({
+    returnId: v.id("saleReturns"),
+    saleItemId: v.id("saleItems"),
+    productId: v.id("products"),
+    productName: v.string(),
+    quantity: v.float64(),
+    unitPrice: v.float64(),
+    totalRefund: v.float64(),
+  })
+    .index("by_return", ["returnId"])
+    .index("by_sale_item", ["saleItemId"]),
 
   // ============ NOTIFICATIONS ============
   notifications: defineTable({
