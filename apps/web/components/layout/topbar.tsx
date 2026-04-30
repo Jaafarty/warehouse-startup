@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useClerk } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Bell, LogOut, User } from "lucide-react";
+import { Bell, LogOut, User, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -24,7 +24,17 @@ interface TopbarProps {
 
 export function Topbar({ userName, userEmail }: TopbarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { signOut } = useClerk();
+
+  const segments = pathname.split("/").filter(Boolean);
+  const LIST_SECTIONS = new Set(["inventory", "sales", "returns", "members", "analytics", "settings"]);
+  const isRoot =
+    segments.length === 0 ||
+    (segments.length === 1 && segments[0] === "dashboard") ||
+    (segments[0] === "store" && segments.length === 2) ||
+    (segments[0] === "store" && segments.length === 3 && LIST_SECTIONS.has(segments[2]));
+  const showBack = !isRoot;
   const { userId } = useCurrentUser();
 
   const unreadCount = useQuery(
@@ -41,9 +51,16 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
 
   return (
     <header className="flex h-14 items-center justify-between border-b bg-card px-6">
-      <Link href="/dashboard" className="text-lg font-bold">
-        Ware-House
-      </Link>
+      <div className="flex items-center gap-2">
+        {showBack && (
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        )}
+        <Link href="/dashboard" className="text-lg font-bold">
+          Ware-House
+        </Link>
+      </div>
       <div className="flex items-center gap-2">
         <Link href="/notifications">
           <Button variant="ghost" size="icon" className="relative">
