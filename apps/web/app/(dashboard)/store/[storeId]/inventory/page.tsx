@@ -158,7 +158,9 @@ export default function InventoryPage() {
         </div>
         <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v ?? "all")}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All categories" />
+            <SelectValue placeholder="All categories">
+              {(value: string) => !value || value === "all" ? "All categories" : (categories?.find((cat: any) => cat._id === value)?.name ?? value)}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
@@ -250,6 +252,8 @@ export default function InventoryPage() {
                     <TableCell>
                       {product.isArchived ? (
                         <Badge variant="outline">Archived</Badge>
+                      ) : product.quantity === 0 ? (
+                        <Badge variant="destructive">Out of Stock</Badge>
                       ) : product.quantity <= product.lowStockThreshold ? (
                         <Badge variant="destructive">Low Stock</Badge>
                       ) : (

@@ -127,6 +127,10 @@ export default function ProductDetailPage() {
       toast.error("Enter a valid quantity");
       return;
     }
+    if (stockType === "manual_remove" && qty > product.quantity) {
+      toast.error(`Cannot remove more than current stock (${product.quantity})`);
+      return;
+    }
     setStockPending(true);
     const result = await adjustProductStock(
       productId,
@@ -257,6 +261,7 @@ export default function ProductDetailPage() {
                     <Input
                       type="number"
                       min="1"
+                      {...(stockType === "manual_remove" && { max: product.quantity })}
                       value={stockQty}
                       onChange={(e) => setStockQty(e.target.value)}
                       placeholder="Enter quantity"
@@ -295,7 +300,9 @@ export default function ProductDetailPage() {
             <div>
               <p className="text-sm text-muted-foreground">Status</p>
               <div className="mt-1">
-                {product.quantity <= product.lowStockThreshold ? (
+                {product.quantity === 0 ? (
+                  <Badge variant="destructive">Out of Stock</Badge>
+                ) : product.quantity <= product.lowStockThreshold ? (
                   <Badge variant="destructive">Low Stock</Badge>
                 ) : (
                   <Badge variant="secondary">In Stock</Badge>
