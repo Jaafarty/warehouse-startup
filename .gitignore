@@ -36,3 +36,6 @@ npm-debug.log*
 
 # Claude
 .claude/
+
+# clerk
+.clerk
