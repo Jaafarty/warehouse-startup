@@ -15,30 +15,12 @@ import {
 import { toast } from "sonner";
 import { bulkImportProducts, ensureCategories } from "@/app/actions/inventory";
 import { formatCurrency } from "@ware-house/shared";
-
-interface Category {
-  _id: string;
-  name: string;
-}
-
-interface Product {
-  _id: string;
-  name: string;
-  description?: string;
-  sku?: string;
-  barcode?: string;
-  categoryId?: string;
-  costPrice: number;
-  sellingPrice: number;
-  quantity: number;
-  lowStockThreshold: number;
-  isArchived: boolean;
-}
+import type { Doc } from "@/convex/_generated/dataModel";
 
 interface Props {
   storeId: string;
-  categories: Category[];
-  products: Product[];
+  categories: Doc<"categories">[];
+  products: Doc<"products">[];
 }
 
 /** Convert Excel serial date or string → ISO YYYY-MM-DD (or return as-is) */
