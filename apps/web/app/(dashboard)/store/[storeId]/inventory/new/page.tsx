@@ -39,6 +39,7 @@ export default function NewProductPage() {
 
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState("");
 
   async function handleSubmit(formData: FormData) {
     setPending(true);
@@ -102,9 +103,11 @@ export default function NewProductPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="categoryId">Category</Label>
-              <Select name="categoryId">
+              <Select name="categoryId" value={categoryId} onValueChange={(v) => setCategoryId(v ?? "")}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a category" />
+                  <SelectValue placeholder="Select a category">
+                    {(value: string) => value ? (categories?.find((c: any) => c._id === value)?.name ?? value) : "Select a category"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {categories?.map((cat: any) => (

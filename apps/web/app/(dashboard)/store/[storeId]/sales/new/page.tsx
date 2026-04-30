@@ -198,7 +198,9 @@ export default function NewSalePage() {
           <div className="flex gap-2">
             <Select value={selectedProduct} onValueChange={(v) => setSelectedProduct(v ?? "")}>
               <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Select a product" />
+                <SelectValue placeholder="Select a product">
+                  {(value: string) => value ? (availableProducts?.find((p: any) => p._id === value)?.name ?? value) : "Select a product"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {availableProducts?.map((p: any) => (
