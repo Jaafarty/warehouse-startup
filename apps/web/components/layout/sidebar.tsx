@@ -12,22 +12,20 @@ import {
   BarChart3,
   RotateCcw,
   DollarSign,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import type { StorePermissions } from "@ware-house/shared";
 
 interface SidebarProps {
   storeId: string;
   storeName: string;
-  permissions: {
-    inventory: string;
-    sales: string;
-    analytics: string;
-    members: string;
-  };
+  role: string;
+  permissions: StorePermissions;
 }
 
-export function Sidebar({ storeId, storeName, permissions }: SidebarProps) {
+export function Sidebar({ storeId, storeName, role, permissions }: SidebarProps) {
   const pathname = usePathname();
   const base = `/store/${storeId}`;
 
@@ -42,31 +40,37 @@ export function Sidebar({ storeId, storeName, permissions }: SidebarProps) {
       href: `${base}/inventory`,
       label: "Inventory",
       icon: Package,
-      show: permissions.inventory !== "none",
+      show: permissions.inventory?.enabled ?? false,
     },
     {
       href: `${base}/sales`,
       label: "Sales",
       icon: ShoppingCart,
-      show: permissions.sales !== "none",
+      show: permissions.sales?.enabled ?? false,
     },
     {
       href: `${base}/returns`,
       label: "Returns",
       icon: RotateCcw,
-      show: permissions.sales !== "none",
+      show: permissions.returns?.enabled ?? false,
     },
     {
       href: `${base}/analytics`,
       label: "Analytics",
       icon: BarChart3,
-      show: permissions.analytics !== "none",
+      show: permissions.analytics?.enabled ?? false,
     },
     {
       href: `${base}/members`,
       label: "Members",
       icon: Users,
-      show: permissions.members !== "none",
+      show: permissions.members?.enabled ?? false,
+    },
+    {
+      href: `${base}/roles`,
+      label: "Roles",
+      icon: ShieldCheck,
+      show: role === "owner" || role === "admin",
     },
     {
       href: `${base}/exchange-rate`,
@@ -78,7 +82,7 @@ export function Sidebar({ storeId, storeName, permissions }: SidebarProps) {
       href: `${base}/settings`,
       label: "Settings",
       icon: Settings,
-      show: true,
+      show: permissions.settings?.enabled ?? false,
     },
   ];
 
