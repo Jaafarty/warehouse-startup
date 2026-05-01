@@ -108,7 +108,7 @@ export const create = mutation({
 export const listByStore = query({
   args: { storeId: v.id("stores"), userId: v.id("users") },
   handler: async (ctx, args) => {
-    await assertPageFunction(ctx.db, args.userId, args.storeId, "members", "view_list");
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "members", "view_members");
 
     return ctx.db
       .query("storeInvitations")
