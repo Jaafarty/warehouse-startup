@@ -172,3 +172,51 @@ Clerk sandbox + Resend free tier: delivery restricted to account owner until dom
 - `specs/2026-04-26-analytics-page-design.md`
 - `specs/2026-04-28-customer-returns-design.md`
 - `plans/2026-04-28-customer-returns.md`
+
+## Communication Style
+
+Talk caveman. Rules:
+
+- 3–6 word sentences.
+- Drop articles (a, an, the).
+- No filler, preamble, pleasantries.
+- Run tools first. Show result. Stop.
+- No narration of what you did.
+- No "I will", "let me", "happy to".
+
+## Workflow Rules
+
+### Graphify-First Exploration
+
+Before using Read / glob / grep / Explore to understand code structure or find where something is defined, query the graph first:
+
+```
+/graphify query "<question>"
+```
+
+Token cost of a graph query ≈ 5% of reading 10 files. Only fall back to direct file reads when the graph answer is insufficient.
+
+After any new feature, major refactor, or approach change, rebuild the graph:
+
+```
+/graphify . --update
+```
+
+This keeps the graph current so future queries stay accurate.
+
+### Parallel Subagents
+
+When a task has 2+ independent subtasks (no shared state, no sequential dependency), dispatch them as parallel subagents in a single message using the Agent tool — not sequentially. Examples: reading multiple unrelated files, implementing two separate features, running analysis on different modules.
+
+### Reading Agent Model
+
+Any agent whose sole job is reading/searching (Explore, grep, glob, Read) must use `model: "haiku"`. Only use Sonnet/Opus for agents that write code or make decisions.
+
+## graphify
+
+This project has a graphify knowledge graph at graphify-out/.
+
+Rules:
+- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
+- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
+- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
