@@ -1,17 +1,11 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { assertStorePermission } from "./_helpers/permissions";
+import { assertPageFunction } from "./_helpers/permissions";
 
 export const list = query({
   args: { storeId: v.id("stores"), userId: v.id("users") },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "inventory",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "inventory", "view_list");
     return ctx.db
       .query("categories")
       .withIndex("by_store", (q: any) => q.eq("storeId", args.storeId))
@@ -27,13 +21,7 @@ export const create = mutation({
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "inventory",
-      "edit"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "inventory", "create_category");
 
     // Check for duplicate name
     const existing = await ctx.db
@@ -66,13 +54,7 @@ export const update = mutation({
     const category = await ctx.db.get(args.categoryId);
     if (!category) throw new Error("Category not found");
 
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      category.storeId,
-      "inventory",
-      "edit"
-    );
+    await assertPageFunction(ctx.db, args.userId, category.storeId, "inventory", "create_category");
 
     const patch: Record<string, any> = {};
     if (args.name !== undefined) patch.name = args.name;
@@ -92,13 +74,7 @@ export const remove = mutation({
     const category = await ctx.db.get(args.categoryId);
     if (!category) throw new Error("Category not found");
 
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      category.storeId,
-      "inventory",
-      "full"
-    );
+    await assertPageFunction(ctx.db, args.userId, category.storeId, "inventory", "create_category");
 
     // Remove category reference from products
     const products = await ctx.db
@@ -124,13 +100,7 @@ export const ensureMany = mutation({
     names: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "inventory",
-      "edit"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "inventory", "create_category");
 
     if (args.names.length === 0) return {};
 

@@ -67,14 +67,3 @@ export async function assertPageFunction(
   }
   return member;
 }
-
-// Legacy shim — used by files not yet migrated. Will be removed after Task 9.
-export async function assertStorePermission(
-  db: DatabaseReader,
-  userId: Id<"users">,
-  storeId: Id<"stores">,
-  _module: string,
-  _level: string
-): Promise<Doc<"storeMembers">> {
-  return assertStoreMember(db, userId, storeId);
-}

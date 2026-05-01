@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { assertStorePermission } from "./_helpers/permissions";
+import { assertPageFunction } from "./_helpers/permissions";
 import { createAuditLog } from "./_helpers/audit";
 
 export const list = query({
@@ -10,13 +10,7 @@ export const list = query({
     search: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "sales",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "sales", "view_list");
 
     const all = await ctx.db
       .query("customers")
@@ -41,13 +35,7 @@ export const getByPhone = query({
     phone: v.string(),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "sales",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "sales", "view_list");
 
     return await ctx.db
       .query("customers")
@@ -66,13 +54,7 @@ export const create = mutation({
     phone: v.string(),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "sales",
-      "edit"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "sales", "create_sale");
 
     const name = args.name.trim();
     const phone = args.phone.trim();

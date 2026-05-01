@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { assertStorePermission } from "./_helpers/permissions";
+import { assertPageFunction } from "./_helpers/permissions";
 import { createAuditLog } from "./_helpers/audit";
 
 export const create = mutation({
@@ -16,13 +16,7 @@ export const create = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "members",
-      "manage"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "members", "invite_member");
 
     // Check if already a member
     const existingUser = await ctx.db
@@ -114,13 +108,7 @@ export const create = mutation({
 export const listByStore = query({
   args: { storeId: v.id("stores"), userId: v.id("users") },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "members",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "members", "view_list");
 
     return ctx.db
       .query("storeInvitations")

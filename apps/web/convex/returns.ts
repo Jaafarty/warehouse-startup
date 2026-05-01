@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { assertStorePermission } from "./_helpers/permissions";
+import { assertPageFunction } from "./_helpers/permissions";
 import { adjustStock } from "./_helpers/stock";
 import { createAuditLog } from "./_helpers/audit";
 
@@ -22,13 +22,7 @@ export const listByStore = query({
     toDate: v.optional(v.float64()),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "sales",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "returns", "view_list");
 
     let returns = await ctx.db
       .query("saleReturns")
@@ -111,13 +105,7 @@ export const getBySale = query({
     const sale = await ctx.db.get(args.saleId);
     if (!sale) throw new Error("Sale not found");
 
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      sale.storeId,
-      "sales",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, sale.storeId, "returns", "view_list");
 
     const returns = await ctx.db
       .query("saleReturns")
@@ -149,13 +137,7 @@ export const get = query({
     const ret = await ctx.db.get(args.returnId);
     if (!ret) throw new Error("Return not found");
 
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      ret.storeId,
-      "sales",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, ret.storeId, "returns", "view_list");
 
     const items = await ctx.db
       .query("saleReturnItems")
@@ -206,13 +188,7 @@ export const create = mutation({
     const sale = await ctx.db.get(args.saleId);
     if (!sale) throw new Error("Sale not found");
 
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      sale.storeId,
-      "sales",
-      "edit"
-    );
+    await assertPageFunction(ctx.db, args.userId, sale.storeId, "returns", "process_return");
 
     if (sale.status === "returned") {
       throw new Error("This sale has already been fully returned");

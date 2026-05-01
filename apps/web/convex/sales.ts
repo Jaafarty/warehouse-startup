@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { assertStorePermission } from "./_helpers/permissions";
+import { assertPageFunction } from "./_helpers/permissions";
 import { adjustStock } from "./_helpers/stock";
 import { createAuditLog } from "./_helpers/audit";
 import {
@@ -23,13 +23,7 @@ export const list = query({
     search: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "sales",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "sales", "view_list");
 
     let sales;
     if (args.status) {
@@ -102,13 +96,7 @@ export const get = query({
     const sale = await ctx.db.get(args.saleId);
     if (!sale) throw new Error("Sale not found");
 
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      sale.storeId,
-      "sales",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, sale.storeId, "sales", "view_list");
 
     const items = await ctx.db
       .query("saleItems")
@@ -148,13 +136,7 @@ export const create = mutation({
     customerId: v.optional(v.id("customers")),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "sales",
-      "edit"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "sales", "create_sale");
 
     if (args.items.length === 0) {
       throw new Error("Sale must have at least one item");

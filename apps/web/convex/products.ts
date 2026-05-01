@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { assertStorePermission } from "./_helpers/permissions";
+import { assertPageFunction } from "./_helpers/permissions";
 import { adjustStock } from "./_helpers/stock";
 import { createAuditLog } from "./_helpers/audit";
 
@@ -13,13 +13,7 @@ export const list = query({
     search: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "inventory",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "inventory", "view_list");
 
     let products;
 
@@ -68,13 +62,7 @@ export const get = query({
     const product = await ctx.db.get(args.productId);
     if (!product) throw new Error("Product not found");
 
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      product.storeId,
-      "inventory",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, product.storeId, "inventory", "view_list");
 
     // Attach category name if set
     let categoryName: string | undefined;
@@ -104,13 +92,7 @@ export const create = mutation({
     lowStockThreshold: v.number(),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "inventory",
-      "edit"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "inventory", "add_product");
 
     if (
       args.sellingPriceUSD === undefined &&
@@ -194,13 +176,7 @@ export const update = mutation({
     const product = await ctx.db.get(args.productId);
     if (!product) throw new Error("Product not found");
 
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      product.storeId,
-      "inventory",
-      "edit"
-    );
+    await assertPageFunction(ctx.db, args.userId, product.storeId, "inventory", "edit_product");
 
     // Check barcode uniqueness if changing
     if (args.barcode !== undefined && args.barcode !== product.barcode) {
@@ -256,13 +232,7 @@ export const archive = mutation({
     const product = await ctx.db.get(args.productId);
     if (!product) throw new Error("Product not found");
 
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      product.storeId,
-      "inventory",
-      "full"
-    );
+    await assertPageFunction(ctx.db, args.userId, product.storeId, "inventory", "archive_product");
 
     await ctx.db.patch(args.productId, {
       isArchived: true,
@@ -291,13 +261,7 @@ export const restore = mutation({
     const product = await ctx.db.get(args.productId);
     if (!product) throw new Error("Product not found");
 
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      product.storeId,
-      "inventory",
-      "full"
-    );
+    await assertPageFunction(ctx.db, args.userId, product.storeId, "inventory", "archive_product");
 
     await ctx.db.patch(args.productId, {
       isArchived: false,
@@ -342,13 +306,7 @@ export const importRow = mutation({
         "Each row needs at least one selling price (USD or LBP)"
       );
     }
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "inventory",
-      "edit"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "inventory", "add_product");
 
     const sku = args.sku?.trim() || undefined;
     const barcode = args.barcode?.trim() || undefined;
