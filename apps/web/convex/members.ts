@@ -1,33 +1,34 @@
 import { v } from "convex/values";
+import { ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { assertStorePermission } from "./_helpers/permissions";
+import { getStoreMember } from "./_helpers/permissions";
 import { createAuditLog } from "./_helpers/audit";
+import { canManageRole } from "@ware-house/shared";
 
 export const listByStore = query({
   args: { storeId: v.id("stores"), userId: v.id("users") },
   handler: async (ctx, args) => {
-    // Verify caller is a member
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "members",
-      "view"
-    );
+    const caller = await getStoreMember(ctx.db, args.userId, args.storeId);
+    if (!caller) throw new ConvexError({ code: "NOT_MEMBER", message: "You no longer have access to this store." });
 
     const members = await ctx.db
       .query("storeMembers")
       .withIndex("by_store", (q: any) => q.eq("storeId", args.storeId))
       .collect();
 
-    // Enrich with user info
     return Promise.all(
-      members.map(async (m) => {
+      members.map(async (m: any) => {
         const user = await ctx.db.get(m.userId);
+        let customRoleName: string | undefined;
+        if (m.role === "custom" && m.customRoleId) {
+          const customRole = await ctx.db.get(m.customRoleId);
+          customRoleName = customRole?.name;
+        }
         return {
           ...m,
           userName: user?.name ?? "Unknown",
           userEmail: user?.email ?? "Unknown",
+          customRoleName,
         };
       })
     );
@@ -41,54 +42,50 @@ export const updateRole = mutation({
     targetMemberId: v.id("storeMembers"),
     newRole: v.union(
       v.literal("admin"),
-      v.literal("editor"),
-      v.literal("viewer")
+      v.literal("employee"),
+      v.literal("viewer"),
+      v.literal("custom")
     ),
+    customRoleId: v.optional(v.id("storeRoles")),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "members",
-      "manage"
-    );
+    const caller = await getStoreMember(ctx.db, args.userId, args.storeId);
+    if (!caller) throw new ConvexError({ code: "NOT_MEMBER", message: "You no longer have access to this store." });
+
+    if (caller.role !== "owner" && caller.role !== "admin") {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Only owners and admins can change member roles." });
+    }
 
     const target = await ctx.db.get(args.targetMemberId);
     if (!target || target.storeId !== args.storeId) {
-      throw new Error("Member not found in this store");
+      throw new ConvexError({ code: "NOT_FOUND", message: "Member not found in this store." });
     }
 
-    // Cannot change own role
     if (target.userId === args.userId) {
-      throw new Error("Cannot change your own role");
+      throw new ConvexError({ code: "INVALID", message: "You cannot change your own role." });
     }
 
-    const defaultPerms = {
-      admin: {
-        inventory: "full" as const,
-        sales: "full" as const,
-        analytics: "view" as const,
-        members: "manage" as const,
-      },
-      editor: {
-        inventory: "edit" as const,
-        sales: "edit" as const,
-        analytics: "view" as const,
-        members: "view" as const,
-      },
-      viewer: {
-        inventory: "view" as const,
-        sales: "view" as const,
-        analytics: "view" as const,
-        members: "none" as const,
-      },
-    };
+    if (target.role === "owner") {
+      throw new ConvexError({ code: "FORBIDDEN", message: "The store owner's role cannot be changed." });
+    }
 
-    await ctx.db.patch(args.targetMemberId, {
-      role: args.newRole,
-      permissions: defaultPerms[args.newRole],
-    });
+    // Pyramid: caller must outrank the new role being assigned
+    if (!canManageRole(caller.role as any, args.newRole as any)) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "You can't assign a role equal to or above your own." });
+    }
+
+    if (args.newRole === "custom" && !args.customRoleId) {
+      throw new ConvexError({ code: "INVALID", message: "A custom role ID is required when assigning a custom role." });
+    }
+
+    const patch: Record<string, any> = { role: args.newRole };
+    if (args.newRole === "custom") {
+      patch.customRoleId = args.customRoleId;
+    } else {
+      patch.customRoleId = undefined;
+    }
+
+    await ctx.db.patch(args.targetMemberId, patch);
 
     await createAuditLog(ctx.db, {
       storeId: args.storeId,
@@ -110,27 +107,29 @@ export const remove = mutation({
     targetMemberId: v.id("storeMembers"),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "members",
-      "manage"
-    );
+    const caller = await getStoreMember(ctx.db, args.userId, args.storeId);
+    if (!caller) throw new ConvexError({ code: "NOT_MEMBER", message: "You no longer have access to this store." });
+
+    if (caller.role !== "owner" && caller.role !== "admin") {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Only owners and admins can remove members." });
+    }
 
     const target = await ctx.db.get(args.targetMemberId);
     if (!target || target.storeId !== args.storeId) {
-      throw new Error("Member not found in this store");
+      throw new ConvexError({ code: "NOT_FOUND", message: "Member not found in this store." });
     }
 
     if (target.userId === args.userId) {
-      throw new Error("Cannot remove yourself from the store");
+      throw new ConvexError({ code: "INVALID", message: "You cannot remove yourself from the store." });
     }
 
-    // Check if target is the store owner
-    const store = await ctx.db.get(args.storeId);
-    if (store && store.ownerId === target.userId) {
-      throw new Error("Cannot remove the store owner");
+    if (target.role === "owner") {
+      throw new ConvexError({ code: "FORBIDDEN", message: "The store owner cannot be removed." });
+    }
+
+    // Admin cannot remove another admin (only owner can)
+    if (caller.role === "admin" && target.role === "admin") {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Admins cannot remove other admins." });
     }
 
     await ctx.db.delete(args.targetMemberId);
