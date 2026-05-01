@@ -255,10 +255,11 @@ export default function RolesPage() {
                   </div>
                   <div className="flex gap-2">
                     <Dialog open={editingRole?._id === role._id} onOpenChange={(o) => !o && setEditingRole(null)}>
-                      <DialogTrigger asChild>
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(role)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                      <DialogTrigger
+                        onClick={() => openEdit(role)}
+                        className="inline-flex items-center justify-center rounded-md h-8 w-8 hover:bg-muted"
+                      >
+                        <Pencil className="h-4 w-4" />
                       </DialogTrigger>
                       <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
                         <DialogHeader>
@@ -268,10 +269,8 @@ export default function RolesPage() {
                       </DialogContent>
                     </Dialog>
                     <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <AlertDialogTrigger className="inline-flex items-center justify-center rounded-md h-8 w-8 text-destructive hover:bg-muted hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>

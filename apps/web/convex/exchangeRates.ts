@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
 import { getStoreMember } from "./_helpers/permissions";
@@ -57,13 +57,13 @@ export const setRate = mutation({
   },
   handler: async (ctx, args) => {
     if (!Number.isFinite(args.rate) || args.rate <= 0) {
-      throw new Error("Rate must be a positive number");
+      throw new ConvexError({ code: "INVALID", message: "Rate must be a positive number." });
     }
 
     const member = await getStoreMember(ctx.db, args.userId, args.storeId);
-    if (!member) throw new Error("Not a member of this store");
-    if (member.role !== "admin") {
-      throw new Error("Only admins can change the exchange rate");
+    if (!member) throw new ConvexError({ code: "NOT_MEMBER", message: "You no longer have access to this store." });
+    if (member.role !== "admin" && member.role !== "owner") {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Only admins and the owner can change the exchange rate." });
     }
 
     const now = Date.now();

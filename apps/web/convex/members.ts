@@ -69,7 +69,10 @@ export const updateRole = mutation({
       throw new ConvexError({ code: "FORBIDDEN", message: "The store owner's role cannot be changed." });
     }
 
-    // Pyramid: caller must outrank the new role being assigned
+    // Pyramid: caller must outrank target's current role AND the new role being assigned
+    if (!canManageRole(caller.role as any, target.role as any)) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "You can't modify a member with a role equal to or above your own." });
+    }
     if (!canManageRole(caller.role as any, args.newRole as any)) {
       throw new ConvexError({ code: "FORBIDDEN", message: "You can't assign a role equal to or above your own." });
     }

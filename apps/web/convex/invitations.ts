@@ -192,7 +192,7 @@ export const accept = mutation({
     const newUser = await ctx.db.get(args.userId);
     const store = await ctx.db.get(invite.storeId);
 
-    for (const admin of admins.filter((m: any) => m.role === "admin")) {
+    for (const admin of admins.filter((m: any) => m.role === "admin" || m.role === "owner")) {
       await ctx.db.insert("notifications", {
         userId: admin.userId,
         storeId: invite.storeId,
