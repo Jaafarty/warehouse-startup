@@ -28,7 +28,6 @@ export default defineSchema({
       v.literal("owner"),
       v.literal("admin"),
       v.literal("employee"),
-      v.literal("editor"),    // kept during migration, removed in Task 8
       v.literal("viewer"),
       v.literal("custom")
     ),
@@ -52,7 +51,6 @@ export default defineSchema({
     role: v.union(
       v.literal("admin"),
       v.literal("employee"),
-      v.literal("editor"),    // kept during migration
       v.literal("viewer"),
       v.literal("custom")
     ),
