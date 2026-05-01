@@ -17,7 +17,8 @@ export async function createReturn(
   saleId: string,
   items: { saleItemId: string; quantity: number }[],
   reason: Reason,
-  note?: string
+  note?: string,
+  refund?: { refundedUSD: number; refundedLBP: number }
 ) {
   const userId = await requireCurrentUserId();
 
@@ -39,6 +40,8 @@ export async function createReturn(
       })),
       reason,
       note: note?.trim() || undefined,
+      refundedUSD: refund?.refundedUSD,
+      refundedLBP: refund?.refundedLBP,
     });
     return {
       success: true,

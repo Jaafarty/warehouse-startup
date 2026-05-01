@@ -71,16 +71,33 @@ export default function ProcessReturnPage() {
   const [reason, setReason] = useState<Reason>("defective");
   const [note, setNote] = useState("");
   const [pending, setPending] = useState(false);
+  const [refundUSDStr, setRefundUSDStr] = useState("");
+  const [refundLBPStr, setRefundLBPStr] = useState("");
 
-  const refundTotal = useMemo(() => {
+  const saleRate = sale?.exchangeRate ?? 1;
+
+  const refundTotalUSD = useMemo(() => {
     if (!sale) return 0;
     return sale.items.reduce((sum: number, item: any) => {
       if (!selected[item._id]) return sum;
       const remaining = item.quantity - item.returnedQuantity;
       const qty = Math.min(qtys[item._id] ?? remaining, remaining);
-      return sum + qty * item.unitPrice;
+      const itemUSD =
+        item.unitPriceUSD ??
+        ((item.currency ?? "USD") === "USD"
+          ? item.unitPrice
+          : item.unitPrice / saleRate);
+      return sum + qty * itemUSD;
     }, 0);
-  }, [sale, selected, qtys]);
+  }, [sale, selected, qtys, saleRate]);
+
+  const refundedUSD = Number(refundUSDStr) || 0;
+  const refundedLBP = Number(refundLBPStr) || 0;
+  const refundSplitProvided = refundUSDStr !== "" || refundLBPStr !== "";
+  const cashierTotalUSD = refundedUSD + refundedLBP / saleRate;
+  const splitMatches =
+    !refundSplitProvided ||
+    Math.abs(cashierTotalUSD - refundTotalUSD) <= 0.01;
 
   if (sale === undefined) {
     return (
@@ -136,12 +153,22 @@ export default function ProcessReturnPage() {
       return;
     }
 
+    if (refundSplitProvided && !splitMatches) {
+      toast.error(
+        `Refund split does not match the eligible amount ($${refundTotalUSD.toFixed(2)} USD-eq.)`
+      );
+      return;
+    }
+
     setPending(true);
     const result = await createReturn(
       saleId,
       items,
       reason,
-      note.trim() || undefined
+      note.trim() || undefined,
+      refundSplitProvided
+        ? { refundedUSD, refundedLBP }
+        : undefined
     );
     setPending(false);
 
@@ -195,6 +222,7 @@ export default function ProcessReturnPage() {
                 const fullyReturned = remaining <= 0;
                 const isSelected = !!selected[item._id];
                 const qty = qtys[item._id] ?? remaining;
+                const itemCurrency = (item.currency ?? "USD") as "USD" | "LBP";
                 const refund = isSelected ? qty * item.unitPrice : 0;
 
                 return (
@@ -238,7 +266,9 @@ export default function ProcessReturnPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {refund > 0 ? formatCurrency(refund) : "—"}
+                      {refund > 0
+                        ? formatCurrency(refund, itemCurrency)
+                        : "—"}
                     </TableCell>
                   </TableRow>
                 );
@@ -285,16 +315,79 @@ export default function ProcessReturnPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Refund split</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+            <div className="text-muted-foreground">
+              Sale rate (locked):{" "}
+              <span className="font-medium text-foreground">
+                1 USD = {saleRate.toLocaleString()} LBP
+              </span>
+            </div>
+            <div className="text-muted-foreground">
+              Eligible refund:{" "}
+              <span className="font-medium text-foreground">
+                {formatCurrency(refundTotalUSD, "USD")} /{" "}
+                {formatCurrency(refundTotalUSD * saleRate, "LBP")}
+              </span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="refundUSD">Refund (USD)</Label>
+              <Input
+                id="refundUSD"
+                type="number"
+                step="0.01"
+                min="0"
+                value={refundUSDStr}
+                onChange={(e) => setRefundUSDStr(e.target.value)}
+                placeholder={refundTotalUSD.toFixed(2)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="refundLBP">Refund (LBP)</Label>
+              <Input
+                id="refundLBP"
+                type="number"
+                step="1"
+                min="0"
+                value={refundLBPStr}
+                onChange={(e) => setRefundLBPStr(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+          </div>
+          {refundSplitProvided && !splitMatches && (
+            <p className="text-xs text-destructive">
+              Split sums to {formatCurrency(cashierTotalUSD, "USD")} — must
+              equal eligible refund.
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Leave both blank to refund the full eligible amount in USD.
+          </p>
+        </CardContent>
+      </Card>
+
       <div className="flex items-center justify-between border-t pt-4">
         <div>
           <p className="text-sm text-muted-foreground">Refund total</p>
-          <p className="text-2xl font-bold">{formatCurrency(refundTotal)}</p>
+          <p className="text-2xl font-bold">
+            {formatCurrency(refundTotalUSD, "USD")}
+          </p>
         </div>
         <div className="flex gap-3">
           <Link href={`/store/${storeId}/sales/${saleId}`}>
             <Button variant="outline">Cancel</Button>
           </Link>
-          <Button onClick={handleSubmit} disabled={pending || refundTotal <= 0}>
+          <Button
+            onClick={handleSubmit}
+            disabled={pending || refundTotalUSD <= 0}
+          >
             {pending ? "Processing..." : "Save return"}
           </Button>
         </div>

@@ -197,6 +197,10 @@ export const create = mutation({
     ),
     reason: REASON,
     note: v.optional(v.string()),
+    // Cashier-picked refund split. Both default to 0; sum must equal the
+    // refundable amount in USD-equivalent at the SALE's snapshot rate.
+    refundedUSD: v.optional(v.number()),
+    refundedLBP: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const sale = await ctx.db.get(args.saleId);
@@ -223,6 +227,10 @@ export const create = mutation({
       throw new Error('Note is required when reason is "Other"');
     }
 
+    // Use the SALE's snapshot rate (NEVER the current rate) so refund math
+    // matches what the customer originally paid.
+    const saleRate = sale.exchangeRate ?? 1;
+
     // Validate all return quantities & freeze unit prices BEFORE writes
     type Validated = {
       saleItemId: any;
@@ -230,9 +238,11 @@ export const create = mutation({
       productName: string;
       quantity: number;
       unitPrice: number;
+      currency: "USD" | "LBP";
+      unitPriceUSD: number;
     };
     const validated: Validated[] = [];
-    let totalRefund = 0;
+    let totalRefundUSD = 0;
     let totalCount = 0;
 
     for (const item of args.items) {
@@ -253,15 +263,47 @@ export const create = mutation({
         );
       }
 
+      const itemCurrency: "USD" | "LBP" = saleItem.currency ?? "USD";
+      // Prefer the snapshotted USD figure; fall back for legacy items.
+      const itemUnitPriceUSD =
+        saleItem.unitPriceUSD ??
+        (itemCurrency === "USD"
+          ? saleItem.unitPrice
+          : saleItem.unitPrice / saleRate);
+
       validated.push({
         saleItemId: item.saleItemId,
         productId: saleItem.productId,
         productName: saleItem.productName,
         quantity: item.quantity,
         unitPrice: saleItem.unitPrice,
+        currency: itemCurrency,
+        unitPriceUSD: itemUnitPriceUSD,
       });
-      totalRefund += saleItem.unitPrice * item.quantity;
+      totalRefundUSD += itemUnitPriceUSD * item.quantity;
       totalCount += item.quantity;
+    }
+
+    // Refund split — defaults to single-currency refund in USD if cashier
+    // doesn't specify (preserves the legacy behavior).
+    const refundedUSD = args.refundedUSD ?? 0;
+    const refundedLBP = args.refundedLBP ?? 0;
+    if (refundedUSD < 0 || refundedLBP < 0) {
+      throw new Error("Refund amounts cannot be negative");
+    }
+    const cashierTotalUSD = refundedUSD + refundedLBP / saleRate;
+    // If both are zero we treat it as "refund the full eligible amount in USD"
+    // to keep the existing UI flow working without a refund-split panel.
+    const finalRefundedUSD =
+      refundedUSD === 0 && refundedLBP === 0 ? totalRefundUSD : refundedUSD;
+    const finalRefundedLBP =
+      refundedUSD === 0 && refundedLBP === 0 ? 0 : refundedLBP;
+    if (refundedUSD !== 0 || refundedLBP !== 0) {
+      if (Math.abs(cashierTotalUSD - totalRefundUSD) > 0.01) {
+        throw new Error(
+          `Refund split (USD-eq $${cashierTotalUSD.toFixed(2)}) must equal eligible refund $${totalRefundUSD.toFixed(2)}`
+        );
+      }
     }
 
     // Generate return number: R-YYYYMMDD-XXXX
@@ -276,8 +318,11 @@ export const create = mutation({
       returnNumber,
       reason: args.reason,
       note: trimmedNote,
-      totalRefund,
+      totalRefund: totalRefundUSD,
       itemCount: totalCount,
+      exchangeRate: saleRate,
+      refundedUSD: finalRefundedUSD,
+      refundedLBP: finalRefundedLBP,
       createdBy: args.userId,
       createdAt: now,
     });
@@ -291,6 +336,8 @@ export const create = mutation({
         quantity: v.quantity,
         unitPrice: v.unitPrice,
         totalRefund: v.unitPrice * v.quantity,
+        currency: v.currency,
+        unitPriceUSD: v.unitPriceUSD,
       });
 
       // Bump running total on the sale item
@@ -340,7 +387,10 @@ export const create = mutation({
         returnNumber,
         saleNumber: sale.saleNumber,
         reason: args.reason,
-        totalRefund,
+        totalRefundUSD,
+        refundedUSD: finalRefundedUSD,
+        refundedLBP: finalRefundedLBP,
+        exchangeRate: saleRate,
         itemCount: totalCount,
         newStatus,
       },

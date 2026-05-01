@@ -108,8 +108,18 @@ export default defineSchema({
     barcode: v.optional(v.string()),
     sku: v.optional(v.string()),
     quantity: v.float64(),
-    costPrice: v.float64(),
-    sellingPrice: v.float64(),
+    // Legacy single-currency price fields. Kept optional during the
+    // dual-currency transition so existing rows remain valid until the
+    // backfill mutation populates the new *USD/*LBP fields. Read paths
+    // fall back to these when the new fields are missing.
+    costPrice: v.optional(v.float64()),
+    sellingPrice: v.optional(v.float64()),
+    // Dual-currency prices. At least one of sellingPriceUSD / sellingPriceLBP
+    // must be set when creating/updating a product (validated in the mutation).
+    costPriceUSD: v.optional(v.float64()),
+    costPriceLBP: v.optional(v.float64()),
+    sellingPriceUSD: v.optional(v.float64()),
+    sellingPriceLBP: v.optional(v.float64()),
     lowStockThreshold: v.float64(),
     isArchived: v.boolean(),
     createdBy: v.id("users"),
@@ -119,6 +129,18 @@ export default defineSchema({
     .index("by_store_and_category", ["storeId", "categoryId"])
     .index("by_store_and_barcode", ["storeId", "barcode"])
     .index("by_store_and_archived", ["storeId", "isArchived"]),
+
+  // ============ EXCHANGE RATES (USD <-> LBP, append-only history) ============
+  exchangeRates: defineTable({
+    storeId: v.id("stores"),
+    rate: v.float64(), // 1 USD = `rate` LBP
+    effectiveFrom: v.float64(), // ms timestamp the rate took effect
+    note: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.float64(),
+  })
+    .index("by_store", ["storeId"])
+    .index("by_store_and_effective", ["storeId", "effectiveFrom"]),
 
   // ============ STOCK MOVEMENTS (AUDIT TRAIL) ============
   stockMovements: defineTable({
@@ -162,8 +184,17 @@ export default defineSchema({
       v.literal("returned"),
       v.literal("partially_returned")
     ),
+    // totalAmount: USD-equivalent total. Kept as the canonical revenue figure
+    // for backwards compatibility with analytics that reference it directly.
     totalAmount: v.float64(),
     itemCount: v.float64(),
+    // Snapshot exchange rate at sale time (1 USD = `exchangeRate` LBP).
+    // Optional only during the dual-currency transition; new sales always set it.
+    exchangeRate: v.optional(v.float64()),
+    totalUSD: v.optional(v.float64()),
+    totalLBP: v.optional(v.float64()),
+    paidUSD: v.optional(v.float64()),
+    paidLBP: v.optional(v.float64()),
     note: v.optional(v.string()),
     customerId: v.optional(v.id("customers")),
     createdBy: v.id("users"),
@@ -182,8 +213,15 @@ export default defineSchema({
     productId: v.id("products"),
     productName: v.string(),
     quantity: v.float64(),
+    // unitPrice / totalPrice are stored in the item's `currency`.
     unitPrice: v.float64(),
     totalPrice: v.float64(),
+    // Currency the unitPrice was charged in. Optional during transition;
+    // legacy items default to USD on read.
+    currency: v.optional(v.union(v.literal("USD"), v.literal("LBP"))),
+    // Canonical USD-normalized unit price (using sale.exchangeRate). Used by
+    // analytics so revenue is always comparable across currencies.
+    unitPriceUSD: v.optional(v.float64()),
     returnedQuantity: v.float64(),
   })
     .index("by_sale", ["saleId"])
@@ -202,8 +240,14 @@ export default defineSchema({
       v.literal("other")
     ),
     note: v.optional(v.string()),
+    // totalRefund: USD-equivalent refund (canonical analytics figure).
     totalRefund: v.float64(),
     itemCount: v.float64(),
+    // Snapshot of the originating sale's rate (NEVER current rate) so that
+    // refunds always map to the rate the customer originally paid at.
+    exchangeRate: v.optional(v.float64()),
+    refundedUSD: v.optional(v.float64()),
+    refundedLBP: v.optional(v.float64()),
     createdBy: v.id("users"),
     createdAt: v.float64(),
   })
@@ -218,8 +262,11 @@ export default defineSchema({
     productId: v.id("products"),
     productName: v.string(),
     quantity: v.float64(),
+    // unitPrice / totalRefund are in the item's `currency`.
     unitPrice: v.float64(),
     totalRefund: v.float64(),
+    currency: v.optional(v.union(v.literal("USD"), v.literal("LBP"))),
+    unitPriceUSD: v.optional(v.float64()),
   })
     .index("by_return", ["returnId"])
     .index("by_sale_item", ["saleItemId"]),

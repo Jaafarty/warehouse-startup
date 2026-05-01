@@ -125,10 +125,15 @@ export default function SaleDetailPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Total Amount</p>
+            <p className="text-sm text-muted-foreground">Total</p>
             <p className="text-2xl font-bold">
-              {formatCurrency(sale.totalAmount)}
+              {formatCurrency(sale.totalUSD ?? sale.totalAmount, "USD")}
             </p>
+            {sale.totalLBP !== undefined && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {formatCurrency(sale.totalLBP, "LBP")}
+              </p>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -168,6 +173,38 @@ export default function SaleDetailPage() {
         </Card>
       </div>
 
+      {/* Payment breakdown */}
+      {(sale.paidUSD !== undefined || sale.paidLBP !== undefined) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Payment</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">Paid USD</p>
+                <p className="font-medium">
+                  {formatCurrency(sale.paidUSD ?? 0, "USD")}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Paid LBP</p>
+                <p className="font-medium">
+                  {formatCurrency(sale.paidLBP ?? 0, "LBP")}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Sale rate</p>
+                <p className="font-medium">
+                  1 USD ={" "}
+                  {(sale.exchangeRate ?? 1).toLocaleString()} LBP
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {sale.note && (
         <Card>
           <CardContent className="pt-6">
@@ -194,29 +231,32 @@ export default function SaleDetailPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sale.items.map((item: any) => (
-                <TableRow key={item._id}>
-                  <TableCell className="font-medium">
-                    {item.productName}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatCurrency(item.unitPrice)}
-                  </TableCell>
-                  <TableCell className="text-right">{item.quantity}</TableCell>
-                  <TableCell className="text-right">
-                    {item.returnedQuantity > 0 ? (
-                      <span className="text-destructive">
-                        {item.returnedQuantity}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatCurrency(item.totalPrice)}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {sale.items.map((item: any) => {
+                const cur = (item.currency ?? "USD") as "USD" | "LBP";
+                return (
+                  <TableRow key={item._id}>
+                    <TableCell className="font-medium">
+                      {item.productName}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(item.unitPrice, cur)}
+                    </TableCell>
+                    <TableCell className="text-right">{item.quantity}</TableCell>
+                    <TableCell className="text-right">
+                      {item.returnedQuantity > 0 ? (
+                        <span className="text-destructive">
+                          {item.returnedQuantity}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(item.totalPrice, cur)}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
@@ -265,7 +305,21 @@ export default function SaleDetailPage() {
                     <TableCell>{REASON_LABEL[r.reason] ?? r.reason}</TableCell>
                     <TableCell className="text-right">{r.itemCount}</TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(r.totalRefund)}
+                      <div>{formatCurrency(r.totalRefund, "USD")}</div>
+                      {(r.refundedUSD !== undefined ||
+                        r.refundedLBP !== undefined) &&
+                        ((r.refundedUSD ?? 0) > 0 ||
+                          (r.refundedLBP ?? 0) > 0) && (
+                          <div className="text-xs text-muted-foreground">
+                            {r.refundedUSD
+                              ? formatCurrency(r.refundedUSD, "USD")
+                              : null}
+                            {r.refundedUSD && r.refundedLBP ? " + " : ""}
+                            {r.refundedLBP
+                              ? formatCurrency(r.refundedLBP, "LBP")
+                              : null}
+                          </div>
+                        )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {r.processedByName}

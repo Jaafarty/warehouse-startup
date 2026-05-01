@@ -9,14 +9,17 @@
  */
 
 import type * as _helpers_audit from "../_helpers/audit.js";
+import type * as _helpers_exchangeRate from "../_helpers/exchangeRate.js";
 import type * as _helpers_permissions from "../_helpers/permissions.js";
 import type * as _helpers_stock from "../_helpers/stock.js";
 import type * as analytics from "../analytics.js";
 import type * as categories from "../categories.js";
 import type * as customers from "../customers.js";
 import type * as email from "../email.js";
+import type * as exchangeRates from "../exchangeRates.js";
 import type * as invitations from "../invitations.js";
 import type * as members from "../members.js";
+import type * as migrations from "../migrations.js";
 import type * as notifications from "../notifications.js";
 import type * as products from "../products.js";
 import type * as returns from "../returns.js";
@@ -33,14 +36,17 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "_helpers/audit": typeof _helpers_audit;
+  "_helpers/exchangeRate": typeof _helpers_exchangeRate;
   "_helpers/permissions": typeof _helpers_permissions;
   "_helpers/stock": typeof _helpers_stock;
   analytics: typeof analytics;
   categories: typeof categories;
   customers: typeof customers;
   email: typeof email;
+  exchangeRates: typeof exchangeRates;
   invitations: typeof invitations;
   members: typeof members;
+  migrations: typeof migrations;
   notifications: typeof notifications;
   products: typeof products;
   returns: typeof returns;

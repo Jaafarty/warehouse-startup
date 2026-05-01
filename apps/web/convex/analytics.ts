@@ -36,9 +36,12 @@ function addMonths(ts: number, months: number): number {
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, 1);
 }
 
-// Effective revenue per saleItem after partial returns.
+// Effective USD-equivalent revenue per saleItem after partial returns.
+// Falls back to `unitPrice` for legacy items where the dual-currency backfill
+// has not run yet — those are USD-only.
 function itemRevenue(item: any): number {
-  return item.unitPrice * (item.quantity - item.returnedQuantity);
+  const unitUSD = item.unitPriceUSD ?? item.unitPrice;
+  return unitUSD * (item.quantity - item.returnedQuantity);
 }
 
 function itemUnits(item: any): number {
@@ -128,7 +131,8 @@ export const overview = query({
       (p: any) => p.quantity === 0
     ).length;
     const totalInventoryValue = products.reduce(
-      (sum: number, p: any) => sum + p.costPrice * p.quantity,
+      (sum: number, p: any) =>
+        sum + (p.costPriceUSD ?? p.costPrice ?? 0) * p.quantity,
       0
     );
 

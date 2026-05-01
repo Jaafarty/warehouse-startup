@@ -9,7 +9,8 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function createSale(
   storeId: string,
-  items: { productId: string; quantity: number }[],
+  items: { productId: string; quantity: number; currency: "USD" | "LBP" }[],
+  payments: { paidUSD: number; paidLBP: number },
   note?: string,
   customerId?: string
 ) {
@@ -26,7 +27,9 @@ export async function createSale(
       items: items.map((i) => ({
         productId: i.productId as any,
         quantity: i.quantity,
+        currency: i.currency,
       })),
+      payments,
       note,
       customerId: customerId ? (customerId as any) : undefined,
     });

@@ -7,6 +7,14 @@ import { redirect } from "next/navigation";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
+function parseOptionalPositive(raw: FormDataEntryValue | null): number | undefined {
+  if (raw === null) return undefined;
+  const s = String(raw).trim();
+  if (s === "") return undefined;
+  const n = Number(s);
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+}
+
 export async function createProduct(storeId: string, formData: FormData) {
   const userId = await requireCurrentUserId();
 
@@ -16,15 +24,20 @@ export async function createProduct(storeId: string, formData: FormData) {
   const barcode = (formData.get("barcode") as string) || undefined;
   const sku = (formData.get("sku") as string) || undefined;
   const quantity = Number(formData.get("quantity") || 0);
-  const costPrice = Number(formData.get("costPrice") || 0);
-  const sellingPrice = Number(formData.get("sellingPrice") || 0);
+  const costPriceUSD = parseOptionalPositive(formData.get("costPriceUSD"));
+  const costPriceLBP = parseOptionalPositive(formData.get("costPriceLBP"));
+  const sellingPriceUSD = parseOptionalPositive(formData.get("sellingPriceUSD"));
+  const sellingPriceLBP = parseOptionalPositive(formData.get("sellingPriceLBP"));
   const lowStockThreshold = Number(formData.get("lowStockThreshold") || 5);
 
   if (!name || name.trim().length < 1) {
     return { success: false, error: "Product name is required" };
   }
-  if (sellingPrice <= 0) {
-    return { success: false, error: "Selling price must be greater than 0" };
+  if (sellingPriceUSD === undefined && sellingPriceLBP === undefined) {
+    return {
+      success: false,
+      error: "At least one selling price (USD or LBP) is required",
+    };
   }
 
   try {
@@ -37,8 +50,10 @@ export async function createProduct(storeId: string, formData: FormData) {
       barcode: barcode?.trim() || undefined,
       sku: sku?.trim() || undefined,
       quantity,
-      costPrice,
-      sellingPrice,
+      costPriceUSD,
+      costPriceLBP,
+      sellingPriceUSD,
+      sellingPriceLBP,
       lowStockThreshold,
     });
     redirect(`/store/${storeId}/inventory/${productId}`);
@@ -59,12 +74,10 @@ export async function updateProduct(productId: string, formData: FormData) {
   const categoryId = (formData.get("categoryId") as string) || undefined;
   const barcode = (formData.get("barcode") as string) || undefined;
   const sku = (formData.get("sku") as string) || undefined;
-  const costPrice = formData.get("costPrice")
-    ? Number(formData.get("costPrice"))
-    : undefined;
-  const sellingPrice = formData.get("sellingPrice")
-    ? Number(formData.get("sellingPrice"))
-    : undefined;
+  const costPriceUSD = parseOptionalPositive(formData.get("costPriceUSD"));
+  const costPriceLBP = parseOptionalPositive(formData.get("costPriceLBP"));
+  const sellingPriceUSD = parseOptionalPositive(formData.get("sellingPriceUSD"));
+  const sellingPriceLBP = parseOptionalPositive(formData.get("sellingPriceLBP"));
   const lowStockThreshold = formData.get("lowStockThreshold")
     ? Number(formData.get("lowStockThreshold"))
     : undefined;
@@ -78,8 +91,10 @@ export async function updateProduct(productId: string, formData: FormData) {
       categoryId: categoryId ? (categoryId as any) : undefined,
       barcode: barcode?.trim() || undefined,
       sku: sku?.trim() || undefined,
-      costPrice,
-      sellingPrice,
+      costPriceUSD,
+      costPriceLBP,
+      sellingPriceUSD,
+      sellingPriceLBP,
       lowStockThreshold,
     });
     return { success: true };
@@ -219,8 +234,10 @@ export async function bulkImportProducts(
     categoryId?: string;
     sku?: string;
     barcode?: string;
-    costPrice?: number;
-    sellingPrice: number;
+    costPriceUSD?: number;
+    costPriceLBP?: number;
+    sellingPriceUSD?: number;
+    sellingPriceLBP?: number;
     quantity: number;
     lowStockThreshold?: number;
   }>
@@ -248,8 +265,10 @@ export async function bulkImportProducts(
         sku: product.sku?.trim() || undefined,
         barcode: product.barcode?.trim() || undefined,
         quantity: product.quantity,
-        costPrice: product.costPrice,
-        sellingPrice: product.sellingPrice,
+        costPriceUSD: product.costPriceUSD,
+        costPriceLBP: product.costPriceLBP,
+        sellingPriceUSD: product.sellingPriceUSD,
+        sellingPriceLBP: product.sellingPriceLBP,
         lowStockThreshold: product.lowStockThreshold,
       });
       if (result.outcome === "created") created++;

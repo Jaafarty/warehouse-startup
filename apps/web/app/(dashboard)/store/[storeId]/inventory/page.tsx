@@ -57,6 +57,22 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
+function PriceCell({ usd, lbp }: { usd?: number; lbp?: number }) {
+  if (usd === undefined && lbp === undefined) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+  return (
+    <div className="text-right text-sm leading-tight">
+      {usd !== undefined && <div>{formatCurrency(usd, "USD")}</div>}
+      {lbp !== undefined && (
+        <div className="text-xs text-muted-foreground">
+          {formatCurrency(lbp, "LBP")}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function InventoryPage() {
   const { storeId } = useParams<{ storeId: string }>();
   const { userId } = useCurrentUser();
@@ -244,10 +260,16 @@ export default function InventoryPage() {
                       {product.quantity}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(product.costPrice)}
+                      <PriceCell
+                        usd={product.costPriceUSD ?? product.costPrice}
+                        lbp={product.costPriceLBP}
+                      />
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(product.sellingPrice)}
+                      <PriceCell
+                        usd={product.sellingPriceUSD ?? product.sellingPrice}
+                        lbp={product.sellingPriceLBP}
+                      />
                     </TableCell>
                     <TableCell>
                       {product.isArchived ? (

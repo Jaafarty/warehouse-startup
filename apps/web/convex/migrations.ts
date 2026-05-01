@@ -1,0 +1,131 @@
+import { internalMutation } from "./_generated/server";
+
+/**
+ * One-shot backfill for the dual-currency rollout.
+ *
+ * Run via: npx convex run migrations:backfillCurrency
+ *
+ * Idempotent — re-running it on already-migrated rows is a no-op.
+ *
+ * For each store:
+ *   - Seeds an exchangeRates row with rate=1 if none exists.
+ * For each product:
+ *   - Copies legacy sellingPrice -> sellingPriceUSD (if USD/LBP not set).
+ *   - Copies legacy costPrice    -> costPriceUSD.
+ * For each sale:
+ *   - Sets exchangeRate=1, totalUSD/totalLBP=totalAmount, paidUSD=totalAmount, paidLBP=0.
+ * For each saleItem:
+ *   - Sets currency="USD", unitPriceUSD=unitPrice.
+ * For each saleReturn:
+ *   - Sets exchangeRate=1, refundedUSD=totalRefund, refundedLBP=0.
+ * For each saleReturnItem:
+ *   - Sets currency="USD", unitPriceUSD=unitPrice.
+ */
+export const backfillCurrency = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let touched = {
+      stores: 0,
+      products: 0,
+      sales: 0,
+      saleItems: 0,
+      saleReturns: 0,
+      saleReturnItems: 0,
+    };
+
+    const now = Date.now();
+
+    // Seed default exchange rate per store.
+    const stores = await ctx.db.query("stores").collect();
+    for (const store of stores) {
+      const existing = await ctx.db
+        .query("exchangeRates")
+        .withIndex("by_store", (q: any) => q.eq("storeId", store._id))
+        .first();
+      if (existing) continue;
+      await ctx.db.insert("exchangeRates", {
+        storeId: store._id,
+        rate: 1,
+        effectiveFrom: store.createdAt,
+        note: "Auto-seeded during dual-currency migration",
+        createdBy: store.ownerId,
+        createdAt: now,
+      });
+      touched.stores += 1;
+    }
+
+    // Products: copy legacy single price into USD slot.
+    const products = await ctx.db.query("products").collect();
+    for (const p of products) {
+      const patch: Record<string, any> = {};
+      if (
+        p.sellingPriceUSD === undefined &&
+        p.sellingPriceLBP === undefined &&
+        p.sellingPrice !== undefined
+      ) {
+        patch.sellingPriceUSD = p.sellingPrice;
+      }
+      if (
+        p.costPriceUSD === undefined &&
+        p.costPriceLBP === undefined &&
+        p.costPrice !== undefined
+      ) {
+        patch.costPriceUSD = p.costPrice;
+      }
+      if (Object.keys(patch).length > 0) {
+        await ctx.db.patch(p._id, patch);
+        touched.products += 1;
+      }
+    }
+
+    // Sales: snapshot rate=1, mirror totalAmount into USD/LBP, mark fully paid in USD.
+    const sales = await ctx.db.query("sales").collect();
+    for (const s of sales) {
+      if (s.exchangeRate !== undefined) continue;
+      await ctx.db.patch(s._id, {
+        exchangeRate: 1,
+        totalUSD: s.totalAmount,
+        totalLBP: s.totalAmount,
+        paidUSD: s.totalAmount,
+        paidLBP: 0,
+      });
+      touched.sales += 1;
+    }
+
+    // SaleItems
+    const saleItems = await ctx.db.query("saleItems").collect();
+    for (const it of saleItems) {
+      if (it.currency !== undefined && it.unitPriceUSD !== undefined) continue;
+      await ctx.db.patch(it._id, {
+        currency: "USD" as const,
+        unitPriceUSD: it.unitPrice,
+      });
+      touched.saleItems += 1;
+    }
+
+    // Returns
+    const returns = await ctx.db.query("saleReturns").collect();
+    for (const r of returns) {
+      if (r.exchangeRate !== undefined) continue;
+      await ctx.db.patch(r._id, {
+        exchangeRate: 1,
+        refundedUSD: r.totalRefund,
+        refundedLBP: 0,
+      });
+      touched.saleReturns += 1;
+    }
+
+    // Return items
+    const returnItems = await ctx.db.query("saleReturnItems").collect();
+    for (const ri of returnItems) {
+      if (ri.currency !== undefined && ri.unitPriceUSD !== undefined) continue;
+      await ctx.db.patch(ri._id, {
+        currency: "USD" as const,
+        unitPriceUSD: ri.unitPrice,
+      });
+      touched.saleReturnItems += 1;
+    }
+
+    return touched;
+  },
+});

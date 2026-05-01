@@ -3,6 +3,11 @@ import { mutation, query } from "./_generated/server";
 import { assertStorePermission } from "./_helpers/permissions";
 import { adjustStock } from "./_helpers/stock";
 import { createAuditLog } from "./_helpers/audit";
+import {
+  getCurrentRate,
+  convertToUSD,
+  type Currency,
+} from "./_helpers/exchangeRate";
 
 export const list = query({
   args: {
@@ -132,8 +137,13 @@ export const create = mutation({
       v.object({
         productId: v.id("products"),
         quantity: v.number(),
+        currency: v.union(v.literal("USD"), v.literal("LBP")),
       })
     ),
+    payments: v.object({
+      paidUSD: v.number(),
+      paidLBP: v.number(),
+    }),
     note: v.optional(v.string()),
     customerId: v.optional(v.id("customers")),
   },
@@ -157,21 +167,31 @@ export const create = mutation({
       }
     }
 
+    // Snapshot current rate at sale creation. Future rate changes never
+    // touch this sale's totals or refunds.
+    const exchangeRate = await getCurrentRate(ctx.db, args.storeId);
+    if (exchangeRate <= 0) {
+      throw new Error("Exchange rate must be set before creating sales");
+    }
+
     // Generate sale number: S-YYYYMMDD-XXXX
     const now = Date.now();
     const dateStr = new Date(now).toISOString().slice(0, 10).replace(/-/g, "");
     const random = Math.random().toString(36).substring(2, 6).toUpperCase();
     const saleNumber = `S-${dateStr}-${random}`;
 
-    let totalAmount = 0;
+    let totalUSD = 0;
     let totalItems = 0;
 
-    // Validate all products and calculate totals before making changes
-    const itemDetails: {
+    type ItemDetail = {
       productId: any;
       product: any;
       quantity: number;
-    }[] = [];
+      currency: Currency;
+      unitPrice: number; // in `currency`
+      unitPriceUSD: number; // canonical
+    };
+    const itemDetails: ItemDetail[] = [];
 
     for (const item of args.items) {
       if (item.quantity <= 0) {
@@ -192,17 +212,63 @@ export const create = mutation({
         );
       }
 
-      totalAmount += product.sellingPrice * item.quantity;
+      // Resolve unit price in the requested currency. Falls back to the other
+      // side via the snapshot rate so a USD-only product can still be sold in
+      // LBP, etc.
+      const usdPrice =
+        product.sellingPriceUSD ?? product.sellingPrice;
+      const lbpPrice = product.sellingPriceLBP;
+      let unitPrice: number;
+      if (item.currency === "USD") {
+        if (usdPrice !== undefined) unitPrice = usdPrice;
+        else if (lbpPrice !== undefined) unitPrice = lbpPrice / exchangeRate;
+        else throw new Error(`Product "${product.name}" has no price set`);
+      } else {
+        if (lbpPrice !== undefined) unitPrice = lbpPrice;
+        else if (usdPrice !== undefined) unitPrice = usdPrice * exchangeRate;
+        else throw new Error(`Product "${product.name}" has no price set`);
+      }
+
+      const unitPriceUSD = convertToUSD(unitPrice, item.currency, exchangeRate);
+      totalUSD += unitPriceUSD * item.quantity;
       totalItems += item.quantity;
-      itemDetails.push({ productId: item.productId, product, quantity: item.quantity });
+      itemDetails.push({
+        productId: item.productId,
+        product,
+        quantity: item.quantity,
+        currency: item.currency,
+        unitPrice,
+        unitPriceUSD,
+      });
     }
+
+    // Validate payment covers total. Allow over-pay (change due); reject under-pay.
+    const paidUSD = args.payments.paidUSD;
+    const paidLBP = args.payments.paidLBP;
+    if (paidUSD < 0 || paidLBP < 0) {
+      throw new Error("Payment amounts cannot be negative");
+    }
+    const tenderedUSD = paidUSD + paidLBP / exchangeRate;
+    // Allow a small floating-point tolerance.
+    if (tenderedUSD + 1e-6 < totalUSD) {
+      throw new Error(
+        `Insufficient payment. Total $${totalUSD.toFixed(2)} (incl LBP ${(totalUSD * exchangeRate).toFixed(0)}); tendered equivalent $${tenderedUSD.toFixed(2)}`
+      );
+    }
+
+    const totalLBP = totalUSD * exchangeRate;
 
     // Create sale record
     const saleId = await ctx.db.insert("sales", {
       storeId: args.storeId,
       saleNumber,
       status: "completed",
-      totalAmount,
+      totalAmount: totalUSD, // canonical figure for legacy analytics paths
+      totalUSD,
+      totalLBP,
+      exchangeRate,
+      paidUSD,
+      paidLBP,
       itemCount: totalItems,
       note: args.note,
       customerId: args.customerId,
@@ -219,8 +285,10 @@ export const create = mutation({
         productId: detail.productId,
         productName: detail.product.name,
         quantity: detail.quantity,
-        unitPrice: detail.product.sellingPrice,
-        totalPrice: detail.product.sellingPrice * detail.quantity,
+        unitPrice: detail.unitPrice,
+        totalPrice: detail.unitPrice * detail.quantity,
+        currency: detail.currency,
+        unitPriceUSD: detail.unitPriceUSD,
         returnedQuantity: 0,
       });
 
@@ -242,9 +310,25 @@ export const create = mutation({
       action: "sale_created",
       entityType: "sale",
       entityId: saleId,
-      details: { saleNumber, totalAmount, itemCount: totalItems },
+      details: {
+        saleNumber,
+        totalUSD,
+        totalLBP,
+        exchangeRate,
+        paidUSD,
+        paidLBP,
+        itemCount: totalItems,
+      },
     });
 
-    return { saleId, saleNumber };
+    return {
+      saleId,
+      saleNumber,
+      totalUSD,
+      totalLBP,
+      exchangeRate,
+      // Change due as a single USD-equivalent figure; UI splits visually.
+      changeDueUSD: tenderedUSD - totalUSD,
+    };
   },
 });

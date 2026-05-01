@@ -11,6 +11,7 @@ import {
   Bell,
   BarChart3,
   RotateCcw,
+  DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,12 @@ export function Sidebar({ storeId, storeName, permissions }: SidebarProps) {
       label: "Members",
       icon: Users,
       show: permissions.members !== "none",
+    },
+    {
+      href: `${base}/exchange-rate`,
+      label: "Exchange Rate",
+      icon: DollarSign,
+      show: true,
     },
     {
       href: `${base}/settings`,

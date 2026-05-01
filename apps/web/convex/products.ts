@@ -97,8 +97,10 @@ export const create = mutation({
     barcode: v.optional(v.string()),
     sku: v.optional(v.string()),
     quantity: v.number(),
-    costPrice: v.number(),
-    sellingPrice: v.number(),
+    costPriceUSD: v.optional(v.number()),
+    costPriceLBP: v.optional(v.number()),
+    sellingPriceUSD: v.optional(v.number()),
+    sellingPriceLBP: v.optional(v.number()),
     lowStockThreshold: v.number(),
   },
   handler: async (ctx, args) => {
@@ -109,6 +111,13 @@ export const create = mutation({
       "inventory",
       "edit"
     );
+
+    if (
+      args.sellingPriceUSD === undefined &&
+      args.sellingPriceLBP === undefined
+    ) {
+      throw new Error("At least one selling price (USD or LBP) is required");
+    }
 
     // Check for duplicate barcode within store
     if (args.barcode) {
@@ -131,8 +140,10 @@ export const create = mutation({
       barcode: args.barcode,
       sku: args.sku,
       quantity: 0, // Start at 0, adjustStock will set the initial quantity
-      costPrice: args.costPrice,
-      sellingPrice: args.sellingPrice,
+      costPriceUSD: args.costPriceUSD,
+      costPriceLBP: args.costPriceLBP,
+      sellingPriceUSD: args.sellingPriceUSD,
+      sellingPriceLBP: args.sellingPriceLBP,
       lowStockThreshold: args.lowStockThreshold,
       isArchived: false,
       createdBy: args.userId,
@@ -173,8 +184,10 @@ export const update = mutation({
     categoryId: v.optional(v.id("categories")),
     barcode: v.optional(v.string()),
     sku: v.optional(v.string()),
-    costPrice: v.optional(v.number()),
-    sellingPrice: v.optional(v.number()),
+    costPriceUSD: v.optional(v.number()),
+    costPriceLBP: v.optional(v.number()),
+    sellingPriceUSD: v.optional(v.number()),
+    sellingPriceLBP: v.optional(v.number()),
     lowStockThreshold: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -208,8 +221,14 @@ export const update = mutation({
     if (args.categoryId !== undefined) patch.categoryId = args.categoryId;
     if (args.barcode !== undefined) patch.barcode = args.barcode;
     if (args.sku !== undefined) patch.sku = args.sku;
-    if (args.costPrice !== undefined) patch.costPrice = args.costPrice;
-    if (args.sellingPrice !== undefined) patch.sellingPrice = args.sellingPrice;
+
+    if (args.costPriceUSD !== undefined) patch.costPriceUSD = args.costPriceUSD;
+    if (args.costPriceLBP !== undefined) patch.costPriceLBP = args.costPriceLBP;
+    if (args.sellingPriceUSD !== undefined)
+      patch.sellingPriceUSD = args.sellingPriceUSD;
+    if (args.sellingPriceLBP !== undefined)
+      patch.sellingPriceLBP = args.sellingPriceLBP;
+
     if (args.lowStockThreshold !== undefined)
       patch.lowStockThreshold = args.lowStockThreshold;
 
@@ -307,12 +326,22 @@ export const importRow = mutation({
     categoryId: v.optional(v.id("categories")),
     sku: v.optional(v.string()),
     barcode: v.optional(v.string()),
-    costPrice: v.optional(v.number()),
-    sellingPrice: v.number(),
+    costPriceUSD: v.optional(v.number()),
+    costPriceLBP: v.optional(v.number()),
+    sellingPriceUSD: v.optional(v.number()),
+    sellingPriceLBP: v.optional(v.number()),
     quantity: v.number(),
     lowStockThreshold: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    if (
+      args.sellingPriceUSD === undefined &&
+      args.sellingPriceLBP === undefined
+    ) {
+      throw new Error(
+        "Each row needs at least one selling price (USD or LBP)"
+      );
+    }
     await assertStorePermission(
       ctx.db,
       args.userId,
@@ -376,8 +405,14 @@ export const importRow = mutation({
         }
         patch.barcode = barcode;
       }
-      if (args.costPrice !== undefined) patch.costPrice = args.costPrice;
-      patch.sellingPrice = args.sellingPrice;
+      if (args.costPriceUSD !== undefined)
+        patch.costPriceUSD = args.costPriceUSD;
+      if (args.costPriceLBP !== undefined)
+        patch.costPriceLBP = args.costPriceLBP;
+      if (args.sellingPriceUSD !== undefined)
+        patch.sellingPriceUSD = args.sellingPriceUSD;
+      if (args.sellingPriceLBP !== undefined)
+        patch.sellingPriceLBP = args.sellingPriceLBP;
       if (args.lowStockThreshold !== undefined)
         patch.lowStockThreshold = args.lowStockThreshold;
 
@@ -432,8 +467,10 @@ export const importRow = mutation({
       barcode,
       sku,
       quantity: 0,
-      costPrice: args.costPrice ?? 0,
-      sellingPrice: args.sellingPrice,
+      costPriceUSD: args.costPriceUSD,
+      costPriceLBP: args.costPriceLBP,
+      sellingPriceUSD: args.sellingPriceUSD,
+      sellingPriceLBP: args.sellingPriceLBP,
       lowStockThreshold: args.lowStockThreshold ?? 5,
       isArchived: false,
       createdBy: args.userId,

@@ -127,6 +127,7 @@ export default function ProductDetailPage() {
       toast.error("Enter a valid quantity");
       return;
     }
+    if (!product) return;
     if (stockType === "manual_remove" && qty > product.quantity) {
       toast.error(`Cannot remove more than current stock (${product.quantity})`);
       return;
@@ -404,47 +405,95 @@ export default function ProductDetailPage() {
         <Card>
           <CardHeader>
             <CardTitle>Pricing</CardTitle>
+            <CardDescription>
+              Prices in USD, LBP, or both. At least one selling price is required.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="costPrice">Cost Price</Label>
-              <Input
-                id="costPrice"
-                name="costPrice"
-                type="number"
-                step="0.01"
-                min="0"
-                defaultValue={product.costPrice}
-              />
+          <CardContent className="space-y-6">
+            <div>
+              <Label className="text-sm text-muted-foreground">Cost Price</Label>
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <div className="space-y-2">
+                  <Label htmlFor="costPriceUSD" className="text-xs">USD</Label>
+                  <Input
+                    id="costPriceUSD"
+                    name="costPriceUSD"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    defaultValue={
+                      product.costPriceUSD ?? product.costPrice ?? ""
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="costPriceLBP" className="text-xs">LBP</Label>
+                  <Input
+                    id="costPriceLBP"
+                    name="costPriceLBP"
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder="0"
+                    defaultValue={product.costPriceLBP ?? ""}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="sellingPrice">Selling Price</Label>
-              <Input
-                id="sellingPrice"
-                name="sellingPrice"
-                type="number"
-                step="0.01"
-                min="0.01"
-                defaultValue={product.sellingPrice}
-              />
+            <div>
+              <Label className="text-sm text-muted-foreground">Selling Price</Label>
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <div className="space-y-2">
+                  <Label htmlFor="sellingPriceUSD" className="text-xs">USD</Label>
+                  <Input
+                    id="sellingPriceUSD"
+                    name="sellingPriceUSD"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    defaultValue={
+                      product.sellingPriceUSD ?? product.sellingPrice ?? ""
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sellingPriceLBP" className="text-xs">LBP</Label>
+                  <Input
+                    id="sellingPriceLBP"
+                    name="sellingPriceLBP"
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder="0"
+                    defaultValue={product.sellingPriceLBP ?? ""}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="lowStockThreshold">Low Stock Threshold</Label>
-              <Input
-                id="lowStockThreshold"
-                name="lowStockThreshold"
-                type="number"
-                min="0"
-                defaultValue={product.lowStockThreshold}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Margin</Label>
-              <p className="text-sm text-muted-foreground mt-2">
-                {product.sellingPrice > 0
-                  ? `${(((product.sellingPrice - product.costPrice) / product.sellingPrice) * 100).toFixed(1)}%`
-                  : "—"}
-              </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="lowStockThreshold">Low Stock Threshold</Label>
+                <Input
+                  id="lowStockThreshold"
+                  name="lowStockThreshold"
+                  type="number"
+                  min="0"
+                  defaultValue={product.lowStockThreshold}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Margin (USD)</Label>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {(() => {
+                    const sell = product.sellingPriceUSD ?? product.sellingPrice;
+                    const cost = product.costPriceUSD ?? product.costPrice ?? 0;
+                    if (!sell || sell <= 0) return "—";
+                    return `${(((sell - cost) / sell) * 100).toFixed(1)}%`;
+                  })()}
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>

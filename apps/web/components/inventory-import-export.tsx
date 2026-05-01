@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { bulkImportProducts, ensureCategories } from "@/app/actions/inventory";
-import { formatCurrency } from "@ware-house/shared";
 import type { Doc } from "@/convex/_generated/dataModel";
 
 interface Props {
@@ -65,8 +64,10 @@ export function InventoryImportExport({ storeId, categories, products }: Props) 
         "SKU",
         "Barcode",
         "Category",
-        "Cost Price",
-        "Selling Price *",
+        "Cost Price USD",
+        "Cost Price LBP",
+        "Selling Price USD",
+        "Selling Price LBP",
         "Quantity",
         "Low Stock Threshold",
       ],
@@ -77,15 +78,16 @@ export function InventoryImportExport({ storeId, categories, products }: Props) 
         "123456789",
         categories[0]?.name ?? "Electronics",
         10.0,
+        "",
         24.99,
+        "",
         50,
         5,
       ],
     ]);
-    // Column widths
     ws["!cols"] = [
       { wch: 24 }, { wch: 24 }, { wch: 14 }, { wch: 14 },
-      { wch: 16 }, { wch: 12 }, { wch: 16 }, { wch: 10 }, { wch: 20 },
+      { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 10 }, { wch: 20 },
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Inventory");
@@ -104,8 +106,10 @@ export function InventoryImportExport({ storeId, categories, products }: Props) 
       SKU: p.sku ?? "",
       Barcode: p.barcode ?? "",
       Category: categoryById[p.categoryId ?? ""] ?? "",
-      "Cost Price": p.costPrice,
-      "Selling Price": p.sellingPrice,
+      "Cost Price USD": p.costPriceUSD ?? p.costPrice ?? "",
+      "Cost Price LBP": p.costPriceLBP ?? "",
+      "Selling Price USD": p.sellingPriceUSD ?? p.sellingPrice ?? "",
+      "Selling Price LBP": p.sellingPriceLBP ?? "",
       Quantity: p.quantity,
       "Low Stock Threshold": p.lowStockThreshold,
       Status: p.isArchived ? "Archived" : p.quantity <= p.lowStockThreshold ? "Low Stock" : "In Stock",
@@ -113,7 +117,7 @@ export function InventoryImportExport({ storeId, categories, products }: Props) 
     const ws = XLSX.utils.json_to_sheet(rows);
     ws["!cols"] = [
       { wch: 24 }, { wch: 24 }, { wch: 14 }, { wch: 14 },
-      { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 20 }, { wch: 12 },
+      { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 10 }, { wch: 20 }, { wch: 12 },
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Inventory");
@@ -181,8 +185,10 @@ export function InventoryImportExport({ storeId, categories, products }: Props) 
       sku?: string;
       barcode?: string;
       categoryName: string;
-      costPrice?: number;
-      sellingPrice?: number;
+      costPriceUSD?: number;
+      costPriceLBP?: number;
+      sellingPriceUSD?: number;
+      sellingPriceLBP?: number;
       quantity: number;
       lowStockThreshold?: number;
     };
@@ -194,19 +200,31 @@ export function InventoryImportExport({ storeId, categories, products }: Props) 
         "threshold",
         "minstock",
       ]);
+      // Legacy single-currency columns fall back into USD slot.
+      const legacyCost = getNum(row, ["costprice", "cost"]);
+      const legacySell = getNum(row, [
+        "sellingprice",
+        "sellprice",
+        "saleprice",
+        "salesprice",
+        "price",
+      ]);
       return {
         name: getStr(row, ["name", "productname", "product"]).trim(),
         description: getStr(row, ["description", "desc"]).trim() || undefined,
         sku: getStr(row, ["sku"]).trim() || undefined,
         barcode: getStr(row, ["barcode", "ean", "upc"]).trim() || undefined,
         categoryName: getStr(row, ["category"]).trim(),
-        costPrice: getNum(row, ["costprice", "cost"]),
-        sellingPrice: getNum(row, [
-          "sellingprice",
-          "sellprice",
-          "saleprice",
-          "salesprice",
-          "price",
+        costPriceUSD:
+          getNum(row, ["costpriceusd", "costusd"]) ?? legacyCost,
+        costPriceLBP: getNum(row, ["costpricelbp", "costlbp"]),
+        sellingPriceUSD:
+          getNum(row, ["sellingpriceusd", "priceusd", "sellusd"]) ??
+          legacySell,
+        sellingPriceLBP: getNum(row, [
+          "sellingpricelbp",
+          "pricelbp",
+          "selllbp",
         ]),
         quantity: Math.max(
           0,
@@ -243,20 +261,25 @@ export function InventoryImportExport({ storeId, categories, products }: Props) 
       sku: r.sku,
       barcode: r.barcode,
       categoryId: r.categoryName ? resolved[r.categoryName.toLowerCase()] : undefined,
-      costPrice: r.costPrice,
-      sellingPrice: r.sellingPrice,
+      costPriceUSD: r.costPriceUSD,
+      costPriceLBP: r.costPriceLBP,
+      sellingPriceUSD: r.sellingPriceUSD,
+      sellingPriceLBP: r.sellingPriceLBP,
       quantity: r.quantity,
       lowStockThreshold: r.lowStockThreshold,
     }));
 
     const valid = mapped.filter(
-      (p): p is typeof p & { sellingPrice: number } =>
-        Boolean(p.name) && (p.sellingPrice ?? 0) > 0
+      (p) =>
+        Boolean(p.name) &&
+        ((p.sellingPriceUSD ?? 0) > 0 || (p.sellingPriceLBP ?? 0) > 0)
     );
     const skipped = mapped.length - valid.length;
 
     if (!valid.length) {
-      toast.error("No valid rows found. Name and Selling Price are required.");
+      toast.error(
+        "No valid rows found. Name and at least one selling price (USD or LBP) are required."
+      );
       setImporting(false);
       return;
     }

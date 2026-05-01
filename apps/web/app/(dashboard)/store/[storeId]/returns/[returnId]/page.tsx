@@ -89,8 +89,23 @@ export default function ReturnDetailPage() {
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">Total refund</p>
             <p className="text-2xl font-bold">
-              {formatCurrency(ret.totalRefund)}
+              {formatCurrency(ret.totalRefund, "USD")}
             </p>
+            {(ret.refundedUSD !== undefined ||
+              ret.refundedLBP !== undefined) && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {ret.refundedUSD
+                  ? formatCurrency(ret.refundedUSD, "USD")
+                  : null}
+                {ret.refundedUSD && ret.refundedLBP ? " + " : ""}
+                {ret.refundedLBP
+                  ? formatCurrency(ret.refundedLBP, "LBP")
+                  : null}
+                {ret.exchangeRate
+                  ? ` @ ${ret.exchangeRate.toLocaleString()}`
+                  : ""}
+              </p>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -164,20 +179,23 @@ export default function ReturnDetailPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {ret.items.map((it: any) => (
-                <TableRow key={it._id}>
-                  <TableCell className="font-medium">
-                    {it.productName}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatCurrency(it.unitPrice)}
-                  </TableCell>
-                  <TableCell className="text-right">{it.quantity}</TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatCurrency(it.totalRefund)}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {ret.items.map((it: any) => {
+                const cur = (it.currency ?? "USD") as "USD" | "LBP";
+                return (
+                  <TableRow key={it._id}>
+                    <TableCell className="font-medium">
+                      {it.productName}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(it.unitPrice, cur)}
+                    </TableCell>
+                    <TableCell className="text-right">{it.quantity}</TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(it.totalRefund, cur)}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
