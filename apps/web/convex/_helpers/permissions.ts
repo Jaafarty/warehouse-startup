@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values";
 import { DatabaseReader } from "../_generated/server";
 import { Id, Doc } from "../_generated/dataModel";
-import { DEFAULT_PERMISSIONS, StorePermissions, BuiltInRole } from "@ware-house/shared";
+import { DEFAULT_PERMISSIONS, StorePermissions, BuiltInRole, BUILT_IN_ROLES } from "@ware-house/shared";
 
 export async function getStoreMember(
   db: DatabaseReader,
@@ -21,14 +21,21 @@ export async function getEffectivePermissions(
   member: Doc<"storeMembers">
 ): Promise<StorePermissions> {
   const role = member.role as string;
-  if (role === "owner" || role === "admin" || role === "employee" || role === "viewer" || role === "editor") {
+  const legacyBuiltIns = [...BUILT_IN_ROLES, "editor"] as const;
+  if (legacyBuiltIns.includes(role as any)) {
     // editor is legacy alias for employee
     const key = role === "editor" ? "employee" : role;
     return DEFAULT_PERMISSIONS[key as BuiltInRole];
   }
-  if (role === "custom" && member.customRoleId) {
+  if (role === "custom") {
+    if (!member.customRoleId) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "You don't have permission to do that." });
+    }
     const customRole = await db.get(member.customRoleId as Id<"storeRoles">);
-    if (customRole) return customRole.permissions as StorePermissions;
+    if (!customRole) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Your assigned role no longer exists." });
+    }
+    return customRole.permissions as StorePermissions;
   }
   return DEFAULT_PERMISSIONS.viewer;
 }
