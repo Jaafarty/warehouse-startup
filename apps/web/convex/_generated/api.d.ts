@@ -25,6 +25,7 @@ import type * as products from "../products.js";
 import type * as returns from "../returns.js";
 import type * as sales from "../sales.js";
 import type * as stockMovements from "../stockMovements.js";
+import type * as storeRoles from "../storeRoles.js";
 import type * as stores from "../stores.js";
 import type * as users from "../users.js";
 
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   returns: typeof returns;
   sales: typeof sales;
   stockMovements: typeof stockMovements;
+  storeRoles: typeof storeRoles;
   stores: typeof stores;
   users: typeof users;
 }>;
