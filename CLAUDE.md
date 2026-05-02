@@ -35,7 +35,8 @@ Ware-House/
 │   │   │       ├── inventory/      # Product list, create, detail/edit, stock history
 │   │   │       ├── sales/          # Sales list, new sale, sale detail, return form
 │   │   │       ├── returns/        # Store-wide returns list, return detail
-│   │   │       ├── members/        # Full CRUD with confirmation dialogs
+│   │   │       ├── members/        # Full CRUD with pyramid role UI + custom roles
+│   │   │       ├── roles/          # Custom roles management (owner/admin only)
 │   │   │       └── settings/       # Store settings
 │   │   │   ├── notifications/      # Notifications page
 │   │   │   ├── settings/           # User settings (profile + password)
@@ -50,12 +51,13 @@ Ware-House/
 │   │   ├── layout/                 # sidebar.tsx, topbar.tsx (with notification badge)
 │   │   └── analytics/              # analytics-view, kpi-grid/card, range-filter, product-filter, insights-section, top-products-table, daily-summary-table, export-csv-button, charts/*
 │   ├── convex/                     # Convex schema + functions
-│   │   ├── schema.ts               # Full schema (14 tables)
+│   │   ├── schema.ts               # Full schema (15 tables, includes storeRoles)
 │   │   ├── auth.config.ts          # Clerk JWT issuer config
 │   │   ├── users.ts                # store (upsert by clerkId), current, getById, updateProfile
-│   │   ├── stores.ts               # Store CRUD
-│   │   ├── members.ts              # Member management
-│   │   ├── invitations.ts          # Invite system (schedules email.sendInviteEmail)
+│   │   ├── stores.ts               # Store CRUD + deleteStore (owner-only); returns effectivePermissions
+│   │   ├── members.ts              # Member management with pyramid enforcement (owner/admin only)
+│   │   ├── storeRoles.ts           # Custom role CRUD (listByStore, create, update, remove)
+│   │   ├── invitations.ts          # Invite system (schedules email.sendInviteEmail) — supports custom roles
 │   │   ├── email.ts                # internalAction: Resend transactional email
 │   │   ├── products.ts             # Product CRUD + importRow (match-or-create for spreadsheet import)
 │   │   ├── categories.ts           # Category CRUD + ensureMany (batched get-or-create for import)
@@ -65,7 +67,9 @@ Ware-House/
 │   │   ├── sales.ts                # Sales (create with stock decrement, optional customerId)
 │   │   ├── notifications.ts        # Notifications (list, unreadCount, markAsRead, markAllAsRead)
 │   │   ├── analytics.ts            # KPIs, revenue charts, top products, insights, daily summary
-│   │   ├── _helpers/               # audit.ts, permissions.ts, stock.ts
+│   │   ├── exchangeRates.ts        # USD/LBP rate setRate (owner/admin), getCurrent, listHistory
+│   │   ├── migrations.ts           # Data migrations (backfillCurrency, migrateRolesV2)
+│   │   ├── _helpers/               # audit.ts, permissions.ts (assertPageFunction), stock.ts
 │   │   └── _generated/             # Stub files (replaced by npx convex dev)
 │   ├── lib/
 │   │   ├── auth.ts                 # getCurrentUserId / requireCurrentUserId (server-only)
@@ -76,7 +80,7 @@ Ware-House/
 ├── packages/shared/src/            # @ware-house/shared
 │   ├── types/                      # auth, store, product, sale
 │   ├── validation/                 # Zod schemas
-│   ├── constants/                  # roles, permissions
+│   ├── constants/                  # roles (4-tier + canManageRole), pages (PAGE_KEYS, DEFAULT_PERMISSIONS), permissions (re-export)
 │   └── utils/                      # formatCurrency, formatDate
 ├── package.json, turbo.json, tsconfig.base.json
 └── .env.local.example
@@ -85,7 +89,8 @@ Ware-House/
 ## Feature Coverage
 
 - **Auth**: Clerk-hosted sign-in/up, Convex JWT validation, role-based permissions
-- **Stores**: multi-store, membership, invitations with Resend email
+- **Roles**: 4-tier hierarchy (owner > admin > employee > viewer) + custom roles with page+function permission tree, pyramid enforcement, ConvexError friendly toasts
+- **Stores**: multi-store, membership, invitations with Resend email, owner-only delete
 - **Inventory**: products, categories, stock movements, spreadsheet import/export
 - **Sales**: cart-based sale creation, atomic stock decrement, sale numbers (S-YYYYMMDD-XXXX)
 - **Returns**: first-class return records, per-item checkbox+qty, reason tracking, stock reversal
@@ -132,15 +137,29 @@ Convex deployment (`npx convex env set`):
 
 **ALL stock changes MUST go through `adjustStock()`** in `convex/_helpers/stock.ts` — never `db.patch(productId, { quantity })` directly. Records movement, updates quantity, triggers low-stock notifications.
 
+### Permissions Invariant
+
+**ALL backend permission checks MUST go through `assertPageFunction(db, userId, storeId, page, fn)`** in `convex/_helpers/permissions.ts`. Resolves `StorePermissions` tree via `getEffectivePermissions()` (built-in role defaults from `@ware-house/shared` or custom role from `storeRoles` table). Throws `ConvexError({ code, message })` with friendly toast-ready messages.
+
+- **Owner role**: auto-assigned on store creation, cannot be removed/reassigned, only owner can delete store or assign admin
+- **Pyramid**: `canManageRole(actor, target)` from shared package — actor must strictly outrank target. Backend AND frontend must enforce.
+- **Schema state**: `editor` literal currently retained in `storeMembers`/`storeInvitations` as legacy alias until `migrateRolesV2` confirmed clean. Old embedded `permissions` object on `storeMembers` still `v.optional`.
+- **Migration**: run `npx convex run migrations:migrateRolesV2` once after deploy to convert `editor`→`employee` and promote admin-creators to `owner`.
+- **Sidebar/route gates**: privileged roles (owner/admin) bypass `effectivePermissions` checks defensively (handles undefined during deploy transition).
+
+### Error Handling Invariant
+
+All Convex mutations throw `ConvexError({ code, message })`, never plain `Error`. Server actions in `app/actions/` use `extractErrorMessage(error, fallback)` to surface the message. Client UI calls `toast.error(result.error)` for user-friendly feedback.
+
 ### Shared Package
 
-`packages/shared/src/index.ts` barrel exports `formatCurrency()` and `formatDate()` — used across inventory and sales UI.
+`packages/shared/src/index.ts` barrel exports `formatCurrency()`, `formatDate()`, role/page/permission constants (`BUILT_IN_ROLES`, `PAGE_KEYS`, `PAGE_FUNCTIONS`, `DEFAULT_PERMISSIONS`, `canManageRole`), and types (`MemberRole`, `StorePermissions`).
 
 ### Resend / Invite Email
 
 Clerk sandbox + Resend free tier: delivery restricted to account owner until domain verified. `email.ts` treats 403 `validation_error` as soft failure — invite row still created, admin can copy link from UI.
 
-## Route Map (22 routes)
+## Route Map (24 routes)
 
 ```
 / (static)                                     — Landing page
@@ -162,7 +181,9 @@ Clerk sandbox + Resend free tier: delivery restricted to account owner until dom
 /store/[storeId]/sales/[saleId]/return         — Process return form
 /store/[storeId]/returns                       — Store-wide returns list
 /store/[storeId]/returns/[returnId]            — Return detail (read-only)
-/store/[storeId]/members                       — Member management
+/store/[storeId]/members                       — Member management (pyramid UI)
+/store/[storeId]/roles                         — Custom roles management (owner/admin only)
+/store/[storeId]/exchange-rate                 — USD/LBP rate history (owner/admin can set)
 /store/[storeId]/settings                      — Store settings
 ```
 
@@ -171,7 +192,9 @@ Clerk sandbox + Resend free tier: delivery restricted to account owner until dom
 `docs/superpowers/`:
 - `specs/2026-04-26-analytics-page-design.md`
 - `specs/2026-04-28-customer-returns-design.md`
+- `specs/2026-05-01-roles-permissions-redesign.md`
 - `plans/2026-04-28-customer-returns.md`
+- `plans/2026-05-01-roles-permissions-redesign.md`
 
 ## Communication Style
 
