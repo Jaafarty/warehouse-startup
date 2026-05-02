@@ -28,6 +28,7 @@ export default defineSchema({
       v.literal("owner"),
       v.literal("admin"),
       v.literal("employee"),
+      v.literal("editor"), // legacy — narrow once migrateRolesV2 has run
       v.literal("viewer"),
       v.literal("custom")
     ),
@@ -51,6 +52,7 @@ export default defineSchema({
     role: v.union(
       v.literal("admin"),
       v.literal("employee"),
+      v.literal("editor"), // legacy — narrow once migrateRolesV2 has run
       v.literal("viewer"),
       v.literal("custom")
     ),
