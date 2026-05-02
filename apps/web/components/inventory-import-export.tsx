@@ -20,6 +20,8 @@ interface Props {
   storeId: string;
   categories: Doc<"categories">[];
   products: Doc<"products">[];
+  canImport?: boolean;
+  canExport?: boolean;
 }
 
 /** Convert Excel serial date or string → ISO YYYY-MM-DD (or return as-is) */
@@ -44,7 +46,7 @@ function parseDate(val: unknown): string {
   return String(val);
 }
 
-export function InventoryImportExport({ storeId, categories, products }: Props) {
+export function InventoryImportExport({ storeId, categories, products, canImport = true, canExport = true }: Props) {
   const [importOpen, setImportOpen] = useState(false);
   const [parsed, setParsed] = useState<Array<Record<string, unknown>>>([]);
   const [importing, setImporting] = useState(false);
@@ -320,13 +322,15 @@ export function InventoryImportExport({ storeId, categories, products }: Props) 
   return (
     <div className="flex items-center gap-2">
       {/* Export */}
-      <Button variant="outline" size="sm" onClick={exportProducts}>
-        <Download className="h-4 w-4 mr-1.5" />
-        Export
-      </Button>
+      {canExport && (
+        <Button variant="outline" size="sm" onClick={exportProducts}>
+          <Download className="h-4 w-4 mr-1.5" />
+          Export
+        </Button>
+      )}
 
       {/* Import */}
-      <Dialog
+      {canImport && <Dialog
         open={importOpen}
         onOpenChange={(open) => {
           setImportOpen(open);
@@ -401,7 +405,7 @@ export function InventoryImportExport({ storeId, categories, products }: Props) 
             </div>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
     </div>
   );
 }

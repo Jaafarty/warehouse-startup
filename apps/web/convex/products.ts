@@ -306,7 +306,7 @@ export const importRow = mutation({
         "Each row needs at least one selling price (USD or LBP)"
       );
     }
-    await assertPageFunction(ctx.db, args.userId, args.storeId, "inventory", "add_product");
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "inventory", "import_products");
 
     const sku = args.sku?.trim() || undefined;
     const barcode = args.barcode?.trim() || undefined;

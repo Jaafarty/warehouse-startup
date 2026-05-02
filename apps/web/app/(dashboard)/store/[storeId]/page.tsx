@@ -59,28 +59,31 @@ export default function StoreDashboardPage() {
   const { storeId } = useParams<{ storeId: string }>();
   const { userId } = useCurrentUser();
 
-  const overview = useQuery(
-    api.analytics.overview,
-    userId
+  const store = useQuery(
+    api.stores.getById,
+    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+  );
+
+  const isPrivileged = store?.role === "owner" || store?.role === "admin";
+  const canViewAnalytics =
+    isPrivileged || (store?.effectivePermissions?.analytics?.enabled ?? false);
+
+  const analyticsArgs =
+    userId && canViewAnalytics
       ? { storeId: storeId as any, userId: userId as any }
-      : "skip"
+      : "skip";
+
+  const overview = useQuery(api.analytics.overview, analyticsArgs);
+
+  const topProducts = useQuery(api.analytics.topProducts,
+    analyticsArgs === "skip" ? "skip" : { ...analyticsArgs, limit: 5 }
   );
 
-  const topProducts = useQuery(
-    api.analytics.topProducts,
-    userId
-      ? { storeId: storeId as any, userId: userId as any, limit: 5 }
-      : "skip"
+  const salesTrend = useQuery(api.analytics.salesTrend,
+    analyticsArgs === "skip" ? "skip" : { ...analyticsArgs, days: 14 }
   );
 
-  const salesTrend = useQuery(
-    api.analytics.salesTrend,
-    userId
-      ? { storeId: storeId as any, userId: userId as any, days: 14 }
-      : "skip"
-  );
-
-  const loading = overview === undefined;
+  const loading = store === undefined || (canViewAnalytics && overview === undefined);
 
   return (
     <div className="p-6 space-y-6">
@@ -92,6 +95,9 @@ export default function StoreDashboardPage() {
       </div>
 
       {/* Summary Cards */}
+      {!canViewAnalytics && !loading ? (
+        <p className="text-sm text-muted-foreground">Analytics not enabled for your role.</p>
+      ) : (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -103,7 +109,7 @@ export default function StoreDashboardPage() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <p className="text-2xl font-bold">
-                {formatCurrency(overview.totalRevenue)}
+                {formatCurrency(overview!.totalRevenue)}
               </p>
             )}
           </CardContent>
@@ -119,9 +125,9 @@ export default function StoreDashboardPage() {
               <Skeleton className="h-8 w-16" />
             ) : (
               <>
-                <p className="text-2xl font-bold">{overview.totalSales}</p>
+                <p className="text-2xl font-bold">{overview!.totalSales}</p>
                 <p className="text-xs text-muted-foreground">
-                  {overview.completedSales} completed
+                  {overview!.completedSales} completed
                 </p>
               </>
             )}
@@ -138,9 +144,9 @@ export default function StoreDashboardPage() {
               <Skeleton className="h-8 w-16" />
             ) : (
               <>
-                <p className="text-2xl font-bold">{overview.totalProducts}</p>
+                <p className="text-2xl font-bold">{overview!.totalProducts}</p>
                 <p className="text-xs text-muted-foreground">
-                  Inventory value: {formatCurrency(overview.totalInventoryValue)}
+                  Inventory value: {formatCurrency(overview!.totalInventoryValue)}
                 </p>
               </>
             )}
@@ -158,18 +164,19 @@ export default function StoreDashboardPage() {
             ) : (
               <>
                 <p className="text-2xl font-bold">
-                  {overview.lowStockProducts}
+                  {overview!.lowStockProducts}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {overview.outOfStockProducts} out of stock
+                  {overview!.outOfStockProducts} out of stock
                 </p>
               </>
             )}
           </CardContent>
         </Card>
       </div>
+      )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      {canViewAnalytics && <div className="grid gap-6 lg:grid-cols-2">
         {/* Sales Trend Chart */}
         <Card>
           <CardHeader>
@@ -261,7 +268,7 @@ export default function StoreDashboardPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+      </div>}
     </div>
   );
 }

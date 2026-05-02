@@ -77,6 +77,11 @@ export default function InventoryPage() {
   const { storeId } = useParams<{ storeId: string }>();
   const { userId } = useCurrentUser();
 
+  const store = useQuery(api.stores.getById, userId ? { storeId: storeId as any, userId: userId as any } : "skip");
+  const isPrivileged = store?.role === "owner" || store?.role === "admin";
+  const invFns = store?.effectivePermissions?.inventory?.functions ?? {};
+  const can = (fn: string) => isPrivileged || (invFns[fn] ?? false);
+
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [showArchived, setShowArchived] = useState(false);
@@ -142,22 +147,30 @@ export default function InventoryPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <InventoryImportExport
-            storeId={storeId}
-            categories={categories ?? []}
-            products={products ?? []}
-          />
-          <NewCategoryDialog
-            storeId={storeId}
-            triggerLabel="+ Category"
-            triggerClassName="inline-flex items-center justify-center rounded-lg border px-2.5 h-8 text-sm font-medium hover:bg-muted"
-          />
-          <Link href={`/store/${storeId}/inventory/new`}>
-            <Button size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Product
-            </Button>
-          </Link>
+          {(can("import_products") || can("export_products")) && (
+            <InventoryImportExport
+              storeId={storeId}
+              categories={categories ?? []}
+              products={products ?? []}
+              canImport={can("import_products")}
+              canExport={can("export_products")}
+            />
+          )}
+          {can("create_category") && (
+            <NewCategoryDialog
+              storeId={storeId}
+              triggerLabel="+ Category"
+              triggerClassName="inline-flex items-center justify-center rounded-lg border px-2.5 h-8 text-sm font-medium hover:bg-muted"
+            />
+          )}
+          {can("add_product") && (
+            <Link href={`/store/${storeId}/inventory/new`}>
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Product
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -296,30 +309,34 @@ export default function InventoryPage() {
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              (window.location.href = `/store/${storeId}/inventory/${product._id}/history`)
-                            }
-                          >
-                            <History className="h-4 w-4 mr-2" />
-                            Stock History
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {product.isArchived ? (
+                          {can("view_history") && (
                             <DropdownMenuItem
-                              onClick={() => handleRestore(product._id)}
+                              onClick={() =>
+                                (window.location.href = `/store/${storeId}/inventory/${product._id}/history`)
+                              }
                             >
-                              <RotateCcw className="h-4 w-4 mr-2" />
-                              Restore
+                              <History className="h-4 w-4 mr-2" />
+                              Stock History
                             </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem
-                              onClick={() => handleArchive(product._id)}
-                              className="text-destructive"
-                            >
-                              <Archive className="h-4 w-4 mr-2" />
-                              Archive
-                            </DropdownMenuItem>
+                          )}
+                          {can("archive_product") && (
+                            <>
+                              <DropdownMenuSeparator />
+                              {product.isArchived ? (
+                                <DropdownMenuItem onClick={() => handleRestore(product._id)}>
+                                  <RotateCcw className="h-4 w-4 mr-2" />
+                                  Restore
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  onClick={() => handleArchive(product._id)}
+                                  className="text-destructive"
+                                >
+                                  <Archive className="h-4 w-4 mr-2" />
+                                  Archive
+                                </DropdownMenuItem>
+                              )}
+                            </>
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>

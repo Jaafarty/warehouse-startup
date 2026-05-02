@@ -20,6 +20,10 @@ export const create = mutation({
   handler: async (ctx, args) => {
     await assertPageFunction(ctx.db, args.userId, args.storeId, "members", "invite_member");
 
+    if (args.role === "custom" && !args.customRoleId) {
+      throw new ConvexError({ code: "INVALID", message: "A custom role ID is required when inviting with a custom role." });
+    }
+
     // Check if already a member
     const existingUser = await ctx.db
       .query("users")

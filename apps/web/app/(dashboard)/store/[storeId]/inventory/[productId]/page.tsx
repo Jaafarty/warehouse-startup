@@ -61,6 +61,11 @@ export default function ProductDetailPage() {
   }>();
   const { userId } = useCurrentUser();
 
+  const store = useQuery(api.stores.getById, userId ? { storeId: storeId as any, userId: userId as any } : "skip");
+  const isPrivileged = store?.role === "owner" || store?.role === "admin";
+  const invFns = store?.effectivePermissions?.inventory?.functions ?? {};
+  const can = (fn: string) => isPrivileged || (invFns[fn] ?? false);
+
   const product = useQuery(
     api.products.get,
     userId
@@ -196,22 +201,26 @@ export default function ProductDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/store/${storeId}/inventory/${productId}/history`}>
-            <Button variant="outline" size="sm">
-              <History className="h-4 w-4 mr-2" />
-              History
-            </Button>
-          </Link>
-          {product.isArchived ? (
-            <Button variant="outline" size="sm" onClick={handleRestore}>
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Restore
-            </Button>
-          ) : (
-            <Button variant="outline" size="sm" onClick={handleArchive}>
-              <Archive className="h-4 w-4 mr-2" />
-              Archive
-            </Button>
+          {can("view_history") && (
+            <Link href={`/store/${storeId}/inventory/${productId}/history`}>
+              <Button variant="outline" size="sm">
+                <History className="h-4 w-4 mr-2" />
+                History
+              </Button>
+            </Link>
+          )}
+          {can("archive_product") && (
+            product.isArchived ? (
+              <Button variant="outline" size="sm" onClick={handleRestore}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Restore
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={handleArchive}>
+                <Archive className="h-4 w-4 mr-2" />
+                Archive
+              </Button>
+            )
           )}
         </div>
       </div>
@@ -221,7 +230,7 @@ export default function ProductDetailPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Stock</CardTitle>
-            <Dialog open={stockDialogOpen} onOpenChange={setStockDialogOpen}>
+            {can("adjust_stock") && <Dialog open={stockDialogOpen} onOpenChange={setStockDialogOpen}>
               <DialogTrigger className="inline-flex items-center justify-center rounded-lg bg-primary px-2.5 h-8 text-sm font-medium text-primary-foreground hover:bg-primary/80">
                 Adjust Stock
               </DialogTrigger>
@@ -285,7 +294,7 @@ export default function ProductDetailPage() {
                   </Button>
                 </div>
               </DialogContent>
-            </Dialog>
+            </Dialog>}
           </div>
         </CardHeader>
         <CardContent>
@@ -315,7 +324,7 @@ export default function ProductDetailPage() {
       </Card>
 
       {/* Edit Form */}
-      <form action={handleUpdate} className="space-y-6">
+      {can("edit_product") && <form action={handleUpdate} className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Product Details</CardTitle>
@@ -504,7 +513,7 @@ export default function ProductDetailPage() {
             {editPending ? "Saving..." : "Save Changes"}
           </Button>
         </div>
-      </form>
+      </form>}
     </div>
   );
 }
