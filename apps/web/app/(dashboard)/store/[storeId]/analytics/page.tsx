@@ -21,7 +21,9 @@ export default async function AnalyticsPage({
     userId,
   });
 
-  if (!store || store.permissions?.analytics === "none") {
+  if (!store) notFound();
+  const isPrivileged = store.role === "owner" || store.role === "admin";
+  if (!isPrivileged && !store.effectivePermissions?.analytics?.enabled) {
     notFound();
   }
 

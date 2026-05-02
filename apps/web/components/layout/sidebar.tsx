@@ -12,24 +12,28 @@ import {
   BarChart3,
   RotateCcw,
   DollarSign,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import type { StorePermissions } from "@ware-house/shared";
 
 interface SidebarProps {
   storeId: string;
   storeName: string;
-  permissions: {
-    inventory: string;
-    sales: string;
-    analytics: string;
-    members: string;
-  };
+  role: string;
+  permissions?: StorePermissions;
 }
 
-export function Sidebar({ storeId, storeName, permissions }: SidebarProps) {
+export function Sidebar({ storeId, storeName, role, permissions }: SidebarProps) {
   const pathname = usePathname();
   const base = `/store/${storeId}`;
+
+  // Owner and admin always have full access (matches DEFAULT_PERMISSIONS).
+  // Defensive fallback: if permissions prop is missing, deny pages for non-privileged roles.
+  const isPrivileged = role === "owner" || role === "admin";
+  const can = (page: keyof StorePermissions) =>
+    isPrivileged || (permissions?.[page]?.enabled ?? false);
 
   const links = [
     {
@@ -42,31 +46,37 @@ export function Sidebar({ storeId, storeName, permissions }: SidebarProps) {
       href: `${base}/inventory`,
       label: "Inventory",
       icon: Package,
-      show: permissions.inventory !== "none",
+      show: can("inventory"),
     },
     {
       href: `${base}/sales`,
       label: "Sales",
       icon: ShoppingCart,
-      show: permissions.sales !== "none",
+      show: can("sales"),
     },
     {
       href: `${base}/returns`,
       label: "Returns",
       icon: RotateCcw,
-      show: permissions.sales !== "none",
+      show: can("returns"),
     },
     {
       href: `${base}/analytics`,
       label: "Analytics",
       icon: BarChart3,
-      show: permissions.analytics !== "none",
+      show: can("analytics"),
     },
     {
       href: `${base}/members`,
       label: "Members",
       icon: Users,
-      show: permissions.members !== "none",
+      show: can("members"),
+    },
+    {
+      href: `${base}/roles`,
+      label: "Roles",
+      icon: ShieldCheck,
+      show: role === "owner" || role === "admin",
     },
     {
       href: `${base}/exchange-rate`,
@@ -78,7 +88,7 @@ export function Sidebar({ storeId, storeName, permissions }: SidebarProps) {
       href: `${base}/settings`,
       label: "Settings",
       icon: Settings,
-      show: true,
+      show: can("settings"),
     },
   ];
 

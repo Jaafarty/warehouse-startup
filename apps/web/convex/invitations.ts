@@ -1,7 +1,7 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { assertStorePermission } from "./_helpers/permissions";
+import { assertPageFunction } from "./_helpers/permissions";
 import { createAuditLog } from "./_helpers/audit";
 
 export const create = mutation({
@@ -11,18 +11,14 @@ export const create = mutation({
     email: v.string(),
     role: v.union(
       v.literal("admin"),
-      v.literal("editor"),
-      v.literal("viewer")
+      v.literal("employee"),
+      v.literal("viewer"),
+      v.literal("custom")
     ),
+    customRoleId: v.optional(v.id("storeRoles")),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "members",
-      "manage"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "members", "invite_member");
 
     // Check if already a member
     const existingUser = await ctx.db
@@ -39,7 +35,7 @@ export const create = mutation({
         .unique();
 
       if (existingMember) {
-        throw new Error("This user is already a member of the store");
+        throw new ConvexError({ code: "CONFLICT", message: "This person is already a member of this store." });
       }
     }
 
@@ -52,7 +48,7 @@ export const create = mutation({
       .first();
 
     if (existingInvite && existingInvite.status === "pending") {
-      throw new Error("An invitation is already pending for this email");
+      throw new ConvexError({ code: "CONFLICT", message: "An invitation is already pending for this email address." });
     }
 
     const token =
@@ -64,6 +60,7 @@ export const create = mutation({
       storeId: args.storeId,
       email: args.email,
       role: args.role,
+      customRoleId: args.customRoleId,
       invitedBy: args.userId,
       token,
       status: "pending",
@@ -114,13 +111,7 @@ export const create = mutation({
 export const listByStore = query({
   args: { storeId: v.id("stores"), userId: v.id("users") },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "members",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "members", "view_members");
 
     return ctx.db
       .query("storeInvitations")
@@ -161,11 +152,12 @@ export const accept = mutation({
       .withIndex("by_token", (q: any) => q.eq("token", args.token))
       .unique();
 
-    if (!invite) throw new Error("Invitation not found");
-    if (invite.status !== "pending") throw new Error("Invitation is no longer valid");
+    if (!invite || invite.status !== "pending") {
+      throw new ConvexError({ code: "NOT_FOUND", message: "This invitation link is invalid or has expired." });
+    }
     if (Date.now() > invite.expiresAt) {
       await ctx.db.patch(invite._id, { status: "expired" });
-      throw new Error("Invitation has expired");
+      throw new ConvexError({ code: "NOT_FOUND", message: "This invitation link is invalid or has expired." });
     }
 
     // Check if already a member
@@ -178,35 +170,14 @@ export const accept = mutation({
 
     if (existing) {
       await ctx.db.patch(invite._id, { status: "accepted" });
-      throw new Error("You are already a member of this store");
+      throw new ConvexError({ code: "CONFLICT", message: "This person is already a member of this store." });
     }
-
-    const defaultPerms = {
-      admin: {
-        inventory: "full" as const,
-        sales: "full" as const,
-        analytics: "view" as const,
-        members: "manage" as const,
-      },
-      editor: {
-        inventory: "edit" as const,
-        sales: "edit" as const,
-        analytics: "view" as const,
-        members: "view" as const,
-      },
-      viewer: {
-        inventory: "view" as const,
-        sales: "view" as const,
-        analytics: "view" as const,
-        members: "none" as const,
-      },
-    };
 
     await ctx.db.insert("storeMembers", {
       storeId: invite.storeId,
       userId: args.userId,
       role: invite.role,
-      permissions: defaultPerms[invite.role],
+      customRoleId: invite.customRoleId,
       joinedAt: Date.now(),
     });
 
@@ -221,7 +192,7 @@ export const accept = mutation({
     const newUser = await ctx.db.get(args.userId);
     const store = await ctx.db.get(invite.storeId);
 
-    for (const admin of admins.filter((m: any) => m.role === "admin")) {
+    for (const admin of admins.filter((m: any) => m.role === "admin" || m.role === "owner")) {
       await ctx.db.insert("notifications", {
         userId: admin.userId,
         storeId: invite.storeId,
@@ -256,8 +227,9 @@ export const decline = mutation({
       .withIndex("by_token", (q: any) => q.eq("token", args.token))
       .unique();
 
-    if (!invite) throw new Error("Invitation not found");
-    if (invite.status !== "pending") throw new Error("Invitation is no longer valid");
+    if (!invite || invite.status !== "pending") {
+      throw new ConvexError({ code: "NOT_FOUND", message: "This invitation link is invalid or has expired." });
+    }
 
     await ctx.db.patch(invite._id, { status: "declined" });
 

@@ -25,30 +25,21 @@ export default defineSchema({
     storeId: v.id("stores"),
     userId: v.id("users"),
     role: v.union(
+      v.literal("owner"),
       v.literal("admin"),
-      v.literal("editor"),
-      v.literal("viewer")
+      v.literal("employee"),
+      v.literal("editor"), // legacy — narrow once migrateRolesV2 has run
+      v.literal("viewer"),
+      v.literal("custom")
     ),
-    permissions: v.object({
-      inventory: v.union(
-        v.literal("none"),
-        v.literal("view"),
-        v.literal("edit"),
-        v.literal("full")
-      ),
-      sales: v.union(
-        v.literal("none"),
-        v.literal("view"),
-        v.literal("edit"),
-        v.literal("full")
-      ),
+    customRoleId: v.optional(v.id("storeRoles")),
+    // permissions kept optional — old rows still valid, new rows omit it
+    permissions: v.optional(v.object({
+      inventory: v.union(v.literal("none"), v.literal("view"), v.literal("edit"), v.literal("full")),
+      sales: v.union(v.literal("none"), v.literal("view"), v.literal("edit"), v.literal("full")),
       analytics: v.union(v.literal("none"), v.literal("view")),
-      members: v.union(
-        v.literal("none"),
-        v.literal("view"),
-        v.literal("manage")
-      ),
-    }),
+      members: v.union(v.literal("none"), v.literal("view"), v.literal("manage")),
+    })),
     joinedAt: v.float64(),
   })
     .index("by_store", ["storeId"])
@@ -60,9 +51,12 @@ export default defineSchema({
     email: v.string(),
     role: v.union(
       v.literal("admin"),
-      v.literal("editor"),
-      v.literal("viewer")
+      v.literal("employee"),
+      v.literal("editor"), // legacy — narrow once migrateRolesV2 has run
+      v.literal("viewer"),
+      v.literal("custom")
     ),
+    customRoleId: v.optional(v.id("storeRoles")),
     invitedBy: v.id("users"),
     token: v.string(),
     status: v.union(
@@ -77,6 +71,14 @@ export default defineSchema({
     .index("by_email", ["email"])
     .index("by_token", ["token"])
     .index("by_store_and_email", ["storeId", "email"]),
+
+  storeRoles: defineTable({
+    storeId: v.id("stores"),
+    name: v.string(),
+    permissions: v.any(), // StorePermissions tree — typed in application layer
+    createdBy: v.id("users"),
+    createdAt: v.float64(),
+  }).index("by_store", ["storeId"]),
 
   // ============ CUSTOMERS ============
   customers: defineTable({

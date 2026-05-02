@@ -18,7 +18,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -80,11 +79,25 @@ export default function MembersPage() {
     userId ? { storeId: storeId as any, userId: userId as any } : "skip"
   );
 
+  const customRoles = useQuery(
+    api.storeRoles.listByStore,
+    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+  );
+
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteRole, setInviteRole] = useState("employee");
   const [pending, setPending] = useState(false);
+
+  const currentUserMember = members?.find((m: any) => m.userId === userId);
+  const currentUserRole = currentUserMember?.role ?? "viewer";
 
   async function handleInvite(formData: FormData) {
     setPending(true);
+    const rawRole = inviteRole;
+    const role = rawRole.startsWith("custom:") ? "custom" : rawRole;
+    const customRoleId = rawRole.startsWith("custom:") ? rawRole.split(":")[1] : undefined;
+    formData.set("role", role);
+    if (customRoleId) formData.set("customRoleId", customRoleId);
     const result = await inviteMember(storeId, formData);
     setPending(false);
     if (result.success) {
@@ -98,6 +111,7 @@ export default function MembersPage() {
         toast.success("Invitation created.", { description: link });
       }
       setInviteOpen(false);
+      setInviteRole("employee");
     } else {
       toast.error(result.error ?? "Failed to invite");
     }
@@ -115,9 +129,10 @@ export default function MembersPage() {
 
   async function handleRoleChange(
     memberId: string,
-    newRole: "admin" | "editor" | "viewer"
+    newRole: "admin" | "employee" | "viewer" | "custom",
+    customRoleId?: string
   ) {
-    const result = await updateMemberRole(storeId, memberId, newRole);
+    const result = await updateMemberRole(storeId, memberId, newRole, customRoleId);
     if (result.success) {
       toast.success("Role updated");
     } else {
@@ -136,14 +151,22 @@ export default function MembersPage() {
 
   const roleBadgeVariant = (role: string) => {
     switch (role) {
+      case "owner":
+        return "default" as const;
       case "admin":
         return "default" as const;
-      case "editor":
+      case "employee":
         return "secondary" as const;
       default:
         return "outline" as const;
     }
   };
+
+  function roleLabel(member: any): string {
+    if (member.role === "custom") return member.customRoleName ?? "Custom";
+    if (member.role === "employee") return "Employee";
+    return member.role.charAt(0).toUpperCase() + member.role.slice(1);
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -154,50 +177,64 @@ export default function MembersPage() {
             Manage who has access to this store.
           </p>
         </div>
-        <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-          <DialogTrigger
-            className="inline-flex items-center justify-center rounded-lg bg-primary px-2.5 h-8 text-sm font-medium text-primary-foreground hover:bg-primary/80"
-          >
-            <UserPlus className="h-4 w-4 mr-2" />
-            Invite
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Invite a member</DialogTitle>
-              <DialogDescription>
-                Send an invitation via email.
-              </DialogDescription>
-            </DialogHeader>
-            <form action={handleInvite} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="colleague@example.com"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Select name="role" defaultValue="editor">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="editor">Editor</SelectItem>
-                    <SelectItem value="viewer">Viewer</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button type="submit" className="w-full" disabled={pending}>
-                {pending ? "Sending..." : "Send Invitation"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+        {(currentUserRole === "owner" || currentUserRole === "admin") && (
+          <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+            <DialogTrigger
+              className="inline-flex items-center justify-center rounded-lg bg-primary px-2.5 h-8 text-sm font-medium text-primary-foreground hover:bg-primary/80"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Invite
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Invite a member</DialogTitle>
+                <DialogDescription>
+                  Send an invitation via email.
+                </DialogDescription>
+              </DialogHeader>
+              <form action={handleInvite} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="colleague@example.com"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select value={inviteRole} onValueChange={(v) => setInviteRole(v ?? "employee")}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currentUserRole === "owner" && (
+                        <SelectItem value="admin">Admin</SelectItem>
+                      )}
+                      <SelectItem value="employee">Employee</SelectItem>
+                      <SelectItem value="viewer">Viewer</SelectItem>
+                      {customRoles && customRoles.length > 0 && (
+                        <>
+                          <SelectItem disabled value="__divider__">── Custom Roles ──</SelectItem>
+                          {customRoles.map((cr: any) => (
+                            <SelectItem key={cr._id} value={`custom:${cr._id}`}>
+                              {cr.name}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button type="submit" className="w-full" disabled={pending}>
+                  {pending ? "Sending..." : "Send Invitation"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <Card>
@@ -222,83 +259,92 @@ export default function MembersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {members.map((member: any) => (
-                  <TableRow key={member._id}>
-                    <TableCell className="font-medium">
-                      {member.userName}
-                      {member.userId === userId && (
-                        <span className="text-muted-foreground ml-1">
-                          (you)
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>{member.userEmail}</TableCell>
-                    <TableCell>
-                      <Badge variant={roleBadgeVariant(member.role)}>
-                        {member.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {member.userId !== userId && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            className="inline-flex items-center justify-center rounded-lg size-8 hover:bg-muted"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleRoleChange(member._id, "admin")
-                              }
+                {members.map((member: any) => {
+                  const isOwner = member.role === "owner";
+                  const isSelf = member.userId === userId;
+                  const canEdit = !isOwner && !isSelf && (currentUserRole === "owner" || currentUserRole === "admin");
+                  const canEditThisMember = canEdit && !(currentUserRole === "admin" && member.role === "admin");
+
+                  return (
+                    <TableRow key={member._id}>
+                      <TableCell className="font-medium">
+                        {member.userName}
+                        {isSelf && (
+                          <span className="text-muted-foreground ml-1">(you)</span>
+                        )}
+                      </TableCell>
+                      <TableCell>{member.userEmail}</TableCell>
+                      <TableCell>
+                        <Badge variant={roleBadgeVariant(member.role)}>
+                          {roleLabel(member)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {canEditThisMember && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              className="inline-flex items-center justify-center rounded-lg size-8 hover:bg-muted"
                             >
-                              Make Admin
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleRoleChange(member._id, "editor")
-                              }
-                            >
-                              Make Editor
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleRoleChange(member._id, "viewer")
-                              }
-                            >
-                              Make Viewer
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <AlertDialog>
-                              <AlertDialogTrigger className="relative flex w-full cursor-default items-center rounded-sm px-2 py-1.5 text-sm text-destructive outline-none hover:bg-accent">
-                                Remove
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>
-                                    Remove member?
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    {member.userName} will lose access to this
-                                    store. This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleRemove(member._id)}
-                                  >
-                                    Remove
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                              <MoreHorizontal className="h-4 w-4" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {currentUserRole === "owner" && member.role !== "admin" && (
+                                <DropdownMenuItem
+                                  onClick={() => handleRoleChange(member._id, "admin")}
+                                >
+                                  Make Admin
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem
+                                onClick={() => handleRoleChange(member._id, "employee")}
+                              >
+                                Make Employee
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleRoleChange(member._id, "viewer")}
+                              >
+                                Make Viewer
+                              </DropdownMenuItem>
+                              {customRoles && customRoles.length > 0 && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  {customRoles.map((cr: any) => (
+                                    <DropdownMenuItem
+                                      key={cr._id}
+                                      onClick={() => handleRoleChange(member._id, "custom", cr._id)}
+                                    >
+                                      {cr.name}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </>
+                              )}
+                              <DropdownMenuSeparator />
+                              <AlertDialog>
+                                <AlertDialogTrigger className="relative flex w-full cursor-default items-center rounded-sm px-2 py-1.5 text-sm text-destructive outline-none hover:bg-accent">
+                                  Remove
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Remove member?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      {member.userName} will lose access to this store.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleRemove(member._id)}>
+                                      Remove
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

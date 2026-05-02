@@ -32,7 +32,8 @@ export default async function StoreLayout({
       <Sidebar
         storeId={storeId}
         storeName={store.name}
-        permissions={store.permissions}
+        role={store.role}
+        permissions={store.effectivePermissions}
       />
       <div className="flex-1 overflow-auto">{children}</div>
     </div>

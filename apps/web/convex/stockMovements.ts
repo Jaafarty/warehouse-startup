@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { assertStorePermission } from "./_helpers/permissions";
+import { assertPageFunction } from "./_helpers/permissions";
 import { adjustStock } from "./_helpers/stock";
 
 export const listByProduct = query({
@@ -12,13 +12,7 @@ export const listByProduct = query({
     const product = await ctx.db.get(args.productId);
     if (!product) throw new Error("Product not found");
 
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      product.storeId,
-      "inventory",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, product.storeId, "inventory", "view_history");
 
     const movements = await ctx.db
       .query("stockMovements")
@@ -57,13 +51,7 @@ export const listByStore = query({
     ),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "inventory",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "inventory", "view_history");
 
     let movements;
 
@@ -120,13 +108,7 @@ export const manualAdjust = mutation({
     const product = await ctx.db.get(args.productId);
     if (!product) throw new Error("Product not found");
 
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      product.storeId,
-      "inventory",
-      "edit"
-    );
+    await assertPageFunction(ctx.db, args.userId, product.storeId, "inventory", "adjust_stock");
 
     if (args.quantity <= 0) {
       throw new Error("Quantity must be positive");

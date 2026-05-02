@@ -1,6 +1,7 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { createAuditLog } from "./_helpers/audit";
+import { getEffectivePermissions } from "./_helpers/permissions";
 
 export const create = mutation({
   args: {
@@ -19,17 +20,10 @@ export const create = mutation({
       createdAt: now,
     });
 
-    // Creator becomes admin with full permissions
     await ctx.db.insert("storeMembers", {
       storeId,
       userId: args.userId,
-      role: "admin",
-      permissions: {
-        inventory: "full",
-        sales: "full",
-        analytics: "view",
-        members: "manage",
-      },
+      role: "owner",
       joinedAt: now,
     });
 
@@ -57,11 +51,13 @@ export const listByUser = query({
     const stores = await Promise.all(
       memberships.map(async (m) => {
         const store = await ctx.db.get(m.storeId);
-        return store ? { ...store, role: m.role, permissions: m.permissions } : null;
+        if (!store || !store.isActive) return null;
+        const effectivePermissions = await getEffectivePermissions(ctx.db, m);
+        return { ...store, role: m.role, effectivePermissions };
       })
     );
 
-    return stores.filter((s): s is NonNullable<typeof s> => s !== null && s.isActive);
+    return stores.filter((s): s is NonNullable<typeof s> => s !== null);
   },
 });
 
@@ -80,7 +76,8 @@ export const getById = query({
 
     if (!member) return null;
 
-    return { ...store, role: member.role, permissions: member.permissions };
+    const effectivePermissions = await getEffectivePermissions(ctx.db, member);
+    return { ...store, role: member.role, effectivePermissions };
   },
 });
 
@@ -93,9 +90,8 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const store = await ctx.db.get(args.storeId);
-    if (!store) throw new Error("Store not found");
+    if (!store) throw new ConvexError({ code: "NOT_FOUND", message: "Store not found." });
 
-    // Only owner or admin can update
     const member = await ctx.db
       .query("storeMembers")
       .withIndex("by_store_and_user", (q: any) =>
@@ -103,8 +99,8 @@ export const update = mutation({
       )
       .unique();
 
-    if (!member || member.role !== "admin") {
-      throw new Error("Only admins can update store settings");
+    if (!member || (member.role !== "admin" && member.role !== "owner")) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Only admins and the owner can update store settings." });
     }
 
     const patch: Record<string, any> = {};
@@ -120,6 +116,38 @@ export const update = mutation({
       entityType: "store",
       entityId: args.storeId,
       details: patch,
+    });
+
+    return { success: true };
+  },
+});
+
+export const deleteStore = mutation({
+  args: {
+    storeId: v.id("stores"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const member = await ctx.db
+      .query("storeMembers")
+      .withIndex("by_store_and_user", (q: any) =>
+        q.eq("storeId", args.storeId).eq("userId", args.userId)
+      )
+      .unique();
+
+    if (!member || member.role !== "owner") {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Only the store owner can delete the store." });
+    }
+
+    await ctx.db.patch(args.storeId, { isActive: false });
+
+    await createAuditLog(ctx.db, {
+      storeId: args.storeId,
+      userId: args.userId,
+      action: "store.delete",
+      entityType: "store",
+      entityId: args.storeId,
+      details: {},
     });
 
     return { success: true };

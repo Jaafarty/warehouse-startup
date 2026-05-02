@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
-import { assertStorePermission } from "./_helpers/permissions";
+import { assertPageFunction } from "./_helpers/permissions";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -84,13 +84,7 @@ export const overview = query({
     endDate: v.optional(v.float64()),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "analytics",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "analytics", "view_analytics");
 
     const now = Date.now();
     const start = args.startDate ?? now - 30 * DAY_MS;
@@ -155,13 +149,7 @@ export const topProducts = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "analytics",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "analytics", "view_analytics");
 
     const limit = args.limit ?? 5;
 
@@ -204,13 +192,7 @@ export const salesTrend = query({
     days: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "analytics",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "analytics", "view_analytics");
 
     const days = args.days ?? 14;
     const now = Date.now();
@@ -263,13 +245,7 @@ export const kpis = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "analytics",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "analytics", "view_analytics");
 
     const { sales, saleItems, itemsBySale } = await loadStoreSalesData(
       ctx,
@@ -382,13 +358,7 @@ export const dailyRevenue = query({
     productId: v.optional(v.id("products")),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "analytics",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "analytics", "view_analytics");
 
     const { sales, itemsBySale } = await loadStoreSalesData(ctx, args.storeId);
 
@@ -431,13 +401,7 @@ export const weeklyRevenue = query({
     productId: v.optional(v.id("products")),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "analytics",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "analytics", "view_analytics");
 
     const { sales, itemsBySale } = await loadStoreSalesData(ctx, args.storeId);
 
@@ -484,13 +448,7 @@ export const monthlyRevenue = query({
     productId: v.optional(v.id("products")),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "analytics",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "analytics", "view_analytics");
 
     const { sales, itemsBySale } = await loadStoreSalesData(ctx, args.storeId);
 
@@ -537,13 +495,7 @@ export const topProductsRanked = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "analytics",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "analytics", "view_analytics");
 
     const { sales, itemsBySale } = await loadStoreSalesData(ctx, args.storeId);
 
@@ -596,13 +548,7 @@ export const productShare = query({
     rangeEnd: v.float64(),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "analytics",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "analytics", "view_analytics");
 
     const { sales, itemsBySale } = await loadStoreSalesData(ctx, args.storeId);
 
@@ -648,13 +594,7 @@ export const quantityTrend = query({
     productId: v.optional(v.id("products")),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "analytics",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "analytics", "view_analytics");
 
     const { sales, itemsBySale } = await loadStoreSalesData(ctx, args.storeId);
 
@@ -694,13 +634,7 @@ export const ordersByDayOfWeek = query({
     productId: v.optional(v.id("products")),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "analytics",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "analytics", "view_analytics");
 
     const { sales, itemsBySale } = await loadStoreSalesData(ctx, args.storeId);
 
@@ -733,13 +667,7 @@ export const insights = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "analytics",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "analytics", "view_analytics");
 
     const { sales, saleItems, itemsBySale } = await loadStoreSalesData(
       ctx,
@@ -898,13 +826,7 @@ export const dailySummary = query({
     productId: v.optional(v.id("products")),
   },
   handler: async (ctx, args) => {
-    await assertStorePermission(
-      ctx.db,
-      args.userId,
-      args.storeId,
-      "analytics",
-      "view"
-    );
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "analytics", "view_analytics");
 
     const { sales, itemsBySale } = await loadStoreSalesData(ctx, args.storeId);
 

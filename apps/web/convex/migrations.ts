@@ -1,4 +1,4 @@
-import { internalMutation } from "./_generated/server";
+import { internalMutation, mutation } from "./_generated/server";
 
 /**
  * One-shot backfill for the dual-currency rollout.
@@ -127,5 +127,56 @@ export const backfillCurrency = internalMutation({
     }
 
     return touched;
+  },
+});
+
+// Run once: migrate editor→employee, assign owner to store creator
+export const migrateRolesV2 = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const stores = await ctx.db.query("stores").collect();
+    let migrated = 0;
+
+    for (const store of stores) {
+      const members = await ctx.db
+        .query("storeMembers")
+        .withIndex("by_store", (q: any) => q.eq("storeId", store._id))
+        .collect();
+
+      for (const member of members) {
+        const patch: Record<string, any> = {};
+
+        // Migrate editor → employee
+        if ((member.role as string) === "editor") {
+          patch.role = "employee";
+        }
+
+        // Assign owner to the store creator if no owner exists
+        const hasOwner = members.some((m: any) => m.role === "owner");
+        if (!hasOwner && member.userId === store.ownerId && member.role === "admin") {
+          patch.role = "owner";
+        }
+
+        if (Object.keys(patch).length > 0) {
+          await ctx.db.patch(member._id, patch);
+          migrated++;
+        }
+      }
+
+      // Migrate invitations: editor → employee
+      const invitations = await ctx.db
+        .query("storeInvitations")
+        .withIndex("by_store", (q: any) => q.eq("storeId", store._id))
+        .collect();
+
+      for (const invite of invitations) {
+        if ((invite.role as string) === "editor") {
+          await ctx.db.patch(invite._id, { role: "employee" });
+          migrated++;
+        }
+      }
+    }
+
+    return { migrated };
   },
 });
