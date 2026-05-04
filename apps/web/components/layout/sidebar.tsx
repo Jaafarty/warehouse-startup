@@ -2,20 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Package,
-  ShoppingCart,
-  Users,
-  Settings,
-  Bell,
-  BarChart3,
-  RotateCcw,
-  DollarSign,
-  ShieldCheck,
-} from "lucide-react";
+import { LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { PAGE_KEYS } from "@ware-house/shared";
+import { PAGE_META } from "@/components/permissions/page-meta";
 import type { StorePermissions } from "@ware-house/shared";
 
 interface SidebarProps {
@@ -27,70 +18,23 @@ interface SidebarProps {
 
 export function Sidebar({ storeId, storeName, role, permissions }: SidebarProps) {
   const pathname = usePathname();
-  const base = `/store/${storeId}`;
+  const basePath = `/store/${storeId}`;
 
-  // Owner and admin always have full access (matches DEFAULT_PERMISSIONS).
-  // Defensive fallback: if permissions prop is missing, deny pages for non-privileged roles.
   const isPrivileged = role === "owner" || role === "admin";
-  const can = (page: keyof StorePermissions) =>
-    isPrivileged || (permissions?.[page]?.enabled ?? false);
 
-  const links = [
-    {
-      href: base,
-      label: "Dashboard",
-      icon: LayoutDashboard,
-      show: true,
-    },
-    {
-      href: `${base}/inventory`,
-      label: "Inventory",
-      icon: Package,
-      show: can("inventory"),
-    },
-    {
-      href: `${base}/sales`,
-      label: "Sales",
-      icon: ShoppingCart,
-      show: can("sales"),
-    },
-    {
-      href: `${base}/returns`,
-      label: "Returns",
-      icon: RotateCcw,
-      show: can("returns"),
-    },
-    {
-      href: `${base}/analytics`,
-      label: "Analytics",
-      icon: BarChart3,
-      show: can("analytics"),
-    },
-    {
-      href: `${base}/members`,
-      label: "Members",
-      icon: Users,
-      show: can("members"),
-    },
-    {
-      href: `${base}/roles`,
-      label: "Roles",
-      icon: ShieldCheck,
-      show: role === "owner" || role === "admin",
-    },
-    {
-      href: `${base}/exchange-rate`,
-      label: "Exchange Rate",
-      icon: DollarSign,
-      show: true,
-    },
-    {
-      href: `${base}/settings`,
-      label: "Settings",
-      icon: Settings,
-      show: can("settings"),
-    },
-  ];
+  const pageLinks = PAGE_KEYS
+    .filter(page => isPrivileged || (permissions?.[page]?.enabled ?? false))
+    .map(page => {
+      const slug = page === "exchange_rate" ? "exchange-rate" : page;
+      const href = `${basePath}/${slug}`;
+      return {
+        page,
+        label: PAGE_META[page].label,
+        icon: PAGE_META[page].icon,
+        href,
+        active: pathname.startsWith(href),
+      };
+    });
 
   return (
     <aside className="flex h-full w-64 flex-col border-r bg-card">
@@ -103,25 +47,28 @@ export function Sidebar({ storeId, storeName, role, permissions }: SidebarProps)
         <p className="font-semibold truncate">{storeName}</p>
       </div>
       <nav className="flex-1 space-y-1 p-3">
-        {links
-          .filter((l) => l.show)
-          .map((link) => {
-            const isActive =
-              link.href === base
-                ? pathname === base
-                : pathname.startsWith(link.href);
-            return (
-              <Link key={link.href} href={link.href}>
-                <Button
-                  variant={isActive ? "secondary" : "ghost"}
-                  className={cn("w-full justify-start gap-2")}
-                >
-                  <link.icon className="h-4 w-4" />
-                  {link.label}
-                </Button>
-              </Link>
-            );
-          })}
+        {/* Dashboard — always visible, not in PAGE_KEYS */}
+        <Link href={basePath}>
+          <Button
+            variant={pathname === basePath ? "secondary" : "ghost"}
+            className={cn("w-full justify-start gap-2")}
+          >
+            <LayoutDashboard className="h-4 w-4" />
+            Dashboard
+          </Button>
+        </Link>
+
+        {pageLinks.map(link => (
+          <Link key={link.href} href={link.href}>
+            <Button
+              variant={link.active ? "secondary" : "ghost"}
+              className={cn("w-full justify-start gap-2")}
+            >
+              <link.icon className="h-4 w-4" />
+              {link.label}
+            </Button>
+          </Link>
+        ))}
       </nav>
     </aside>
   );
