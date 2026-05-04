@@ -2,6 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { Topbar } from "@/components/layout/topbar";
 import { getCurrentUserId } from "@/lib/auth";
+import ConvexErrorBoundary from "@/components/error-boundary";
 
 export default async function DashboardLayout({
     children,
@@ -30,7 +31,9 @@ export default async function DashboardLayout({
     return (
         <div className="min-h-screen flex flex-col">
             <Topbar userName={name} userEmail={email} />
-            <main className="flex-1">{children}</main>
+            <main className="flex-1">
+          <ConvexErrorBoundary>{children}</ConvexErrorBoundary>
+        </main>
         </div>
     );
 }
