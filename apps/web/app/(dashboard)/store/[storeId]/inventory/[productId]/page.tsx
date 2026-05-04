@@ -350,17 +350,19 @@ export default function ProductDetailPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="categoryId">Category</Label>
-                <NewCategoryDialog
-                  storeId={storeId}
-                  triggerLabel="+ New"
-                  triggerClassName="text-xs font-medium text-muted-foreground hover:text-foreground"
-                  onCreated={(name) => {
-                    const created = categories?.find(
-                      (c: any) => c.name.toLowerCase() === name.toLowerCase()
-                    );
-                    if (created) setCategoryId(created._id as string);
-                  }}
-                />
+                {can("create_category") && (
+                  <NewCategoryDialog
+                    storeId={storeId}
+                    triggerLabel="+ New"
+                    triggerClassName="text-xs font-medium text-muted-foreground hover:text-foreground"
+                    onCreated={(name) => {
+                      const created = categories?.find(
+                        (c: any) => c.name.toLowerCase() === name.toLowerCase()
+                      );
+                      if (created) setCategoryId(created._id as string);
+                    }}
+                  />
+                )}
               </div>
               <input type="hidden" name="categoryId" value={categoryId} />
               <Select value={categoryId} onValueChange={(v) => setCategoryId(v ?? "")}>

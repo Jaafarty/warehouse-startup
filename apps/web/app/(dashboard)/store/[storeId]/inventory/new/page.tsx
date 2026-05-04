@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
+import { NewCategoryDialog } from "@/components/new-category-dialog";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
 import { createProduct } from "@/app/actions/inventory";
@@ -31,6 +32,11 @@ import { toast } from "sonner";
 export default function NewProductPage() {
   const { storeId } = useParams<{ storeId: string }>();
   const { userId } = useCurrentUser();
+
+  const store = useQuery(api.stores.getById, userId ? { storeId: storeId as any, userId: userId as any } : "skip");
+  const isPrivileged = store?.role === "owner" || store?.role === "admin";
+  const invFns = store?.effectivePermissions?.inventory?.functions ?? {};
+  const can = (fn: string) => isPrivileged || (invFns[fn] ?? false);
 
   const categories = useQuery(
     api.categories.list,
@@ -102,7 +108,22 @@ export default function NewProductPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="categoryId">Category</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="categoryId">Category</Label>
+                {can("create_category") && (
+                  <NewCategoryDialog
+                    storeId={storeId}
+                    triggerLabel="+ New"
+                    triggerClassName="text-xs font-medium text-muted-foreground hover:text-foreground"
+                    onCreated={(name) => {
+                      const created = categories?.find(
+                        (c: any) => c.name.toLowerCase() === name.toLowerCase()
+                      );
+                      if (created) setCategoryId(created._id as string);
+                    }}
+                  />
+                )}
+              </div>
               <Select name="categoryId" value={categoryId} onValueChange={(v) => setCategoryId(v ?? "")}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a category">
