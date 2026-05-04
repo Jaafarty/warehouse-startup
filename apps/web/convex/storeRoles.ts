@@ -63,6 +63,7 @@ export const listByStore = query({
 
     return roles.map((role: any) => ({
       ...role,
+      permissions: mergeWithDefaults(role.permissions),
       memberCount: allMembers.filter((m: any) => m.customRoleId === role._id).length,
     }));
   },

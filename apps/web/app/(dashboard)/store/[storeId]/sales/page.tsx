@@ -58,6 +58,14 @@ export default function SalesPage() {
       : "skip"
   );
 
+  const store = useQuery(
+    api.stores.getById,
+    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+  );
+  const isPrivileged = store?.role === "owner" || store?.role === "admin";
+  const canCreateSale =
+    isPrivileged || (store?.effectivePermissions?.sales?.functions?.create_sale ?? false);
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -67,12 +75,14 @@ export default function SalesPage() {
             {sales ? `${sales.length} sale${sales.length !== 1 ? "s" : ""}` : "Loading..."}
           </p>
         </div>
-        <Link href={`/store/${storeId}/sales/new`}>
-          <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            New Sale
-          </Button>
-        </Link>
+        {canCreateSale && (
+          <Link href={`/store/${storeId}/sales/new`}>
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              New Sale
+            </Button>
+          </Link>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -116,12 +126,14 @@ export default function SalesPage() {
               <p className="text-sm text-muted-foreground mt-1 mb-4">
                 Create your first sale to start tracking revenue.
               </p>
-              <Link href={`/store/${storeId}/sales/new`}>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Sale
-                </Button>
-              </Link>
+              {canCreateSale && (
+                <Link href={`/store/${storeId}/sales/new`}>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Sale
+                  </Button>
+                </Link>
+              )}
             </div>
           ) : (
             <Table>
