@@ -22,7 +22,7 @@ import {
   Package,
 } from "lucide-react";
 import { InventoryImportExport } from "@/components/inventory-import-export";
-import { NewCategoryDialog } from "@/components/new-category-dialog";
+import { ManageCategoriesDialog } from "@/components/inventory/manage-categories-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -156,11 +156,13 @@ export default function InventoryPage() {
               canExport={can("export_products")}
             />
           )}
-          {can("create_category") && (
-            <NewCategoryDialog
+          {(can("create_category") || can("edit_category") || can("remove_category")) && (
+            <ManageCategoriesDialog
               storeId={storeId}
-              triggerLabel="+ Category"
-              triggerClassName="inline-flex items-center justify-center rounded-lg border px-2.5 h-8 text-sm font-medium hover:bg-muted"
+              userId={userId!}
+              canCreate={can("create_category")}
+              canEdit={can("edit_category")}
+              canRemove={can("remove_category")}
             />
           )}
           {can("add_product") && (
