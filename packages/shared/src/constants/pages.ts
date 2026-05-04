@@ -60,10 +60,7 @@ export const FUNCTION_DEPENDENCIES: Array<{
 }> = [
   {
     when: ["returns", "process_return"],
-    requires: [
-      ["sales", "view_list"],
-      ["inventory", "view_list"],
-    ],
+    requires: [["sales", "view_list"]],
   },
 ];
 
