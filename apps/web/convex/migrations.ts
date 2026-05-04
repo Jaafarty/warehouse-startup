@@ -1,4 +1,5 @@
 import { internalMutation, mutation } from "./_generated/server";
+import { mergeWithDefaults } from "./_helpers/permissions";
 
 /**
  * One-shot backfill for the dual-currency rollout.
@@ -127,6 +128,22 @@ export const backfillCurrency = internalMutation({
     }
 
     return touched;
+  },
+});
+
+// Run once: hydrate custom role docs with any new page/function keys added since they were created.
+// npx convex run migrations:backfillRolesV3
+export const backfillRolesV3 = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const roles = await ctx.db.query("storeRoles").collect();
+    let patched = 0;
+    for (const role of roles) {
+      const hydrated = mergeWithDefaults(role.permissions as Record<string, any>);
+      await ctx.db.patch(role._id, { permissions: hydrated });
+      patched++;
+    }
+    return { patched };
   },
 });
 
