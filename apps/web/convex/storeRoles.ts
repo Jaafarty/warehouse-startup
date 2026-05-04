@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { assertPageFunction } from "./_helpers/permissions";
+import { assertPageFunction, mergeWithDefaults } from "./_helpers/permissions";
 import { createAuditLog } from "./_helpers/audit";
 import { PAGE_KEYS, PAGE_FUNCTIONS, LOCKED_FUNCTIONS, FUNCTION_DEPENDENCIES } from "@ware-house/shared";
 
@@ -82,12 +82,12 @@ export const create = mutation({
       throw new ConvexError({ code: "INVALID", message: "Role name cannot be empty." });
     }
 
-    const coercedPermissions = coercePermissions(args.permissions);
+    const finalPermissions = mergeWithDefaults(coercePermissions(args.permissions));
 
     const roleId = await ctx.db.insert("storeRoles", {
       storeId: args.storeId,
       name: args.name.trim(),
-      permissions: coercedPermissions,
+      permissions: finalPermissions,
       createdBy: args.userId,
       createdAt: Date.now(),
     });
@@ -123,7 +123,7 @@ export const update = mutation({
 
     const patch: Record<string, any> = {};
     if (args.name !== undefined) patch.name = args.name.trim();
-    if (args.permissions !== undefined) patch.permissions = coercePermissions(args.permissions);
+    if (args.permissions !== undefined) patch.permissions = mergeWithDefaults(coercePermissions(args.permissions));
 
     await ctx.db.patch(args.roleId, patch);
 

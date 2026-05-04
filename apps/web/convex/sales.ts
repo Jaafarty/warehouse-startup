@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { assertPageFunction } from "./_helpers/permissions";
 import { adjustStock } from "./_helpers/stock";
@@ -94,7 +94,7 @@ export const get = query({
   },
   handler: async (ctx, args) => {
     const sale = await ctx.db.get(args.saleId);
-    if (!sale) throw new Error("Sale not found");
+    if (!sale) throw new ConvexError({ code: "NOT_FOUND", message: "Sale not found." });
 
     await assertPageFunction(ctx.db, args.userId, sale.storeId, "sales", "view_detail");
 

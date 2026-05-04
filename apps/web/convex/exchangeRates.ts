@@ -1,14 +1,17 @@
 import { v, ConvexError } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
-import { assertStoreMember, assertPageFunction } from "./_helpers/permissions";
+import { assertPageFunction, assertAnyPageFunction } from "./_helpers/permissions";
 import { createAuditLog } from "./_helpers/audit";
 import { getCurrentRateRow } from "./_helpers/exchangeRate";
 
 export const getCurrent = query({
   args: { storeId: v.id("stores"), userId: v.id("users") },
   handler: async (ctx, args) => {
-    await assertStoreMember(ctx.db, args.userId, args.storeId);
+    await assertAnyPageFunction(ctx.db, args.userId, args.storeId, [
+      ["exchange_rate", "view_list"],
+      ["sales", "create_sale"],
+    ]);
     return getCurrentRateRow(ctx.db, args.storeId);
   },
 });

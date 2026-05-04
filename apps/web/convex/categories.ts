@@ -70,8 +70,10 @@ export const update = mutation({
     await assertPageFunction(ctx.db, args.userId, category.storeId, "inventory", "edit_category");
 
     const patch: Record<string, any> = {};
-    if (args.name !== undefined) patch.name = args.name;
+    if (args.name !== undefined) patch.name = args.name.trim();
     if (args.description !== undefined) patch.description = args.description;
+
+    if (Object.keys(patch).length === 0) return { success: true };
 
     await ctx.db.patch(args.categoryId, patch);
 
@@ -81,7 +83,7 @@ export const update = mutation({
       action: "category.update",
       entityType: "category",
       entityId: args.categoryId,
-      details: { name: args.name },
+      details: { name: args.name ?? category.name, description: args.description },
     });
 
     return { success: true };
