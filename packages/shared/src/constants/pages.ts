@@ -6,9 +6,9 @@ export const PAGE_KEYS = [
   "returns",
   "analytics",
   "members",
-  "settings",
   "roles",
   "exchange_rate",
+  "settings",
 ] as const;
 
 export type PageKey = (typeof PAGE_KEYS)[number];
