@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { assertPageFunction } from "./_helpers/permissions";
+import { assertPageFunction, assertAnyPageFunction } from "./_helpers/permissions";
 import { adjustStock } from "./_helpers/stock";
 import { createAuditLog } from "./_helpers/audit";
 
@@ -13,7 +13,10 @@ export const list = query({
     search: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await assertPageFunction(ctx.db, args.userId, args.storeId, "inventory", "view_list");
+    await assertAnyPageFunction(ctx.db, args.userId, args.storeId, [
+      ["inventory", "view_list"],
+      ["sales", "create_sale"],
+    ]);
 
     let products;
 

@@ -54,9 +54,25 @@ export default function SaleDetailPage() {
     userId ? { saleId: saleId as any, userId: userId as any } : "skip"
   );
 
+  const store = useQuery(
+    api.stores.getById,
+    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+  );
+  const isPrivileged = store?.role === "owner" || store?.role === "admin";
+  const returnsPerms = store?.effectivePermissions?.returns;
+  const returnsEnabled = returnsPerms?.enabled ?? false;
+  const canViewReturns =
+    isPrivileged ||
+    (returnsEnabled && (returnsPerms?.functions?.view_list ?? false));
+  const canProcessReturn =
+    isPrivileged ||
+    (returnsEnabled && (returnsPerms?.functions?.process_return ?? false));
+
   const returns = useQuery(
     api.returns.getBySale,
-    userId ? { saleId: saleId as any, userId: userId as any } : "skip"
+    userId && canViewReturns
+      ? { saleId: saleId as any, userId: userId as any }
+      : "skip"
   );
 
   if (sale === undefined) {
@@ -110,7 +126,7 @@ export default function SaleDetailPage() {
             </p>
           </div>
         </div>
-        {hasReturnableItems && sale.status !== "returned" && (
+        {hasReturnableItems && sale.status !== "returned" && canProcessReturn && (
           <Link
             href={`/store/${storeId}/sales/${saleId}/return`}
             className="inline-flex items-center justify-center rounded-lg border px-2.5 h-8 text-sm font-medium hover:bg-muted"
@@ -263,6 +279,7 @@ export default function SaleDetailPage() {
       </Card>
 
       {/* Returns History */}
+      {canViewReturns && (
       <Card>
         <CardHeader>
           <CardTitle>Returns history</CardTitle>
@@ -331,6 +348,7 @@ export default function SaleDetailPage() {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
