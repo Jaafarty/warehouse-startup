@@ -96,7 +96,7 @@ export const get = query({
     const sale = await ctx.db.get(args.saleId);
     if (!sale) throw new ConvexError({ code: "NOT_FOUND", message: "Sale not found." });
 
-    await assertPageFunction(ctx.db, args.userId, sale.storeId, "sales", "view_detail");
+    await assertPageFunction(ctx.db, args.userId, sale.storeId, "sales", "view_list");
 
     const items = await ctx.db
       .query("saleItems")

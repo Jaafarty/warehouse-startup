@@ -59,8 +59,7 @@ export const PAGE_META: Record<
 
 export const FUNCTION_LABELS: Record<string, string> = {
   view_list: "View list",
-  view_detail: "View detail",
-  add_product: "Add product",
+add_product: "Add product",
   edit_product: "Edit product",
   archive_product: "Archive product",
   import_products: "Import products",
