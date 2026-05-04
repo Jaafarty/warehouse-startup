@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values";
 import { DatabaseReader } from "../_generated/server";
 import { Id, Doc } from "../_generated/dataModel";
-import { DEFAULT_PERMISSIONS, StorePermissions, BuiltInRole, BUILT_IN_ROLES } from "@ware-house/shared";
+import { DEFAULT_PERMISSIONS, StorePermissions, BuiltInRole, BUILT_IN_ROLES, PAGE_KEYS, PAGE_FUNCTIONS } from "@ware-house/shared";
 
 export async function getStoreMember(
   db: DatabaseReader,
@@ -35,9 +35,25 @@ export async function getEffectivePermissions(
     if (!customRole) {
       throw new ConvexError({ code: "FORBIDDEN", message: "Your assigned role no longer exists." });
     }
-    return customRole.permissions as StorePermissions;
+    return mergeWithDefaults(customRole.permissions as Record<string, any>);
   }
-  return DEFAULT_PERMISSIONS.viewer;
+  throw new ConvexError({ code: "FORBIDDEN", message: "Unrecognized role. Contact your store owner." });
+}
+
+export function mergeWithDefaults(stored: Record<string, any>): StorePermissions {
+  const result: Record<string, any> = {};
+  for (const page of PAGE_KEYS) {
+    const storedPage = stored[page];
+    const fns: Record<string, boolean> = {};
+    for (const fn of PAGE_FUNCTIONS[page]) {
+      fns[fn] = storedPage?.functions?.[fn] ?? false;
+    }
+    result[page] = {
+      enabled: storedPage?.enabled ?? false,
+      functions: fns,
+    };
+  }
+  return result as StorePermissions;
 }
 
 export async function assertStoreMember(
@@ -66,4 +82,21 @@ export async function assertPageFunction(
     throw new ConvexError({ code: "FORBIDDEN", message: "You don't have permission to do that." });
   }
   return member;
+}
+
+export async function assertAnyPageFunction(
+  db: DatabaseReader,
+  userId: Id<"users">,
+  storeId: Id<"stores">,
+  options: Array<[string, string]>
+): Promise<Doc<"storeMembers">> {
+  const member = await assertStoreMember(db, userId, storeId);
+  const perms = await getEffectivePermissions(db, member);
+  for (const [page, fn] of options) {
+    const pagePerms = perms[page as keyof typeof perms];
+    if (pagePerms?.enabled && pagePerms.functions[fn]) {
+      return member;
+    }
+  }
+  throw new ConvexError({ code: "FORBIDDEN", message: "You don't have permission to do that." });
 }
