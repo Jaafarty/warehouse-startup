@@ -1,22 +1,54 @@
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getStoreMember } from "./_helpers/permissions";
+import { assertPageFunction } from "./_helpers/permissions";
 import { createAuditLog } from "./_helpers/audit";
+import { PAGE_KEYS, PAGE_FUNCTIONS, LOCKED_FUNCTIONS, FUNCTION_DEPENDENCIES } from "@ware-house/shared";
 
-async function assertCanManageRoles(ctx: any, userId: any, storeId: any) {
-  const member = await getStoreMember(ctx.db, userId, storeId);
-  if (!member || (member.role !== "owner" && member.role !== "admin")) {
-    throw new ConvexError({ code: "FORBIDDEN", message: "Only owners and admins can manage custom roles." });
+const permissionsFunctionValidator = v.object(
+  Object.fromEntries(
+    PAGE_KEYS.map((page) => [
+      page,
+      v.object({
+        enabled: v.boolean(),
+        functions: v.object(
+          Object.fromEntries(PAGE_FUNCTIONS[page].map((fn) => [fn, v.boolean()]))
+        ),
+      }),
+    ])
+  )
+);
+
+function coercePermissions(perms: any): any {
+  // Deep copy
+  const p = JSON.parse(JSON.stringify(perms));
+  // 1. Lock functions: for any enabled page, force its locked functions to true
+  for (const page of PAGE_KEYS) {
+    if (p[page]?.enabled) {
+      for (const fn of (LOCKED_FUNCTIONS[page] ?? [])) {
+        p[page].functions[fn] = true;
+      }
+    }
   }
-  return member;
+  // 2. Dependencies: if a "when" fn is true, force all "requires" to be enabled+true
+  for (const dep of FUNCTION_DEPENDENCIES) {
+    const [whenPage, whenFn] = dep.when;
+    if (p[whenPage]?.enabled && p[whenPage]?.functions?.[whenFn]) {
+      for (const [reqPage, reqFn] of dep.requires) {
+        if (!p[reqPage]) p[reqPage] = { enabled: false, functions: {} };
+        p[reqPage].enabled = true;
+        if (!p[reqPage].functions) p[reqPage].functions = {};
+        p[reqPage].functions[reqFn] = true;
+      }
+    }
+  }
+  return p;
 }
 
 export const listByStore = query({
   args: { storeId: v.id("stores"), userId: v.id("users") },
   handler: async (ctx, args) => {
-    const member = await getStoreMember(ctx.db, args.userId, args.storeId);
-    if (!member) throw new ConvexError({ code: "NOT_MEMBER", message: "You no longer have access to this store." });
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "roles", "view_list");
 
     const roles = await ctx.db
       .query("storeRoles")
@@ -41,19 +73,21 @@ export const create = mutation({
     storeId: v.id("stores"),
     userId: v.id("users"),
     name: v.string(),
-    permissions: v.any(),
+    permissions: permissionsFunctionValidator,
   },
   handler: async (ctx, args) => {
-    await assertCanManageRoles(ctx, args.userId, args.storeId);
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "roles", "create_role");
 
     if (!args.name.trim()) {
       throw new ConvexError({ code: "INVALID", message: "Role name cannot be empty." });
     }
 
+    const coercedPermissions = coercePermissions(args.permissions);
+
     const roleId = await ctx.db.insert("storeRoles", {
       storeId: args.storeId,
       name: args.name.trim(),
-      permissions: args.permissions,
+      permissions: coercedPermissions,
       createdBy: args.userId,
       createdAt: Date.now(),
     });
@@ -77,10 +111,10 @@ export const update = mutation({
     userId: v.id("users"),
     roleId: v.id("storeRoles"),
     name: v.optional(v.string()),
-    permissions: v.optional(v.any()),
+    permissions: v.optional(permissionsFunctionValidator),
   },
   handler: async (ctx, args) => {
-    await assertCanManageRoles(ctx, args.userId, args.storeId);
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "roles", "edit_role");
 
     const role = await ctx.db.get(args.roleId);
     if (!role || role.storeId !== args.storeId) {
@@ -89,7 +123,7 @@ export const update = mutation({
 
     const patch: Record<string, any> = {};
     if (args.name !== undefined) patch.name = args.name.trim();
-    if (args.permissions !== undefined) patch.permissions = args.permissions;
+    if (args.permissions !== undefined) patch.permissions = coercePermissions(args.permissions);
 
     await ctx.db.patch(args.roleId, patch);
 
@@ -113,7 +147,7 @@ export const remove = mutation({
     roleId: v.id("storeRoles"),
   },
   handler: async (ctx, args) => {
-    await assertCanManageRoles(ctx, args.userId, args.storeId);
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "roles", "remove_role");
 
     const role = await ctx.db.get(args.roleId);
     if (!role || role.storeId !== args.storeId) {

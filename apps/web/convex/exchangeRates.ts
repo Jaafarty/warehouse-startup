@@ -1,15 +1,14 @@
 import { v, ConvexError } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
-import { getStoreMember } from "./_helpers/permissions";
+import { assertStoreMember, assertPageFunction } from "./_helpers/permissions";
 import { createAuditLog } from "./_helpers/audit";
 import { getCurrentRateRow } from "./_helpers/exchangeRate";
 
 export const getCurrent = query({
   args: { storeId: v.id("stores"), userId: v.id("users") },
   handler: async (ctx, args) => {
-    const member = await getStoreMember(ctx.db, args.userId, args.storeId);
-    if (!member) return null;
+    await assertStoreMember(ctx.db, args.userId, args.storeId);
     return getCurrentRateRow(ctx.db, args.storeId);
   },
 });
@@ -21,10 +20,7 @@ export const listHistory = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
-    const member = await getStoreMember(ctx.db, args.userId, args.storeId);
-    if (!member) {
-      return { page: [], isDone: true, continueCursor: "" };
-    }
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "exchange_rate", "view_list");
 
     const result = await ctx.db
       .query("exchangeRates")
@@ -60,11 +56,7 @@ export const setRate = mutation({
       throw new ConvexError({ code: "INVALID", message: "Rate must be a positive number." });
     }
 
-    const member = await getStoreMember(ctx.db, args.userId, args.storeId);
-    if (!member) throw new ConvexError({ code: "NOT_MEMBER", message: "You no longer have access to this store." });
-    if (member.role !== "admin" && member.role !== "owner") {
-      throw new ConvexError({ code: "FORBIDDEN", message: "Only admins and the owner can change the exchange rate." });
-    }
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "exchange_rate", "set_rate");
 
     const now = Date.now();
     const id = await ctx.db.insert("exchangeRates", {

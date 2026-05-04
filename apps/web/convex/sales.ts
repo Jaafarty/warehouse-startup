@@ -96,7 +96,7 @@ export const get = query({
     const sale = await ctx.db.get(args.saleId);
     if (!sale) throw new Error("Sale not found");
 
-    await assertPageFunction(ctx.db, args.userId, sale.storeId, "sales", "view_list");
+    await assertPageFunction(ctx.db, args.userId, sale.storeId, "sales", "view_detail");
 
     const items = await ctx.db
       .query("saleItems")

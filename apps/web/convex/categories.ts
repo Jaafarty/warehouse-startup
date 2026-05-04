@@ -1,6 +1,8 @@
 import { v } from "convex/values";
+import { ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { assertPageFunction } from "./_helpers/permissions";
+import { createAuditLog } from "./_helpers/audit";
 
 export const list = query({
   args: { storeId: v.id("stores"), userId: v.id("users") },
@@ -32,14 +34,25 @@ export const create = mutation({
       .unique();
 
     if (existing) {
-      throw new Error("A category with this name already exists");
+      throw new ConvexError({ code: "CONFLICT", message: "A category with this name already exists." });
     }
 
-    return ctx.db.insert("categories", {
+    const id = await ctx.db.insert("categories", {
       storeId: args.storeId,
       name: args.name,
       description: args.description,
     });
+
+    await createAuditLog(ctx.db, {
+      storeId: args.storeId,
+      userId: args.userId,
+      action: "category.create",
+      entityType: "category",
+      entityId: id,
+      details: { name: args.name },
+    });
+
+    return id;
   },
 });
 
@@ -52,15 +65,25 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const category = await ctx.db.get(args.categoryId);
-    if (!category) throw new Error("Category not found");
+    if (!category) throw new ConvexError({ code: "NOT_FOUND", message: "Category not found." });
 
-    await assertPageFunction(ctx.db, args.userId, category.storeId, "inventory", "create_category");
+    await assertPageFunction(ctx.db, args.userId, category.storeId, "inventory", "edit_category");
 
     const patch: Record<string, any> = {};
     if (args.name !== undefined) patch.name = args.name;
     if (args.description !== undefined) patch.description = args.description;
 
     await ctx.db.patch(args.categoryId, patch);
+
+    await createAuditLog(ctx.db, {
+      storeId: category.storeId,
+      userId: args.userId,
+      action: "category.update",
+      entityType: "category",
+      entityId: args.categoryId,
+      details: { name: args.name },
+    });
+
     return { success: true };
   },
 });
@@ -72,9 +95,9 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     const category = await ctx.db.get(args.categoryId);
-    if (!category) throw new Error("Category not found");
+    if (!category) throw new ConvexError({ code: "NOT_FOUND", message: "Category not found." });
 
-    await assertPageFunction(ctx.db, args.userId, category.storeId, "inventory", "create_category");
+    await assertPageFunction(ctx.db, args.userId, category.storeId, "inventory", "remove_category");
 
     // Remove category reference from products
     const products = await ctx.db
@@ -89,6 +112,16 @@ export const remove = mutation({
     }
 
     await ctx.db.delete(args.categoryId);
+
+    await createAuditLog(ctx.db, {
+      storeId: category.storeId,
+      userId: args.userId,
+      action: "category.remove",
+      entityType: "category",
+      entityId: args.categoryId,
+      details: { name: category.name },
+    });
+
     return { success: true };
   },
 });
