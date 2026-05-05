@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 import { assertPageFunction } from "./_helpers/permissions";
 import { adjustStock } from "./_helpers/stock";
 
@@ -21,11 +22,11 @@ export const listByProduct = query({
       .collect();
 
     // Attach performer names
-    const userIds = [...new Set(movements.map((m: any) => m.performedBy))];
+    const userIds = [...new Set(movements.map((m: any) => m.performedBy as Id<"users">))];
     const users: Record<string, string> = {};
     for (const uid of userIds) {
-      const user = await ctx.db.get(uid as any);
-      if (user) users[uid as string] = (user as any).name;
+      const user = await ctx.db.get(uid);
+      if (user) users[String(uid)] = user.name;
     }
 
     return movements.map((m: any) => ({

@@ -21,8 +21,8 @@ export async function getEffectivePermissions(
   member: Doc<"storeMembers">
 ): Promise<StorePermissions> {
   const role = member.role as string;
-  const legacyBuiltIns = [...BUILT_IN_ROLES, "editor"] as const;
-  if (legacyBuiltIns.includes(role as any)) {
+  const legacyBuiltIns: readonly string[] = [...BUILT_IN_ROLES, "editor"];
+  if (legacyBuiltIns.includes(role)) {
     // editor is legacy alias for employee
     const key = role === "editor" ? "employee" : role;
     return DEFAULT_PERMISSIONS[key as BuiltInRole];

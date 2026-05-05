@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { Sidebar } from "@/components/layout/sidebar";
 import { getCurrentUserId } from "@/lib/auth";
 
@@ -18,10 +19,10 @@ export default async function StoreLayout({
 
   const { storeId } = await params;
 
-  const store = await convex.query(api.stores.getById, {
-    storeId: storeId as any,
-    userId,
-  });
+const store = await convex.query(api.stores.getById, {
+  storeId: storeId as Id<"stores">,
+  userId,
+});
 
   if (!store) {
     redirect("/dashboard");

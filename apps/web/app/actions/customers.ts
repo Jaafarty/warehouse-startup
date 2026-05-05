@@ -2,6 +2,7 @@
 
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { requireCurrentUserId } from "@/lib/auth";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -18,7 +19,7 @@ export async function createCustomer(
 
   try {
     const result = await convex.mutation(api.customers.create, {
-      storeId: storeId as any,
+      storeId: storeId as Id<"stores">,
       userId,
       name: name.trim(),
       phone: phone.trim(),

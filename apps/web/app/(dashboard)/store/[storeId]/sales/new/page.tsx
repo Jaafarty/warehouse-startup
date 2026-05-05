@@ -6,6 +6,7 @@ import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { createSale } from "@/app/actions/sales";
 import { formatCurrency } from "@ware-house/shared";
 import { ArrowLeft, Plus, Trash2, ShoppingCart } from "lucide-react";
@@ -73,8 +74,8 @@ export default function NewSalePage() {
     api.products.list,
     userId
       ? {
-          storeId: storeId as any,
-          userId: userId as any,
+          storeId: storeId as Id<"stores">,
+          userId: userId,
           includeArchived: false,
         }
       : "skip"
@@ -82,7 +83,7 @@ export default function NewSalePage() {
 
   const rateRow = useQuery(
     api.exchangeRates.getCurrent,
-    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+    userId ? { storeId: storeId as Id<"stores">, userId: userId } : "skip"
   );
   const rate = rateRow?.rate ?? 1;
 
@@ -98,7 +99,7 @@ export default function NewSalePage() {
   const paidUSD = Number(paidUSDStr) || 0;
   const paidLBP = Number(paidLBPStr) || 0;
 
-  function defaultCurrencyFor(p: any): Currency {
+  function defaultCurrencyFor(p: { sellingPriceUSD?: number; sellingPrice?: number; sellingPriceLBP?: number }): Currency {
     const usd = p.sellingPriceUSD ?? p.sellingPrice;
     const lbp = p.sellingPriceLBP;
     if (usd !== undefined && lbp === undefined) return "USD";
@@ -109,7 +110,7 @@ export default function NewSalePage() {
   function addToCart() {
     if (!selectedProduct || !products) return;
 
-    const product = products.find((p: any) => p._id === selectedProduct);
+    const product = products.find((p) => p._id === selectedProduct);
     if (!product) return;
 
     if (product.quantity <= 0) {
@@ -213,7 +214,7 @@ export default function NewSalePage() {
   }
 
   const availableProducts = products?.filter(
-    (p: any) => p.quantity > 0 && !p.isArchived
+    (p) => p.quantity > 0 && !p.isArchived
   );
 
   return (
@@ -285,14 +286,14 @@ export default function NewSalePage() {
                 <SelectValue placeholder="Select a product">
                   {(value: string) =>
                     value
-                      ? availableProducts?.find((p: any) => p._id === value)
+                      ? availableProducts?.find((p) => p._id === value)
                           ?.name ?? value
                       : "Select a product"
                   }
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {availableProducts?.map((p: any) => {
+                {availableProducts?.map((p) => {
                   const usd = p.sellingPriceUSD ?? p.sellingPrice;
                   const lbp = p.sellingPriceLBP;
                   const priceLabel = [

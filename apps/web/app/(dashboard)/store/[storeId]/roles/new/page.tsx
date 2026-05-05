@@ -6,6 +6,7 @@ import { useMutation } from "convex/react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,7 @@ import { PermissionEditor } from "@/components/permissions/permission-editor";
 import { friendlyMessage } from "@/lib/extract-error";
 
 function buildEmptyPermissions(): StorePermissions {
-  const perms: any = {};
+  const perms: Record<string, Record<string, boolean>> = {};
   for (const page of PAGE_KEYS) {
     const functions: Record<string, boolean> = {};
     for (const fn of PAGE_FUNCTIONS[page]) functions[fn] = false;
@@ -45,8 +46,8 @@ export default function NewRolePage() {
     setSaving(true);
     try {
       await createRole({
-        storeId: storeId as any,
-        userId: userId as any,
+        storeId: storeId as Id<"stores">,
+        userId: userId!,
         name: name.trim(),
         permissions,
       });

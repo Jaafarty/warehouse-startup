@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { formatCurrency, formatDate } from "@ware-house/shared";
 import { ArrowLeft, RotateCcw, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,12 +52,12 @@ export default function SaleDetailPage() {
 
   const sale = useQuery(
     api.sales.get,
-    userId ? { saleId: saleId as any, userId: userId as any } : "skip"
+    userId ? { saleId: saleId as Id<"sales">, userId } : "skip"
   );
 
   const store = useQuery(
     api.stores.getById,
-    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
   );
   const isPrivileged = store?.role === "owner" || store?.role === "admin";
   const returnsPerms = store?.effectivePermissions?.returns;
@@ -71,7 +72,7 @@ export default function SaleDetailPage() {
   const returns = useQuery(
     api.returns.getBySale,
     userId && canViewReturns
-      ? { saleId: saleId as any, userId: userId as any }
+      ? { saleId: saleId as Id<"sales">, userId }
       : "skip"
   );
 
@@ -99,7 +100,7 @@ export default function SaleDetailPage() {
   }
 
   const hasReturnableItems = sale.items.some(
-    (i: any) => i.returnedQuantity < i.quantity
+    (i) => i.returnedQuantity < i.quantity
   );
 
   return (
@@ -247,7 +248,7 @@ export default function SaleDetailPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sale.items.map((item: any) => {
+              {sale.items.map((item) => {
                 const cur = (item.currency ?? "USD") as "USD" | "LBP";
                 return (
                   <TableRow key={item._id}>
@@ -306,7 +307,7 @@ export default function SaleDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {returns.map((r: any) => (
+                {returns.map((r) => (
                   <TableRow key={r._id}>
                     <TableCell>
                       <Link

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Doc } from "./_generated/dataModel";
 import { assertPageFunction } from "./_helpers/permissions";
 import { adjustStock } from "./_helpers/stock";
 import { createAuditLog } from "./_helpers/audit";
@@ -55,7 +56,7 @@ export const listByStore = query({
       const sale = saleCache[r.saleId];
       if (sale?.customerId && !customerCache[sale.customerId]) {
         const c = await ctx.db.get(sale.customerId);
-        if (c) customerCache[sale.customerId] = { name: (c as any).name, phone: (c as any).phone };
+        if (c) customerCache[sale.customerId] = { name: c.name, phone: c.phone };
       }
     }
 
@@ -320,7 +321,7 @@ export const create = mutation({
       const fresh = await ctx.db.get(v.saleItemId);
       if (fresh) {
         await ctx.db.patch(v.saleItemId, {
-          returnedQuantity: (fresh as any).returnedQuantity + v.quantity,
+          returnedQuantity: fresh.returnedQuantity + v.quantity,
         });
       }
 
@@ -349,7 +350,7 @@ export const create = mutation({
     const newStatus = fullyReturned ? "returned" : "partially_returned";
 
     await ctx.db.patch(args.saleId, {
-      status: newStatus as any,
+      status: newStatus as Doc<"sales">["status"],
       updatedAt: Date.now(),
     });
 

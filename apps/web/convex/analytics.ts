@@ -723,7 +723,7 @@ export const insights = query({
     }
     // build sale createdAt map
     const saleCreated: Record<string, number> = {};
-    for (const s of sales) saleCreated[String(s._id)] = (s as any).createdAt;
+    for (const s of sales) saleCreated[String(s._id)] = s.createdAt;
     for (const item of saleItems) {
       const created = saleCreated[String(item.saleId)] ?? 0;
       const key = String(item.productId);

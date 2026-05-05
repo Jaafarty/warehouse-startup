@@ -3,7 +3,7 @@ import { ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getStoreMember } from "./_helpers/permissions";
 import { createAuditLog } from "./_helpers/audit";
-import { canManageRole } from "@ware-house/shared";
+import { canManageRole, MemberRole } from "@ware-house/shared";
 
 export const listByStore = query({
   args: { storeId: v.id("stores"), userId: v.id("users") },
@@ -70,10 +70,10 @@ export const updateRole = mutation({
     }
 
     // Pyramid: caller must outrank target's current role AND the new role being assigned
-    if (!canManageRole(caller.role as any, target.role as any)) {
+    if (!canManageRole(caller.role as MemberRole, target.role as MemberRole)) {
       throw new ConvexError({ code: "FORBIDDEN", message: "You can't modify a member with a role equal to or above your own." });
     }
-    if (!canManageRole(caller.role as any, args.newRole as any)) {
+    if (!canManageRole(caller.role as MemberRole, args.newRole as MemberRole)) {
       throw new ConvexError({ code: "FORBIDDEN", message: "You can't assign a role equal to or above your own." });
     }
 

@@ -4,6 +4,7 @@ import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { formatCurrency } from "@ware-house/shared";
 import {
   DollarSign,
@@ -61,7 +62,7 @@ export default function StoreDashboardPage() {
 
   const store = useQuery(
     api.stores.getById,
-    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+    userId ? { storeId: storeId as Id<"stores">, userId: userId } : "skip"
   );
 
   const isPrivileged = store?.role === "owner" || store?.role === "admin";
@@ -70,7 +71,7 @@ export default function StoreDashboardPage() {
 
   const analyticsArgs =
     userId && canViewAnalytics
-      ? { storeId: storeId as any, userId: userId as any }
+      ? { storeId: storeId as Id<"stores">, userId: userId }
       : "skip";
 
   const overview = useQuery(api.analytics.overview, analyticsArgs);
@@ -245,7 +246,7 @@ export default function StoreDashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {topProducts.map((product: any, i: number) => (
+                  {topProducts.map((product, i: number) => (
                     <TableRow key={product.productId}>
                       <TableCell>
                         <div className="flex items-center gap-2">

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { getCurrentUserId } from "@/lib/auth";
 import { AnalyticsView } from "@/components/analytics/analytics-view";
 
@@ -17,7 +18,7 @@ export default async function AnalyticsPage({
   const { storeId } = await params;
 
   const store = await convex.query(api.stores.getById, {
-    storeId: storeId as any,
+    storeId: storeId as Id<"stores">,
     userId,
   });
 

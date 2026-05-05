@@ -2,6 +2,7 @@
 
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { requireCurrentUserId } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
@@ -22,16 +23,16 @@ export async function createSale(
 
   try {
     const result = await convex.mutation(api.sales.create, {
-      storeId: storeId as any,
+      storeId: storeId as Id<"stores">,
       userId,
       items: items.map((i) => ({
-        productId: i.productId as any,
+        productId: i.productId as Id<"products">,
         quantity: i.quantity,
         currency: i.currency,
       })),
       payments,
       note,
-      customerId: customerId ? (customerId as any) : undefined,
+      customerId: customerId ? customerId as Id<"customers"> : undefined,
     });
     redirect(`/store/${storeId}/sales/${result.saleId}`);
   } catch (error) {

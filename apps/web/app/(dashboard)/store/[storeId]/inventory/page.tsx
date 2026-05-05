@@ -6,6 +6,7 @@ import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import {
   archiveProduct,
   restoreProduct,
@@ -77,7 +78,7 @@ export default function InventoryPage() {
   const { storeId } = useParams<{ storeId: string }>();
   const { userId } = useCurrentUser();
 
-  const store = useQuery(api.stores.getById, userId ? { storeId: storeId as any, userId: userId as any } : "skip");
+  const store = useQuery(api.stores.getById, userId ? { storeId: storeId as Id<"stores">, userId: userId } : "skip");
   const isPrivileged = store?.role === "owner" || store?.role === "admin";
   const invFns = store?.effectivePermissions?.inventory?.functions ?? {};
   const can = (fn: string) => isPrivileged || (invFns[fn] ?? false);
@@ -89,10 +90,10 @@ export default function InventoryPage() {
     api.products.list,
     userId
       ? {
-          storeId: storeId as any,
-          userId: userId as any,
+          storeId: storeId as Id<"stores">,
+          userId: userId,
           categoryId:
-            categoryFilter !== "all" ? (categoryFilter as any) : undefined,
+            categoryFilter !== "all" ? (categoryFilter as Id<"categories">) : undefined,
           includeArchived: showArchived,
           search: search || undefined,
         }
@@ -126,11 +127,11 @@ export default function InventoryPage() {
 
   const lowStockCount =
     products?.filter(
-      (p: any) => !p.isArchived && p.quantity <= p.lowStockThreshold
+      (p) => !p.isArchived && p.quantity <= p.lowStockThreshold
     ).length ?? 0;
 
   const totalProducts =
-    products?.filter((p: any) => !p.isArchived).length ?? 0;
+    products?.filter((p) => !p.isArchived).length ?? 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -190,12 +191,12 @@ export default function InventoryPage() {
         <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v ?? "all")}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="All categories">
-              {(value: string) => !value || value === "all" ? "All categories" : (categories?.find((cat: any) => cat._id === value)?.name ?? value)}
+              {(value: string) => !value || value === "all" ? "All categories" : (categories?.find((cat) => cat._id === value)?.name ?? value)}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
-            {categories?.map((cat: any) => (
+            {categories?.map((cat) => (
               <SelectItem key={cat._id} value={cat._id} label={cat.name}>
                 {cat.name}
               </SelectItem>
@@ -253,7 +254,7 @@ export default function InventoryPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.map((product: any) => (
+                {products.map((product) => (
                   <TableRow key={product._id}>
                     <TableCell>
                       <Link

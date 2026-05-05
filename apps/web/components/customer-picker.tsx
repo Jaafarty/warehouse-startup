@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { createCustomer } from "@/app/actions/customers";
 import { Plus, X, Search } from "lucide-react";
@@ -42,7 +43,7 @@ export function CustomerPicker({ storeId, value, onChange }: Props) {
   const customers = useQuery(
     api.customers.list,
     userId
-      ? { storeId: storeId as any, userId: userId as any, search }
+      ? { storeId: storeId as Id<"stores">, userId, search }
       : "skip"
   );
 

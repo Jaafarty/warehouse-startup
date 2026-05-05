@@ -3,6 +3,7 @@
 import { ConvexHttpClient } from "convex/browser";
 import { ConvexError } from "convex/values";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { requireCurrentUserId } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
@@ -10,7 +11,7 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 function extractErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof ConvexError) {
-    const data = error.data as any;
+    const data = error.data as { message?: string };
     return data?.message ?? fallback;
   }
   if (error instanceof Error) return error.message;
@@ -48,7 +49,7 @@ export async function updateStore(storeId: string, formData: FormData) {
 
   try {
     await convex.mutation(api.stores.update, {
-      storeId: storeId as any,
+      storeId: storeId as Id<"stores">,
       userId,
       name: name?.trim(),
       description: description?.trim(),
@@ -70,11 +71,11 @@ export async function inviteMember(storeId: string, formData: FormData) {
 
   try {
     const result = await convex.mutation(api.invitations.create, {
-      storeId: storeId as any,
+      storeId: storeId as Id<"stores">,
       userId,
       email,
       role: role || "viewer",
-      customRoleId: (customRoleId as any) || undefined,
+      customRoleId: customRoleId ? customRoleId as Id<"storeRoles"> : undefined,
     });
     return { success: true, token: result.token };
   } catch (error) {
@@ -92,11 +93,11 @@ export async function updateMemberRole(
 
   try {
     await convex.mutation(api.members.updateRole, {
-      storeId: storeId as any,
+      storeId: storeId as Id<"stores">,
       userId,
-      targetMemberId: memberId as any,
+      targetMemberId: memberId as Id<"storeMembers">,
       newRole,
-      customRoleId: customRoleId as any,
+      customRoleId: customRoleId ? customRoleId as Id<"storeRoles"> : undefined,
     });
     return { success: true };
   } catch (error) {
@@ -109,9 +110,9 @@ export async function removeMember(storeId: string, memberId: string) {
 
   try {
     await convex.mutation(api.members.remove, {
-      storeId: storeId as any,
+      storeId: storeId as Id<"stores">,
       userId,
-      targetMemberId: memberId as any,
+      targetMemberId: memberId as Id<"storeMembers">,
     });
     return { success: true };
   } catch (error) {
@@ -152,7 +153,7 @@ export async function deleteStore(storeId: string) {
   const userId = await requireCurrentUserId();
   try {
     await convex.mutation(api.stores.deleteStore, {
-      storeId: storeId as any,
+      storeId: storeId as Id<"stores">,
       userId,
     });
     redirect("/dashboard");

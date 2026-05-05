@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { updateStore } from "@/app/actions/stores";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,7 @@ export default function StoreSettingsPage() {
 
   const store = useQuery(
     api.stores.getById,
-    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
   );
 
   const [pending, setPending] = useState(false);

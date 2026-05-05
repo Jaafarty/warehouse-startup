@@ -6,6 +6,7 @@ import { useQuery, useMutation } from "convex/react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,10 +27,10 @@ export default function EditRolePage() {
 
   const customRoles = useQuery(
     api.storeRoles.listByStore,
-    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+    userId ? { storeId: storeId as Id<"stores">, userId: userId } : "skip"
   );
 
-  const role = customRoles?.find((r: any) => r._id === roleId);
+  const role = customRoles?.find((r) => r._id === roleId);
 
   const [name, setName] = useState("");
   const [permissions, setPermissions] = useState<StorePermissions | null>(null);
@@ -51,9 +52,9 @@ export default function EditRolePage() {
     setSaving(true);
     try {
       await updateRole({
-        storeId: storeId as any,
-        userId: userId as any,
-        roleId: roleId as any,
+        storeId: storeId as Id<"stores">,
+        userId: userId!,
+        roleId: roleId as Id<"storeRoles">,
         name: name.trim(),
         permissions,
       });

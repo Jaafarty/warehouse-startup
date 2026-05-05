@@ -5,6 +5,7 @@ import { useQuery, useMutation } from "convex/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { Plus, Pencil, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +31,7 @@ export default function RolesPage() {
 
   const customRoles = useQuery(
     api.storeRoles.listByStore,
-    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
   );
 
   const removeRole = useMutation(api.storeRoles.remove);
@@ -38,7 +39,7 @@ export default function RolesPage() {
   async function handleDelete(roleId: string) {
     if (!userId) return;
     try {
-      await removeRole({ storeId: storeId as any, userId: userId as any, roleId: roleId as any });
+      await removeRole({ storeId: storeId as Id<"stores">, userId: userId!, roleId: roleId as Id<"storeRoles"> });
       toast.success("Role deleted");
     } catch (err) {
       toast.error(friendlyMessage(err));
@@ -71,7 +72,7 @@ export default function RolesPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {customRoles.map((role: any) => (
+          {customRoles.map((role) => (
             <Card key={role._id}>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">

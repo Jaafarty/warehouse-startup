@@ -2,6 +2,7 @@
 
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { requireCurrentUserId } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
@@ -42,11 +43,11 @@ export async function createProduct(storeId: string, formData: FormData) {
 
   try {
     const productId = await convex.mutation(api.products.create, {
-      storeId: storeId as any,
+      storeId: storeId as Id<"stores">,
       userId,
       name: name.trim(),
       description: description?.trim(),
-      categoryId: categoryId ? (categoryId as any) : undefined,
+      categoryId: categoryId ? categoryId as Id<"categories"> : undefined,
       barcode: barcode?.trim() || undefined,
       sku: sku?.trim() || undefined,
       quantity,
@@ -84,11 +85,11 @@ export async function updateProduct(productId: string, formData: FormData) {
 
   try {
     await convex.mutation(api.products.update, {
-      productId: productId as any,
+      productId: productId as Id<"products">,
       userId,
       name: name?.trim(),
       description: description?.trim(),
-      categoryId: categoryId ? (categoryId as any) : undefined,
+      categoryId: categoryId ? categoryId as Id<"categories"> : undefined,
       barcode: barcode?.trim() || undefined,
       sku: sku?.trim() || undefined,
       costPriceUSD,
@@ -111,7 +112,7 @@ export async function archiveProduct(productId: string) {
 
   try {
     await convex.mutation(api.products.archive, {
-      productId: productId as any,
+      productId: productId as Id<"products">,
       userId,
     });
     return { success: true };
@@ -128,7 +129,7 @@ export async function restoreProduct(productId: string) {
 
   try {
     await convex.mutation(api.products.restore, {
-      productId: productId as any,
+      productId: productId as Id<"products">,
       userId,
     });
     return { success: true };
@@ -154,7 +155,7 @@ export async function adjustProductStock(
 
   try {
     await convex.mutation(api.stockMovements.manualAdjust, {
-      productId: productId as any,
+      productId: productId as Id<"products">,
       userId,
       type,
       quantity,
@@ -182,7 +183,7 @@ export async function createCategory(storeId: string, formData: FormData) {
 
   try {
     await convex.mutation(api.categories.create, {
-      storeId: storeId as any,
+      storeId: storeId as Id<"stores">,
       userId,
       name: name.trim(),
       description: description?.trim(),
@@ -213,12 +214,12 @@ export async function ensureCategories(
 
   try {
     const map = await convex.mutation(api.categories.ensureMany, {
-      storeId: storeId as any,
+      storeId: storeId as Id<"stores">,
       userId,
       names,
     });
     return { success: true, map: map as Record<string, string> };
-  } catch (e: any) {
+  } catch (e: unknown) {
     return {
       success: false,
       error: e instanceof Error ? e.message : "Failed to resolve categories",
@@ -257,11 +258,11 @@ export async function bulkImportProducts(
   for (const product of products) {
     try {
       const result = await convex.mutation(api.products.importRow, {
-        storeId: storeId as any,
+        storeId: storeId as Id<"stores">,
         userId,
         name: product.name.trim(),
         description: product.description?.trim(),
-        categoryId: product.categoryId ? (product.categoryId as any) : undefined,
+        categoryId: product.categoryId ? product.categoryId as Id<"categories"> : undefined,
         sku: product.sku?.trim() || undefined,
         barcode: product.barcode?.trim() || undefined,
         quantity: product.quantity,
@@ -273,9 +274,9 @@ export async function bulkImportProducts(
       });
       if (result.outcome === "created") created++;
       else if (result.outcome === "updated") updated++;
-    } catch (e: any) {
+    } catch (e: unknown) {
       failed++;
-      errors.push(`"${product.name}": ${e.message}`);
+      errors.push(`"${product.name}": ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
