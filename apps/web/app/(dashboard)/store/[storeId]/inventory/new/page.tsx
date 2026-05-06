@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import { NewCategoryDialog } from "@/components/new-category-dialog";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { createProduct } from "@/app/actions/inventory";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,14 +34,14 @@ export default function NewProductPage() {
   const { storeId } = useParams<{ storeId: string }>();
   const { userId } = useCurrentUser();
 
-  const store = useQuery(api.stores.getById, userId ? { storeId: storeId as any, userId: userId as any } : "skip");
+  const store = useQuery(api.stores.getById, userId ? { storeId: storeId as Id<"stores">, userId } : "skip");
   const isPrivileged = store?.role === "owner" || store?.role === "admin";
   const invFns = store?.effectivePermissions?.inventory?.functions ?? {};
   const can = (fn: string) => isPrivileged || (invFns[fn] ?? false);
 
   const categories = useQuery(
     api.categories.list,
-    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
   );
 
   const [pending, setPending] = useState(false);
@@ -117,7 +118,7 @@ export default function NewProductPage() {
                     triggerClassName="text-xs font-medium text-muted-foreground hover:text-foreground"
                     onCreated={(name) => {
                       const created = categories?.find(
-                        (c: any) => c.name.toLowerCase() === name.toLowerCase()
+                        (c) => c.name.toLowerCase() === name.toLowerCase()
                       );
                       if (created) setCategoryId(created._id as string);
                     }}
@@ -127,11 +128,11 @@ export default function NewProductPage() {
               <Select name="categoryId" value={categoryId} onValueChange={(v) => setCategoryId(v ?? "")}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a category">
-                    {(value: string) => value ? (categories?.find((c: any) => c._id === value)?.name ?? value) : "Select a category"}
+                    {(value: string) => value ? (categories?.find((c) => c._id === value)?.name ?? value) : "Select a category"}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {categories?.map((cat: any) => (
+                  {categories?.map((cat) => (
                     <SelectItem key={cat._id} value={cat._id} label={cat.name}>
                       {cat.name}
                     </SelectItem>

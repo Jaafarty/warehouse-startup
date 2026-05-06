@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Doc } from "./_generated/dataModel";
 import { createAuditLog } from "./_helpers/audit";
 import { getEffectivePermissions } from "./_helpers/permissions";
 
@@ -45,7 +46,7 @@ export const listByUser = query({
   handler: async (ctx, args) => {
     const memberships = await ctx.db
       .query("storeMembers")
-      .withIndex("by_user", (q: any) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .collect();
 
     const stores = await Promise.all(
@@ -69,7 +70,7 @@ export const getById = query({
 
     const member = await ctx.db
       .query("storeMembers")
-      .withIndex("by_store_and_user", (q: any) =>
+      .withIndex("by_store_and_user", (q) =>
         q.eq("storeId", args.storeId).eq("userId", args.userId)
       )
       .unique();
@@ -94,7 +95,7 @@ export const update = mutation({
 
     const member = await ctx.db
       .query("storeMembers")
-      .withIndex("by_store_and_user", (q: any) =>
+      .withIndex("by_store_and_user", (q) =>
         q.eq("storeId", args.storeId).eq("userId", args.userId)
       )
       .unique();
@@ -103,7 +104,7 @@ export const update = mutation({
       throw new ConvexError({ code: "FORBIDDEN", message: "Only admins and the owner can update store settings." });
     }
 
-    const patch: Record<string, any> = {};
+    const patch: Partial<Doc<"stores">> = {};
     if (args.name !== undefined) patch.name = args.name;
     if (args.description !== undefined) patch.description = args.description;
 
@@ -130,7 +131,7 @@ export const deleteStore = mutation({
   handler: async (ctx, args) => {
     const member = await ctx.db
       .query("storeMembers")
-      .withIndex("by_store_and_user", (q: any) =>
+      .withIndex("by_store_and_user", (q) =>
         q.eq("storeId", args.storeId).eq("userId", args.userId)
       )
       .unique();

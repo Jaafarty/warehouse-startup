@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Doc } from "./_generated/dataModel";
 import { assertPageFunction, assertAnyPageFunction } from "./_helpers/permissions";
 import { adjustStock } from "./_helpers/stock";
 import { createAuditLog } from "./_helpers/audit";
@@ -23,21 +24,21 @@ export const list = query({
     if (args.categoryId) {
       products = await ctx.db
         .query("products")
-        .withIndex("by_store_and_category", (q: any) =>
+        .withIndex("by_store_and_category", (q) =>
           q.eq("storeId", args.storeId).eq("categoryId", args.categoryId)
         )
         .collect();
     } else if (!args.includeArchived) {
       products = await ctx.db
         .query("products")
-        .withIndex("by_store_and_archived", (q: any) =>
+        .withIndex("by_store_and_archived", (q) =>
           q.eq("storeId", args.storeId).eq("isArchived", false)
         )
         .collect();
     } else {
       products = await ctx.db
         .query("products")
-        .withIndex("by_store", (q: any) => q.eq("storeId", args.storeId))
+        .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
         .collect();
     }
 
@@ -45,7 +46,7 @@ export const list = query({
     if (args.search) {
       const term = args.search.toLowerCase();
       products = products.filter(
-        (p: any) =>
+        (p) =>
           p.name.toLowerCase().includes(term) ||
           p.sku?.toLowerCase().includes(term) ||
           p.barcode?.toLowerCase().includes(term)
@@ -108,7 +109,7 @@ export const create = mutation({
     if (args.barcode) {
       const existing = await ctx.db
         .query("products")
-        .withIndex("by_store_and_barcode", (q: any) =>
+        .withIndex("by_store_and_barcode", (q) =>
           q.eq("storeId", args.storeId).eq("barcode", args.barcode)
         )
         .unique();
@@ -185,7 +186,7 @@ export const update = mutation({
     if (args.barcode !== undefined && args.barcode !== product.barcode) {
       const existing = await ctx.db
         .query("products")
-        .withIndex("by_store_and_barcode", (q: any) =>
+        .withIndex("by_store_and_barcode", (q) =>
           q.eq("storeId", product.storeId).eq("barcode", args.barcode)
         )
         .unique();
@@ -194,7 +195,7 @@ export const update = mutation({
       }
     }
 
-    const patch: Record<string, any> = { updatedAt: Date.now() };
+    const patch: Partial<Doc<"products">> = { updatedAt: Date.now() };
     if (args.name !== undefined) patch.name = args.name;
     if (args.description !== undefined) patch.description = args.description;
     if (args.categoryId !== undefined) patch.categoryId = args.categoryId;
@@ -317,19 +318,19 @@ export const importRow = mutation({
     const description = args.description?.trim() || undefined;
 
     // Match: SKU first
-    let match: any = null;
+    let match: Doc<"products"> | null = null;
     if (sku) {
       const all = await ctx.db
         .query("products")
-        .withIndex("by_store", (q: any) => q.eq("storeId", args.storeId))
+        .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
         .collect();
-      match = all.find((p: any) => p.sku && p.sku.toLowerCase() === sku.toLowerCase()) ?? null;
+      match = all.find((p) => p.sku && p.sku.toLowerCase() === sku.toLowerCase()) ?? null;
     }
     // Then barcode
     if (!match && barcode) {
       match = await ctx.db
         .query("products")
-        .withIndex("by_store_and_barcode", (q: any) =>
+        .withIndex("by_store_and_barcode", (q) =>
           q.eq("storeId", args.storeId).eq("barcode", barcode)
         )
         .unique();
@@ -338,10 +339,10 @@ export const importRow = mutation({
     if (!match && !sku && !barcode) {
       const all = await ctx.db
         .query("products")
-        .withIndex("by_store", (q: any) => q.eq("storeId", args.storeId))
+        .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
         .collect();
       match = all.find(
-        (p: any) =>
+        (p) =>
           !p.sku && !p.barcode && p.name.toLowerCase() === name.toLowerCase()
       ) ?? null;
     }
@@ -349,7 +350,7 @@ export const importRow = mutation({
     if (match) {
       // Patch updateable fields. Skip undefined so missing columns preserve
       // existing values; always update sellingPrice (required by client).
-      const patch: Record<string, any> = { updatedAt: Date.now() };
+      const patch: Partial<Doc<"products">> = { updatedAt: Date.now() };
       if (name) patch.name = name;
       if (description !== undefined) patch.description = description;
       if (args.categoryId !== undefined) patch.categoryId = args.categoryId;
@@ -357,7 +358,7 @@ export const importRow = mutation({
       if (barcode !== undefined && barcode !== match.barcode) {
         const dupe = await ctx.db
           .query("products")
-          .withIndex("by_store_and_barcode", (q: any) =>
+          .withIndex("by_store_and_barcode", (q) =>
             q.eq("storeId", args.storeId).eq("barcode", barcode)
           )
           .unique();
@@ -411,7 +412,7 @@ export const importRow = mutation({
     if (barcode) {
       const dupe = await ctx.db
         .query("products")
-        .withIndex("by_store_and_barcode", (q: any) =>
+        .withIndex("by_store_and_barcode", (q) =>
           q.eq("storeId", args.storeId).eq("barcode", barcode)
         )
         .unique();

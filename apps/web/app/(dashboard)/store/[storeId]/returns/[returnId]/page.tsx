@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { formatCurrency, formatDate } from "@ware-house/shared";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,7 +43,7 @@ export default function ReturnDetailPage() {
   const ret = useQuery(
     api.returns.get,
     userId
-      ? { returnId: returnId as any, userId: userId as any }
+      ? { returnId: returnId as Id<"saleReturns">, userId }
       : "skip"
   );
 
@@ -179,7 +180,7 @@ export default function ReturnDetailPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {ret.items.map((it: any) => {
+              {ret.items.map((it) => {
                 const cur = (it.currency ?? "USD") as "USD" | "LBP";
                 return (
                   <TableRow key={it._id}>

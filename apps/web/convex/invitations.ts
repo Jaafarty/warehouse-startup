@@ -27,13 +27,13 @@ export const create = mutation({
     // Check if already a member
     const existingUser = await ctx.db
       .query("users")
-      .withIndex("by_email", (q: any) => q.eq("email", args.email))
+      .withIndex("by_email", (q) => q.eq("email", args.email))
       .unique();
 
     if (existingUser) {
       const existingMember = await ctx.db
         .query("storeMembers")
-        .withIndex("by_store_and_user", (q: any) =>
+        .withIndex("by_store_and_user", (q) =>
           q.eq("storeId", args.storeId).eq("userId", existingUser._id)
         )
         .unique();
@@ -46,7 +46,7 @@ export const create = mutation({
     // Check for pending invitation
     const existingInvite = await ctx.db
       .query("storeInvitations")
-      .withIndex("by_store_and_email", (q: any) =>
+      .withIndex("by_store_and_email", (q) =>
         q.eq("storeId", args.storeId).eq("email", args.email)
       )
       .first();
@@ -119,7 +119,7 @@ export const listByStore = query({
 
     return ctx.db
       .query("storeInvitations")
-      .withIndex("by_store", (q: any) => q.eq("storeId", args.storeId))
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
       .collect();
   },
 });
@@ -129,7 +129,7 @@ export const getByToken = query({
   handler: async (ctx, args) => {
     const invite = await ctx.db
       .query("storeInvitations")
-      .withIndex("by_token", (q: any) => q.eq("token", args.token))
+      .withIndex("by_token", (q) => q.eq("token", args.token))
       .unique();
 
     if (!invite) return null;
@@ -153,7 +153,7 @@ export const accept = mutation({
   handler: async (ctx, args) => {
     const invite = await ctx.db
       .query("storeInvitations")
-      .withIndex("by_token", (q: any) => q.eq("token", args.token))
+      .withIndex("by_token", (q) => q.eq("token", args.token))
       .unique();
 
     if (!invite || invite.status !== "pending") {
@@ -167,7 +167,7 @@ export const accept = mutation({
     // Check if already a member
     const existing = await ctx.db
       .query("storeMembers")
-      .withIndex("by_store_and_user", (q: any) =>
+      .withIndex("by_store_and_user", (q) =>
         q.eq("storeId", invite.storeId).eq("userId", args.userId)
       )
       .unique();
@@ -190,13 +190,13 @@ export const accept = mutation({
     // Notify store admins
     const admins = await ctx.db
       .query("storeMembers")
-      .withIndex("by_store", (q: any) => q.eq("storeId", invite.storeId))
+      .withIndex("by_store", (q) => q.eq("storeId", invite.storeId))
       .collect();
 
     const newUser = await ctx.db.get(args.userId);
     const store = await ctx.db.get(invite.storeId);
 
-    for (const admin of admins.filter((m: any) => m.role === "admin" || m.role === "owner")) {
+    for (const admin of admins.filter((m) => m.role === "admin" || m.role === "owner")) {
       await ctx.db.insert("notifications", {
         userId: admin.userId,
         storeId: invite.storeId,
@@ -228,7 +228,7 @@ export const decline = mutation({
   handler: async (ctx, args) => {
     const invite = await ctx.db
       .query("storeInvitations")
-      .withIndex("by_token", (q: any) => q.eq("token", args.token))
+      .withIndex("by_token", (q) => q.eq("token", args.token))
       .unique();
 
     if (!invite || invite.status !== "pending") {

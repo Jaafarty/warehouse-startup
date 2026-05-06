@@ -19,9 +19,12 @@ const permissionsFunctionValidator = v.object(
   )
 );
 
-function coercePermissions(perms: any): any {
+type PagePerm = { enabled: boolean; functions: Record<string, boolean> };
+type PermissionsTree = Record<string, PagePerm>;
+
+function coercePermissions(perms: PermissionsTree): PermissionsTree {
   // Deep copy
-  const p = JSON.parse(JSON.stringify(perms));
+  const p: PermissionsTree = JSON.parse(JSON.stringify(perms));
   // 1. Lock functions: for any enabled page, force its locked functions to true
   for (const page of PAGE_KEYS) {
     if (p[page]?.enabled) {
@@ -52,19 +55,19 @@ export const listByStore = query({
 
     const roles = await ctx.db
       .query("storeRoles")
-      .withIndex("by_store", (q: any) => q.eq("storeId", args.storeId))
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
       .collect();
 
     // Count members assigned each custom role
     const allMembers = await ctx.db
       .query("storeMembers")
-      .withIndex("by_store", (q: any) => q.eq("storeId", args.storeId))
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
       .collect();
 
-    return roles.map((role: any) => ({
+    return roles.map((role) => ({
       ...role,
       permissions: mergeWithDefaults(role.permissions),
-      memberCount: allMembers.filter((m: any) => m.customRoleId === role._id).length,
+      memberCount: allMembers.filter((m) => m.customRoleId === role._id).length,
     }));
   },
 });
@@ -122,7 +125,7 @@ export const update = mutation({
       throw new ConvexError({ code: "NOT_FOUND", message: "Role not found." });
     }
 
-    const patch: Record<string, any> = {};
+    const patch: { name?: string; permissions?: ReturnType<typeof mergeWithDefaults> } = {};
     if (args.name !== undefined) patch.name = args.name.trim();
     if (args.permissions !== undefined) patch.permissions = mergeWithDefaults(coercePermissions(args.permissions));
 
@@ -158,8 +161,8 @@ export const remove = mutation({
     // Prevent deletion if members are assigned this role
     const membersWithRole = await ctx.db
       .query("storeMembers")
-      .withIndex("by_store", (q: any) => q.eq("storeId", args.storeId))
-      .filter((q: any) => q.eq(q.field("customRoleId"), args.roleId))
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+      .filter((q) => q.eq(q.field("customRoleId"), args.roleId))
       .collect();
 
     if (membersWithRole.length > 0) {

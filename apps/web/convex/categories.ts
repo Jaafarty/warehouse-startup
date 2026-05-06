@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 import { assertPageFunction } from "./_helpers/permissions";
 import { createAuditLog } from "./_helpers/audit";
 
@@ -10,7 +11,7 @@ export const list = query({
     await assertPageFunction(ctx.db, args.userId, args.storeId, "inventory", "view_list");
     return ctx.db
       .query("categories")
-      .withIndex("by_store", (q: any) => q.eq("storeId", args.storeId))
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
       .collect();
   },
 });
@@ -28,7 +29,7 @@ export const create = mutation({
     // Check for duplicate name
     const existing = await ctx.db
       .query("categories")
-      .withIndex("by_store_and_name", (q: any) =>
+      .withIndex("by_store_and_name", (q) =>
         q.eq("storeId", args.storeId).eq("name", args.name)
       )
       .unique();
@@ -69,7 +70,7 @@ export const update = mutation({
 
     await assertPageFunction(ctx.db, args.userId, category.storeId, "inventory", "edit_category");
 
-    const patch: Record<string, any> = {};
+    const patch: { name?: string; description?: string } = {};
     if (args.name !== undefined) patch.name = args.name.trim();
     if (args.description !== undefined) patch.description = args.description;
 
@@ -104,7 +105,7 @@ export const remove = mutation({
     // Remove category reference from products
     const products = await ctx.db
       .query("products")
-      .withIndex("by_store_and_category", (q: any) =>
+      .withIndex("by_store_and_category", (q) =>
         q.eq("storeId", category.storeId).eq("categoryId", args.categoryId)
       )
       .collect();
@@ -142,14 +143,14 @@ export const ensureMany = mutation({
     // Fetch all at once for batched lookup; one round-trip beats one-per-name.
     const existing = await ctx.db
       .query("categories")
-      .withIndex("by_store", (q: any) => q.eq("storeId", args.storeId))
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
       .collect();
 
-    const byLowerName = new Map<string, any>(
-      existing.map((c: any) => [c.name.toLowerCase(), c._id])
+    const byLowerName = new Map<string, Id<"categories">>(
+      existing.map((c) => [c.name.toLowerCase(), c._id])
     );
 
-    const result: Record<string, any> = {};
+    const result: Record<string, Id<"categories">> = {};
     const seen = new Set<string>();
 
     for (const raw of args.names) {

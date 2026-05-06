@@ -1,4 +1,5 @@
 import { internalMutation, mutation } from "./_generated/server";
+import { Doc } from "./_generated/dataModel";
 import { mergeWithDefaults } from "./_helpers/permissions";
 
 /**
@@ -25,7 +26,7 @@ import { mergeWithDefaults } from "./_helpers/permissions";
 export const backfillCurrency = internalMutation({
   args: {},
   handler: async (ctx) => {
-    let touched = {
+    const touched = {
       stores: 0,
       products: 0,
       sales: 0,
@@ -41,7 +42,7 @@ export const backfillCurrency = internalMutation({
     for (const store of stores) {
       const existing = await ctx.db
         .query("exchangeRates")
-        .withIndex("by_store", (q: any) => q.eq("storeId", store._id))
+        .withIndex("by_store", (q) => q.eq("storeId", store._id))
         .first();
       if (existing) continue;
       await ctx.db.insert("exchangeRates", {
@@ -58,7 +59,7 @@ export const backfillCurrency = internalMutation({
     // Products: copy legacy single price into USD slot.
     const products = await ctx.db.query("products").collect();
     for (const p of products) {
-      const patch: Record<string, any> = {};
+      const patch: Partial<Doc<"products">> = {};
       if (
         p.sellingPriceUSD === undefined &&
         p.sellingPriceLBP === undefined &&
@@ -139,7 +140,7 @@ export const backfillRolesV3 = mutation({
     const roles = await ctx.db.query("storeRoles").collect();
     let patched = 0;
     for (const role of roles) {
-      const hydrated = mergeWithDefaults(role.permissions as Record<string, any>);
+      const hydrated = mergeWithDefaults(role.permissions);
       await ctx.db.patch(role._id, { permissions: hydrated });
       patched++;
     }
@@ -157,11 +158,11 @@ export const migrateRolesV2 = mutation({
     for (const store of stores) {
       const members = await ctx.db
         .query("storeMembers")
-        .withIndex("by_store", (q: any) => q.eq("storeId", store._id))
+        .withIndex("by_store", (q) => q.eq("storeId", store._id))
         .collect();
 
       for (const member of members) {
-        const patch: Record<string, any> = {};
+        const patch: Partial<Doc<"storeMembers">> = {};
 
         // Migrate editor → employee
         if ((member.role as string) === "editor") {
@@ -169,7 +170,7 @@ export const migrateRolesV2 = mutation({
         }
 
         // Assign owner to the store creator if no owner exists
-        const hasOwner = members.some((m: any) => m.role === "owner");
+        const hasOwner = members.some((m) => m.role === "owner");
         if (!hasOwner && member.userId === store.ownerId && member.role === "admin") {
           patch.role = "owner";
         }
@@ -183,7 +184,7 @@ export const migrateRolesV2 = mutation({
       // Migrate invitations: editor → employee
       const invitations = await ctx.db
         .query("storeInvitations")
-        .withIndex("by_store", (q: any) => q.eq("storeId", store._id))
+        .withIndex("by_store", (q) => q.eq("storeId", store._id))
         .collect();
 
       for (const invite of invitations) {

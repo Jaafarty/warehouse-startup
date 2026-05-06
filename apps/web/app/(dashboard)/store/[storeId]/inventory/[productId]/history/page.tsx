@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { formatDate } from "@ware-house/shared";
 import { ArrowLeft, ArrowUp, ArrowDown, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -54,14 +55,14 @@ export default function StockHistoryPage() {
   const product = useQuery(
     api.products.get,
     userId
-      ? { productId: productId as any, userId: userId as any }
+      ? { productId: productId as Id<"products">, userId }
       : "skip"
   );
 
   const movements = useQuery(
     api.stockMovements.listByProduct,
     userId
-      ? { productId: productId as any, userId: userId as any }
+      ? { productId: productId as Id<"products">, userId }
       : "skip"
   );
 
@@ -116,7 +117,7 @@ export default function StockHistoryPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {movements.map((m: any) => (
+                {movements.map((m) => (
                   <TableRow key={m._id}>
                     <TableCell>
                       <MovementIcon type={m.type} />

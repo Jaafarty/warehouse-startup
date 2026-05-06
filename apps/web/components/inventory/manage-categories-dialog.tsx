@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { Tag, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { friendlyMessage } from "@/lib/extract-error";
@@ -53,7 +54,7 @@ export function ManageCategoriesDialog({
 
   const categories = useQuery(
     api.categories.list,
-    open ? { storeId: storeId as any, userId: userId as any } : "skip"
+    open ? { storeId: storeId as Id<"stores">, userId: userId as Id<"users"> } : "skip"
   );
 
   const createCategory = useMutation(api.categories.create);
@@ -66,8 +67,8 @@ export function ManageCategoriesDialog({
     if (!name) return;
     try {
       await createCategory({
-        storeId: storeId as any,
-        userId: userId as any,
+        storeId: storeId as Id<"stores">,
+        userId: userId as Id<"users">,
         name,
         description: newDesc.trim() || undefined,
       });
@@ -96,8 +97,8 @@ export function ManageCategoriesDialog({
     if (!name) return;
     try {
       await updateCategory({
-        categoryId: categoryId as any,
-        userId: userId as any,
+        categoryId: categoryId as Id<"categories">,
+        userId: userId as Id<"users">,
         name,
         description: editDesc.trim() || undefined,
       });
@@ -111,8 +112,8 @@ export function ManageCategoriesDialog({
   async function handleRemove(categoryId: string) {
     try {
       await removeCategory({
-        categoryId: categoryId as any,
-        userId: userId as any,
+        categoryId: categoryId as Id<"categories">,
+        userId: userId as Id<"users">,
       });
       toast.success("Category removed");
     } catch (err) {
@@ -168,7 +169,7 @@ export function ManageCategoriesDialog({
                 No categories yet.
               </p>
             ) : (
-              categories.map((cat: any) => (
+              categories.map((cat) => (
                 <div key={cat._id} className="flex items-center gap-2 rounded-lg border px-3 py-2">
                   {editingId === cat._id ? (
                     <>

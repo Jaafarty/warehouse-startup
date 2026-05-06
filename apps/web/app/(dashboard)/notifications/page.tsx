@@ -3,6 +3,7 @@
 import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { formatDate } from "@ware-house/shared";
 import {
   Bell,
@@ -38,7 +39,7 @@ export default function NotificationsPage() {
 
   const notifications = useQuery(
     api.notifications.list,
-    userId ? { userId: userId as any } : "skip"
+    userId ? { userId } : "skip"
   );
 
   const markAsRead = useMutation(api.notifications.markAsRead);
@@ -48,8 +49,8 @@ export default function NotificationsPage() {
     if (!userId) return;
     try {
       await markAsRead({
-        notificationId: notificationId as any,
-        userId: userId as any,
+        notificationId: notificationId as Id<"notifications">,
+        userId,
       });
     } catch {
       toast.error("Failed to mark as read");
@@ -59,7 +60,7 @@ export default function NotificationsPage() {
   async function handleMarkAllAsRead() {
     if (!userId) return;
     try {
-      const result = await markAllAsRead({ userId: userId as any });
+      const result = await markAllAsRead({ userId });
       if (result.count > 0) {
         toast.success(`Marked ${result.count} as read`);
       }
@@ -69,7 +70,7 @@ export default function NotificationsPage() {
   }
 
   const unreadCount =
-    notifications?.filter((n: any) => !n.isRead).length ?? 0;
+    notifications?.filter((n) => !n.isRead).length ?? 0;
 
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
@@ -108,7 +109,7 @@ export default function NotificationsPage() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {notifications.map((notification: any) => {
+          {notifications.map((notification) => {
             const config = TYPE_CONFIG[notification.type] ?? {
               icon: Bell,
               color: "text-muted-foreground",

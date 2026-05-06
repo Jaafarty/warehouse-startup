@@ -6,6 +6,7 @@ import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import {
   updateProduct,
   archiveProduct,
@@ -61,7 +62,7 @@ export default function ProductDetailPage() {
   }>();
   const { userId } = useCurrentUser();
 
-  const store = useQuery(api.stores.getById, userId ? { storeId: storeId as any, userId: userId as any } : "skip");
+  const store = useQuery(api.stores.getById, userId ? { storeId: storeId as Id<"stores">, userId: userId } : "skip");
   const isPrivileged = store?.role === "owner" || store?.role === "admin";
   const invFns = store?.effectivePermissions?.inventory?.functions ?? {};
   const can = (fn: string) => isPrivileged || (invFns[fn] ?? false);
@@ -69,13 +70,13 @@ export default function ProductDetailPage() {
   const product = useQuery(
     api.products.get,
     userId
-      ? { productId: productId as any, userId: userId as any }
+      ? { productId: productId as Id<"products">, userId: userId }
       : "skip"
   );
 
   const categories = useQuery(
     api.categories.list,
-    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+    userId ? { storeId: storeId as Id<"stores">, userId: userId } : "skip"
   );
 
   const [categoryId, setCategoryId] = useState<string>("");
@@ -357,7 +358,7 @@ export default function ProductDetailPage() {
                     triggerClassName="text-xs font-medium text-muted-foreground hover:text-foreground"
                     onCreated={(name) => {
                       const created = categories?.find(
-                        (c: any) => c.name.toLowerCase() === name.toLowerCase()
+                        (c) => c.name.toLowerCase() === name.toLowerCase()
                       );
                       if (created) setCategoryId(created._id as string);
                     }}
@@ -371,14 +372,14 @@ export default function ProductDetailPage() {
                     {(value: string | null) => {
                       if (!value) return null;
                       const cat = categories?.find(
-                        (c: any) => c._id === value
+                        (c) => c._id === value
                       );
                       return cat?.name ?? "…";
                     }}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {categories?.map((cat: any) => (
+                  {categories?.map((cat) => (
                     <SelectItem key={cat._id} value={cat._id} label={cat.name}>
                       {cat.name}
                     </SelectItem>

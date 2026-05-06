@@ -6,6 +6,7 @@ import { useQuery } from "convex/react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { createReturn } from "@/app/actions/returns";
 import { formatCurrency } from "@ware-house/shared";
 import { ArrowLeft } from "lucide-react";
@@ -63,7 +64,7 @@ export default function ProcessReturnPage() {
 
   const sale = useQuery(
     api.sales.get,
-    userId ? { saleId: saleId as any, userId: userId as any } : "skip"
+    userId ? { saleId: saleId as Id<"sales">, userId: userId } : "skip"
   );
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -78,7 +79,7 @@ export default function ProcessReturnPage() {
 
   const refundTotalUSD = useMemo(() => {
     if (!sale) return 0;
-    return sale.items.reduce((sum: number, item: any) => {
+    return sale.items.reduce((sum: number, item) => {
       if (!selected[item._id]) return sum;
       const remaining = item.quantity - item.returnedQuantity;
       const qty = Math.min(qtys[item._id] ?? remaining, remaining);
@@ -116,7 +117,7 @@ export default function ProcessReturnPage() {
     );
   }
 
-  function toggleLine(itemId: string, item: any) {
+  function toggleLine(itemId: string, item: { quantity: number; returnedQuantity: number }) {
     setSelected((prev) => {
       const next = { ...prev, [itemId]: !prev[itemId] };
       return next;
@@ -136,7 +137,7 @@ export default function ProcessReturnPage() {
     const items = Object.entries(selected)
       .filter(([, on]) => on)
       .map(([saleItemId]) => {
-        const it = sale!.items.find((i: any) => i._id === saleItemId);
+        const it = sale!.items.find((i) => i._id === saleItemId);
         const remaining = it ? it.quantity - it.returnedQuantity : 0;
         const qty = qtys[saleItemId] ?? remaining;
         return { saleItemId, quantity: Math.min(qty, remaining) };
@@ -217,7 +218,7 @@ export default function ProcessReturnPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sale.items.map((item: any) => {
+              {sale.items.map((item) => {
                 const remaining = item.quantity - item.returnedQuantity;
                 const fullyReturned = remaining <= 0;
                 const isSelected = !!selected[item._id];

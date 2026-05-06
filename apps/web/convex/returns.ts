@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Doc, Id } from "./_generated/dataModel";
 import { assertPageFunction } from "./_helpers/permissions";
 import { adjustStock } from "./_helpers/stock";
 import { createAuditLog } from "./_helpers/audit";
@@ -26,22 +27,22 @@ export const listByStore = query({
 
     let returns = await ctx.db
       .query("saleReturns")
-      .withIndex("by_store_and_date", (q: any) => q.eq("storeId", args.storeId))
+      .withIndex("by_store_and_date", (q) => q.eq("storeId", args.storeId))
       .order("desc")
       .take(500);
 
     if (args.reason) {
-      returns = returns.filter((r: any) => r.reason === args.reason);
+      returns = returns.filter((r) => r.reason === args.reason);
     }
     if (args.fromDate !== undefined) {
-      returns = returns.filter((r: any) => r.createdAt >= args.fromDate!);
+      returns = returns.filter((r) => r.createdAt >= args.fromDate!);
     }
     if (args.toDate !== undefined) {
-      returns = returns.filter((r: any) => r.createdAt <= args.toDate!);
+      returns = returns.filter((r) => r.createdAt <= args.toDate!);
     }
 
     // Resolve sale numbers
-    const saleCache: Record<string, any> = {};
+    const saleCache: Record<string, Doc<"sales"> | null> = {};
     for (const r of returns) {
       if (!saleCache[r.saleId]) {
         const s = await ctx.db.get(r.saleId);
@@ -55,7 +56,7 @@ export const listByStore = query({
       const sale = saleCache[r.saleId];
       if (sale?.customerId && !customerCache[sale.customerId]) {
         const c = await ctx.db.get(sale.customerId);
-        if (c) customerCache[sale.customerId] = { name: (c as any).name, phone: (c as any).phone };
+        if (c) customerCache[sale.customerId] = { name: c.name, phone: c.phone };
       }
     }
 
@@ -68,7 +69,7 @@ export const listByStore = query({
       }
     }
 
-    const enriched = returns.map((r: any) => {
+    const enriched = returns.map((r) => {
       const sale = saleCache[r.saleId];
       const cust =
         sale?.customerId && customerCache[sale.customerId]
@@ -87,7 +88,7 @@ export const listByStore = query({
     if (!term) return enriched;
 
     return enriched.filter(
-      (r: any) =>
+      (r) =>
         r.returnNumber.toLowerCase().includes(term) ||
         r.saleNumber.toLowerCase().includes(term) ||
         (r.customerName && r.customerName.toLowerCase().includes(term)) ||
@@ -109,7 +110,7 @@ export const getBySale = query({
 
     const returns = await ctx.db
       .query("saleReturns")
-      .withIndex("by_sale", (q: any) => q.eq("saleId", args.saleId))
+      .withIndex("by_sale", (q) => q.eq("saleId", args.saleId))
       .order("desc")
       .collect();
 
@@ -121,7 +122,7 @@ export const getBySale = query({
       }
     }
 
-    return returns.map((r: any) => ({
+    return returns.map((r) => ({
       ...r,
       processedByName: userCache[r.createdBy],
     }));
@@ -141,7 +142,7 @@ export const get = query({
 
     const items = await ctx.db
       .query("saleReturnItems")
-      .withIndex("by_return", (q: any) => q.eq("returnId", args.returnId))
+      .withIndex("by_return", (q) => q.eq("returnId", args.returnId))
       .collect();
 
     const sale = await ctx.db.get(ret.saleId);
@@ -209,8 +210,8 @@ export const create = mutation({
 
     // Validate all return quantities & freeze unit prices BEFORE writes
     type Validated = {
-      saleItemId: any;
-      productId: any;
+      saleItemId: Id<"saleItems">;
+      productId: Id<"products">;
       productName: string;
       quantity: number;
       unitPrice: number;
@@ -320,7 +321,7 @@ export const create = mutation({
       const fresh = await ctx.db.get(v.saleItemId);
       if (fresh) {
         await ctx.db.patch(v.saleItemId, {
-          returnedQuantity: (fresh as any).returnedQuantity + v.quantity,
+          returnedQuantity: fresh.returnedQuantity + v.quantity,
         });
       }
 
@@ -340,16 +341,16 @@ export const create = mutation({
     // Recompute sale status
     const allItems = await ctx.db
       .query("saleItems")
-      .withIndex("by_sale", (q: any) => q.eq("saleId", args.saleId))
+      .withIndex("by_sale", (q) => q.eq("saleId", args.saleId))
       .collect();
 
     const fullyReturned = allItems.every(
-      (i: any) => i.returnedQuantity >= i.quantity
+      (i) => i.returnedQuantity >= i.quantity
     );
     const newStatus = fullyReturned ? "returned" : "partially_returned";
 
     await ctx.db.patch(args.saleId, {
-      status: newStatus as any,
+      status: newStatus as Doc<"sales">["status"],
       updatedAt: Date.now(),
     });
 

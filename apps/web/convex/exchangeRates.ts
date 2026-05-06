@@ -12,7 +12,10 @@ export const getCurrent = query({
       ["exchange_rate", "view_list"],
       ["sales", "create_sale"],
     ]);
-    return getCurrentRateRow(ctx.db, args.storeId);
+    const row = await getCurrentRateRow(ctx.db, args.storeId);
+    if (!row) return null;
+    const creator = await ctx.db.get(row.createdBy);
+    return { ...row, createdByName: creator?.name ?? "Unknown" };
   },
 });
 
@@ -27,7 +30,7 @@ export const listHistory = query({
 
     const result = await ctx.db
       .query("exchangeRates")
-      .withIndex("by_store_and_effective", (q: any) =>
+      .withIndex("by_store_and_effective", (q) =>
         q.eq("storeId", args.storeId)
       )
       .order("desc")

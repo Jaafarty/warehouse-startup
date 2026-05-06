@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { formatCurrency, formatDate } from "@ware-house/shared";
 import { Plus, ShoppingCart, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,16 +44,16 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 export default function SalesPage() {
   const { storeId } = useParams<{ storeId: string }>();
   const { userId } = useCurrentUser();
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "returned" | "partially_returned">("all");
   const [search, setSearch] = useState<string>("");
 
   const sales = useQuery(
     api.sales.list,
     userId
       ? {
-          storeId: storeId as any,
-          userId: userId as any,
-          status: statusFilter !== "all" ? (statusFilter as any) : undefined,
+          storeId: storeId as Id<"stores">,
+          userId,
+          status: statusFilter !== "all" ? statusFilter : undefined,
           search: search || undefined,
         }
       : "skip"
@@ -60,7 +61,7 @@ export default function SalesPage() {
 
   const store = useQuery(
     api.stores.getById,
-    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
   );
   const isPrivileged = store?.role === "owner" || store?.role === "admin";
   const canCreateSale =
@@ -97,7 +98,7 @@ export default function SalesPage() {
         </div>
         <Select
           value={statusFilter}
-          onValueChange={(v) => setStatusFilter(v ?? "all")}
+          onValueChange={(v) => setStatusFilter((v ?? "all") as "all" | "completed" | "returned" | "partially_returned")}
         >
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="All statuses" />
@@ -149,7 +150,7 @@ export default function SalesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sales.map((sale: any) => (
+                {sales.map((sale) => (
                   <TableRow key={sale._id}>
                     <TableCell>
                       <Link

@@ -34,7 +34,7 @@ export default function DashboardPage() {
 
     const stores = useQuery(
         api.stores.listByUser,
-        userId ? { userId: userId as any } : "skip",
+        userId ? { userId } : "skip",
     );
 
     const [open, setOpen] = useState(false);
@@ -134,7 +134,7 @@ export default function DashboardPage() {
                 </Card>
             ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
-                    {stores.map((store: any) => (
+                    {stores.map((store) => (
                         <Link key={store._id} href={`/store/${store._id}`}>
                             <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
                                 <CardHeader>

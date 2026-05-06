@@ -14,7 +14,7 @@ export const store = mutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("users")
-      .withIndex("by_clerkId", (q: any) => q.eq("clerkId", args.clerkId))
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
       .unique();
 
     if (existing) {
@@ -46,7 +46,7 @@ export const current = query({
     if (!identity) return null;
     return ctx.db
       .query("users")
-      .withIndex("by_clerkId", (q: any) => q.eq("clerkId", identity.subject))
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
       .unique();
   },
 });
@@ -56,7 +56,7 @@ export const getByClerkId = query({
   handler: async (ctx, args) => {
     return ctx.db
       .query("users")
-      .withIndex("by_clerkId", (q: any) => q.eq("clerkId", args.clerkId))
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
       .unique();
   },
 });

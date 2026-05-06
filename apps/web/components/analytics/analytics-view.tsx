@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { useCurrentUser } from "@/lib/use-current-user";
 import {
   Card,
@@ -67,7 +68,7 @@ export function AnalyticsView({ storeId }: { storeId: string }) {
   const [productId, setProductId] = useState<string | null>(null);
 
   const argsBase = userId
-    ? { storeId: storeId as any, userId: userId as any }
+    ? { storeId: storeId as Id<"stores">, userId }
     : null;
 
   const rangeArgs = argsBase
@@ -75,7 +76,7 @@ export function AnalyticsView({ storeId }: { storeId: string }) {
         ...argsBase,
         rangeStart: range.start,
         rangeEnd: range.end,
-        productId: (productId as any) ?? undefined,
+        productId: (productId as Id<"products"> | null) ?? undefined,
       }
     : null;
 
@@ -90,13 +91,13 @@ export function AnalyticsView({ storeId }: { storeId: string }) {
   const weeklyRev = useQuery(
     api.analytics.weeklyRevenue,
     argsBase
-      ? { ...argsBase, productId: (productId as any) ?? undefined }
+      ? { ...argsBase, productId: (productId as Id<"products"> | null) ?? undefined }
       : "skip"
   );
   const monthlyRev = useQuery(
     api.analytics.monthlyRevenue,
     argsBase
-      ? { ...argsBase, productId: (productId as any) ?? undefined }
+      ? { ...argsBase, productId: (productId as Id<"products"> | null) ?? undefined }
       : "skip"
   );
   const topRanked = useQuery(
@@ -120,13 +121,13 @@ export function AnalyticsView({ storeId }: { storeId: string }) {
 
   const productOptions = useMemo(
     () =>
-      (products ?? []).map((p: any) => ({ _id: String(p._id), name: p.name })),
+      (products ?? []).map((p) => ({ _id: String(p._id), name: p.name })),
     [products]
   );
 
   const topBarData = useMemo(
     () =>
-      (topRanked ?? []).map((p: any) => ({
+      (topRanked ?? []).map((p) => ({
         name: p.name,
         revenue: p.revenue,
       })),
@@ -153,20 +154,20 @@ export function AnalyticsView({ storeId }: { storeId: string }) {
             onChange={setProductId}
           />
           <ExportCsvButton
-            rows={dailySummary as any}
+            rows={dailySummary}
             filename={`daily-summary-${range.preset}.csv`}
           />
         </div>
       </div>
 
-      <KpiGrid data={kpis as any} />
+      <KpiGrid data={kpis} />
 
       <ChartCard
         title="Daily Revenue"
         description="Revenue per day over the selected range"
         loading={dailyRev === undefined}
       >
-        <DailyRevenueChart data={(dailyRev as any) ?? []} />
+        <DailyRevenueChart data={dailyRev ?? []} />
       </ChartCard>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -175,14 +176,14 @@ export function AnalyticsView({ storeId }: { storeId: string }) {
           description="Last 12 weeks"
           loading={weeklyRev === undefined}
         >
-          <WeeklyRevenueChart data={(weeklyRev as any) ?? []} />
+          <WeeklyRevenueChart data={weeklyRev ?? []} />
         </ChartCard>
         <ChartCard
           title="Monthly Revenue"
           description="Last 12 months"
           loading={monthlyRev === undefined}
         >
-          <MonthlyRevenueChart data={(monthlyRev as any) ?? []} />
+          <MonthlyRevenueChart data={monthlyRev ?? []} />
         </ChartCard>
       </div>
 
@@ -205,12 +206,12 @@ export function AnalyticsView({ storeId }: { storeId: string }) {
           description="Revenue contribution per product"
           loading={share === undefined}
         >
-          {!share || (share as any).length === 0 ? (
+          {!share || share.length === 0 ? (
             <div className="py-12 text-center text-sm text-muted-foreground">
               No sales in this range.
             </div>
           ) : (
-            <ProductSharePie data={share as any} />
+            <ProductSharePie data={share} />
           )}
         </ChartCard>
       </div>
@@ -221,20 +222,20 @@ export function AnalyticsView({ storeId }: { storeId: string }) {
           description="Units per day over the selected range"
           loading={qtyTrend === undefined}
         >
-          <QuantityTrendChart data={(qtyTrend as any) ?? []} />
+          <QuantityTrendChart data={qtyTrend ?? []} />
         </ChartCard>
         <ChartCard
           title="Orders by Day of Week"
           description="Order counts grouped by weekday"
           loading={dowOrders === undefined}
         >
-          <DowOrdersChart data={(dowOrders as any) ?? []} />
+          <DowOrdersChart data={dowOrders ?? []} />
         </ChartCard>
       </div>
 
       <div>
         <h2 className="mb-4 text-lg font-semibold">Insights</h2>
-        <InsightsSection data={insights as any} />
+        <InsightsSection data={insights} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -244,7 +245,7 @@ export function AnalyticsView({ storeId }: { storeId: string }) {
             <CardDescription>Sortable — click any column header</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <TopProductsTable data={topRanked as any} />
+            <TopProductsTable data={topRanked} />
           </CardContent>
         </Card>
         <Card>
@@ -253,7 +254,7 @@ export function AnalyticsView({ storeId }: { storeId: string }) {
             <CardDescription>Day-by-day breakdown</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <DailySummaryTable data={dailySummary as any} />
+            <DailySummaryTable data={dailySummary} />
           </CardContent>
         </Card>
       </div>

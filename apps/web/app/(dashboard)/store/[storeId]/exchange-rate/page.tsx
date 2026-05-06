@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { formatDate } from "@ware-house/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,17 +35,17 @@ export default function ExchangeRatePage() {
 
   const store = useQuery(
     api.stores.getById,
-    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+    userId ? { storeId: storeId as Id<"stores">, userId: userId } : "skip"
   );
 
   const current = useQuery(
     api.exchangeRates.getCurrent,
-    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+    userId ? { storeId: storeId as Id<"stores">, userId: userId } : "skip"
   );
 
   const history = usePaginatedQuery(
     api.exchangeRates.listHistory,
-    userId ? { storeId: storeId as any, userId: userId as any } : "skip",
+    userId ? { storeId: storeId as Id<"stores">, userId: userId } : "skip",
     { initialNumItems: 20 }
   );
 
@@ -65,16 +66,16 @@ export default function ExchangeRatePage() {
     setPending(true);
     try {
       await setRate({
-        storeId: storeId as any,
-        userId: userId as any,
+        storeId: storeId as Id<"stores">,
+        userId: userId!,
         rate,
         note: note.trim() || undefined,
       });
       toast.success("Rate updated");
       setRateStr("");
       setNote("");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to update rate");
+    } catch (e) {
+      toast.error((e as Error)?.message ?? "Failed to update rate");
     } finally {
       setPending(false);
     }
@@ -106,7 +107,7 @@ export default function ExchangeRatePage() {
               </p>
               <p className="text-sm text-muted-foreground mt-1">
                 Set {formatDate(current.createdAt)} by{" "}
-                {(current as any).createdByName ?? "—"}
+                {current.createdByName ?? "—"}
                 {current.note ? ` — ${current.note}` : ""}
               </p>
             </div>
@@ -179,7 +180,7 @@ export default function ExchangeRatePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {history.results.map((r: any) => (
+                {history.results.map((r) => (
                   <TableRow key={r._id}>
                     <TableCell className="text-muted-foreground text-sm">
                       {formatDate(r.createdAt)}

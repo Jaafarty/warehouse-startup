@@ -6,6 +6,7 @@ import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { formatCurrency, formatDate } from "@ware-house/shared";
 import { RotateCcw, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -57,10 +58,18 @@ export default function ReturnsListPage() {
     api.returns.listByStore,
     userId
       ? {
-          storeId: storeId as any,
-          userId: userId as any,
+          storeId: storeId as Id<"stores">,
+          userId,
           search: search || undefined,
-          reason: reasonFilter !== "all" ? (reasonFilter as any) : undefined,
+          reason:
+            reasonFilter !== "all"
+              ? (reasonFilter as
+                  | "defective"
+                  | "wrong_item"
+                  | "damaged_in_transit"
+                  | "customer_changed_mind"
+                  | "other")
+              : undefined,
           fromDate: fromMs,
           toDate: toMs,
         }
@@ -154,7 +163,7 @@ export default function ReturnsListPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {returns.map((r: any) => (
+                {returns.map((r) => (
                   <TableRow key={r._id}>
                     <TableCell>
                       <Link

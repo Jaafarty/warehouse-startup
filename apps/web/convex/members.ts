@@ -1,9 +1,10 @@
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 import { getStoreMember } from "./_helpers/permissions";
 import { createAuditLog } from "./_helpers/audit";
-import { canManageRole } from "@ware-house/shared";
+import { canManageRole, MemberRole } from "@ware-house/shared";
 
 export const listByStore = query({
   args: { storeId: v.id("stores"), userId: v.id("users") },
@@ -13,11 +14,11 @@ export const listByStore = query({
 
     const members = await ctx.db
       .query("storeMembers")
-      .withIndex("by_store", (q: any) => q.eq("storeId", args.storeId))
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
       .collect();
 
     return Promise.all(
-      members.map(async (m: any) => {
+      members.map(async (m) => {
         const user = await ctx.db.get(m.userId);
         let customRoleName: string | undefined;
         if (m.role === "custom" && m.customRoleId) {
@@ -70,10 +71,10 @@ export const updateRole = mutation({
     }
 
     // Pyramid: caller must outrank target's current role AND the new role being assigned
-    if (!canManageRole(caller.role as any, target.role as any)) {
+    if (!canManageRole(caller.role as MemberRole, target.role as MemberRole)) {
       throw new ConvexError({ code: "FORBIDDEN", message: "You can't modify a member with a role equal to or above your own." });
     }
-    if (!canManageRole(caller.role as any, args.newRole as any)) {
+    if (!canManageRole(caller.role as MemberRole, args.newRole as MemberRole)) {
       throw new ConvexError({ code: "FORBIDDEN", message: "You can't assign a role equal to or above your own." });
     }
 
@@ -81,7 +82,10 @@ export const updateRole = mutation({
       throw new ConvexError({ code: "INVALID", message: "A custom role ID is required when assigning a custom role." });
     }
 
-    const patch: Record<string, any> = { role: args.newRole };
+    const patch: {
+      role: typeof args.newRole;
+      customRoleId?: Id<"storeRoles">;
+    } = { role: args.newRole };
     if (args.newRole === "custom") {
       patch.customRoleId = args.customRoleId;
     } else {
