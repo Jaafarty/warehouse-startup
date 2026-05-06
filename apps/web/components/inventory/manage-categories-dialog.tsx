@@ -169,7 +169,7 @@ export function ManageCategoriesDialog({
                 No categories yet.
               </p>
             ) : (
-              categories.map((cat: any) => (
+              categories.map((cat) => (
                 <div key={cat._id} className="flex items-center gap-2 rounded-lg border px-3 py-2">
                   {editingId === cat._id ? (
                     <>

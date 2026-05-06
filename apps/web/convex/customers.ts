@@ -14,14 +14,14 @@ export const list = query({
 
     const all = await ctx.db
       .query("customers")
-      .withIndex("by_store", (q: any) => q.eq("storeId", args.storeId))
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
       .collect();
 
     const term = (args.search ?? "").trim().toLowerCase();
     if (!term) return all;
 
     return all.filter(
-      (c: any) =>
+      (c) =>
         c.name.toLowerCase().includes(term) ||
         c.phone.toLowerCase().includes(term)
     );
@@ -39,7 +39,7 @@ export const getByPhone = query({
 
     return await ctx.db
       .query("customers")
-      .withIndex("by_store_and_phone", (q: any) =>
+      .withIndex("by_store_and_phone", (q) =>
         q.eq("storeId", args.storeId).eq("phone", args.phone)
       )
       .unique();
@@ -64,7 +64,7 @@ export const create = mutation({
 
     const existing = await ctx.db
       .query("customers")
-      .withIndex("by_store_and_phone", (q: any) =>
+      .withIndex("by_store_and_phone", (q) =>
         q.eq("storeId", args.storeId).eq("phone", phone)
       )
       .unique();

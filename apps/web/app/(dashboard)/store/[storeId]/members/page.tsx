@@ -5,6 +5,7 @@ import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import {
   inviteMember,
   updateMemberRole,
@@ -71,24 +72,24 @@ export default function MembersPage() {
 
   const members = useQuery(
     api.members.listByStore,
-    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
   );
 
   const invitations = useQuery(
     api.invitations.listByStore,
-    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
   );
 
   const customRoles = useQuery(
     api.storeRoles.listByStore,
-    userId ? { storeId: storeId as any, userId: userId as any } : "skip"
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
   );
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteRole, setInviteRole] = useState("employee");
   const [pending, setPending] = useState(false);
 
-  const currentUserMember = members?.find((m: any) => m.userId === userId);
+  const currentUserMember = members?.find((m) => m.userId === userId);
   const currentUserRole = currentUserMember?.role ?? "viewer";
 
   async function handleInvite(formData: FormData) {
@@ -162,7 +163,7 @@ export default function MembersPage() {
     }
   };
 
-  function roleLabel(member: any): string {
+  function roleLabel(member: { role: string; customRoleName?: string }): string {
     if (member.role === "custom") return member.customRoleName ?? "Custom";
     if (member.role === "employee") return "Employee";
     return member.role.charAt(0).toUpperCase() + member.role.slice(1);
@@ -218,7 +219,7 @@ export default function MembersPage() {
                       {customRoles && customRoles.length > 0 && (
                         <>
                           <SelectItem disabled value="__divider__">── Custom Roles ──</SelectItem>
-                          {customRoles.map((cr: any) => (
+                          {customRoles.map((cr) => (
                             <SelectItem key={cr._id} value={`custom:${cr._id}`}>
                               {cr.name}
                             </SelectItem>
@@ -259,7 +260,7 @@ export default function MembersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {members.map((member: any) => {
+                {members.map((member) => {
                   const isOwner = member.role === "owner";
                   const isSelf = member.userId === userId;
                   const canEdit = !isOwner && !isSelf && (currentUserRole === "owner" || currentUserRole === "admin");
@@ -308,10 +309,10 @@ export default function MembersPage() {
                               {customRoles && customRoles.length > 0 && (
                                 <>
                                   <DropdownMenuSeparator />
-                                  {customRoles.map((cr: any) => (
+                                  {customRoles.map((cr) => (
                                     <DropdownMenuItem
                                       key={cr._id}
-                                      onClick={() => handleRoleChange(member._id, "custom", cr._id)}
+                                      onClick={() => handleRoleChange(member._id, "custom", cr._id as string)}
                                     >
                                       {cr.name}
                                     </DropdownMenuItem>
@@ -351,7 +352,7 @@ export default function MembersPage() {
         </CardContent>
       </Card>
 
-      {invitations && invitations.filter((i: any) => i.status === "pending").length > 0 && (
+      {invitations && invitations.filter((i) => i.status === "pending").length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Pending Invitations</CardTitle>
@@ -368,8 +369,8 @@ export default function MembersPage() {
               </TableHeader>
               <TableBody>
                 {invitations
-                  .filter((i: any) => i.status === "pending")
-                  .map((invite: any) => (
+                  .filter((i) => i.status === "pending")
+                  .map((invite) => (
                     <TableRow key={invite._id}>
                       <TableCell>{invite.email}</TableCell>
                       <TableCell>

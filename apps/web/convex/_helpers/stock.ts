@@ -60,10 +60,10 @@ export async function adjustStock(
   ) {
     const admins = await db
       .query("storeMembers")
-      .withIndex("by_store", (q: any) => q.eq("storeId", params.storeId))
+      .withIndex("by_store", (q) => q.eq("storeId", params.storeId))
       .collect();
 
-    for (const admin of admins.filter((m: any) => m.role === "admin")) {
+    for (const admin of admins.filter((m) => m.role === "admin")) {
       await db.insert("notifications", {
         userId: admin.userId,
         storeId: params.storeId,

@@ -1,5 +1,6 @@
 import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Doc, Id } from "./_generated/dataModel";
 import { assertPageFunction } from "./_helpers/permissions";
 import { adjustStock } from "./_helpers/stock";
 import { createAuditLog } from "./_helpers/audit";
@@ -25,24 +26,22 @@ export const list = query({
   handler: async (ctx, args) => {
     await assertPageFunction(ctx.db, args.userId, args.storeId, "sales", "view_list");
 
-    let sales;
-    if (args.status) {
-      sales = await ctx.db
-        .query("sales")
-        .withIndex("by_store_and_status", (q: any) =>
-          q.eq("storeId", args.storeId).eq("status", args.status)
-        )
-        .order("desc")
-        .take(200);
-    } else {
-      sales = await ctx.db
-        .query("sales")
-        .withIndex("by_store_and_date", (q: any) =>
-          q.eq("storeId", args.storeId)
-        )
-        .order("desc")
-        .take(200);
-    }
+    const status = args.status;
+    const sales = status
+      ? await ctx.db
+          .query("sales")
+          .withIndex("by_store_and_status", (q) =>
+            q.eq("storeId", args.storeId).eq("status", status)
+          )
+          .order("desc")
+          .take(200)
+      : await ctx.db
+          .query("sales")
+          .withIndex("by_store_and_date", (q) =>
+            q.eq("storeId", args.storeId)
+          )
+          .order("desc")
+          .take(200);
 
     // Resolve creators
     const userCache: Record<string, string> = {};
@@ -64,7 +63,7 @@ export const list = query({
       }
     }
 
-    const enriched = sales.map((s: any) => ({
+    const enriched = sales.map((s) => ({
       ...s,
       createdByName: userCache[s.createdBy],
       customerName: s.customerId
@@ -79,7 +78,7 @@ export const list = query({
     if (!term) return enriched;
 
     return enriched.filter(
-      (s: any) =>
+      (s) =>
         s.saleNumber.toLowerCase().includes(term) ||
         (s.customerName && s.customerName.toLowerCase().includes(term)) ||
         (s.customerPhone && s.customerPhone.toLowerCase().includes(term))
@@ -100,7 +99,7 @@ export const get = query({
 
     const items = await ctx.db
       .query("saleItems")
-      .withIndex("by_sale", (q: any) => q.eq("saleId", args.saleId))
+      .withIndex("by_sale", (q) => q.eq("saleId", args.saleId))
       .collect();
 
     const creator = await ctx.db.get(sale.createdBy);
@@ -166,8 +165,8 @@ export const create = mutation({
     let totalItems = 0;
 
     type ItemDetail = {
-      productId: any;
-      product: any;
+      productId: Id<"products">;
+      product: Doc<"products">;
       quantity: number;
       currency: Currency;
       unitPrice: number; // in `currency`

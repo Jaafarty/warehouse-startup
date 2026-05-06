@@ -19,7 +19,7 @@ import { PermissionEditor } from "@/components/permissions/permission-editor";
 import { friendlyMessage } from "@/lib/extract-error";
 
 function buildEmptyPermissions(): StorePermissions {
-  const perms: Record<string, Record<string, boolean>> = {};
+  const perms: Record<string, { enabled: boolean; functions: Record<string, boolean> }> = {};
   for (const page of PAGE_KEYS) {
     const functions: Record<string, boolean> = {};
     for (const fn of PAGE_FUNCTIONS[page]) functions[fn] = false;

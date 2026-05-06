@@ -10,7 +10,7 @@ export async function getStoreMember(
 ): Promise<Doc<"storeMembers"> | null> {
   return db
     .query("storeMembers")
-    .withIndex("by_store_and_user", (q: any) =>
+    .withIndex("by_store_and_user", (q) =>
       q.eq("storeId", storeId).eq("userId", userId)
     )
     .unique();
@@ -35,15 +35,18 @@ export async function getEffectivePermissions(
     if (!customRole) {
       throw new ConvexError({ code: "FORBIDDEN", message: "Your assigned role no longer exists." });
     }
-    return mergeWithDefaults(customRole.permissions as Record<string, any>);
+    return mergeWithDefaults(customRole.permissions);
   }
   throw new ConvexError({ code: "FORBIDDEN", message: "Unrecognized role. Contact your store owner." });
 }
 
-export function mergeWithDefaults(stored: Record<string, any>): StorePermissions {
-  const result: Record<string, any> = {};
+type StoredPagePerm = { enabled?: boolean; functions?: Record<string, boolean> };
+
+export function mergeWithDefaults(stored: Doc<"storeRoles">["permissions"]): StorePermissions {
+  const tree = (stored ?? {}) as Record<string, StoredPagePerm | undefined>;
+  const result: Record<string, { enabled: boolean; functions: Record<string, boolean> }> = {};
   for (const page of PAGE_KEYS) {
-    const storedPage = stored[page];
+    const storedPage = tree[page];
     const fns: Record<string, boolean> = {};
     for (const fn of PAGE_FUNCTIONS[page]) {
       fns[fn] = storedPage?.functions?.[fn] ?? false;

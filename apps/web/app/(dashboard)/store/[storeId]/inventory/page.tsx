@@ -103,7 +103,7 @@ export default function InventoryPage() {
   const categories = useQuery(
     api.categories.list,
     userId
-      ? { storeId: storeId as any, userId: userId as any }
+      ? { storeId: storeId as Id<"stores">, userId }
       : "skip"
   );
 

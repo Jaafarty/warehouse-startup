@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { query } from "./_generated/server";
+import { query, QueryCtx } from "./_generated/server";
+import { Doc, Id } from "./_generated/dataModel";
 import { assertPageFunction } from "./_helpers/permissions";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -39,26 +40,26 @@ function addMonths(ts: number, months: number): number {
 // Effective USD-equivalent revenue per saleItem after partial returns.
 // Falls back to `unitPrice` for legacy items where the dual-currency backfill
 // has not run yet — those are USD-only.
-function itemRevenue(item: any): number {
+function itemRevenue(item: Doc<"saleItems">): number {
   const unitUSD = item.unitPriceUSD ?? item.unitPrice;
   return unitUSD * (item.quantity - item.returnedQuantity);
 }
 
-function itemUnits(item: any): number {
+function itemUnits(item: Doc<"saleItems">): number {
   return item.quantity - item.returnedQuantity;
 }
 
-async function loadStoreSalesData(ctx: any, storeId: any) {
+async function loadStoreSalesData(ctx: QueryCtx, storeId: Id<"stores">) {
   const sales = await ctx.db
     .query("sales")
-    .withIndex("by_store_and_date", (q: any) => q.eq("storeId", storeId))
+    .withIndex("by_store_and_date", (q) => q.eq("storeId", storeId))
     .collect();
   const saleItems = await ctx.db
     .query("saleItems")
-    .withIndex("by_store_and_product", (q: any) => q.eq("storeId", storeId))
+    .withIndex("by_store_and_product", (q) => q.eq("storeId", storeId))
     .collect();
 
-  const itemsBySale: Record<string, any[]> = {};
+  const itemsBySale: Record<string, Doc<"saleItems">[]> = {};
   for (const item of saleItems) {
     const key = String(item.saleId);
     (itemsBySale[key] ??= []).push(item);
@@ -67,9 +68,12 @@ async function loadStoreSalesData(ctx: any, storeId: any) {
   return { sales, saleItems, itemsBySale };
 }
 
-function saleRevenue(sale: any, itemsBySale: Record<string, any[]>): number {
+function saleRevenue(
+  sale: Doc<"sales">,
+  itemsBySale: Record<string, Doc<"saleItems">[]>
+): number {
   const items = itemsBySale[String(sale._id)] ?? [];
-  return items.reduce((s: number, i: any) => s + itemRevenue(i), 0);
+  return items.reduce((s, i) => s + itemRevenue(i), 0);
 }
 
 // =========================
@@ -92,40 +96,40 @@ export const overview = query({
 
     const sales = await ctx.db
       .query("sales")
-      .withIndex("by_store_and_date", (q: any) =>
+      .withIndex("by_store_and_date", (q) =>
         q.eq("storeId", args.storeId)
       )
       .collect();
 
     const salesInRange = sales.filter(
-      (s: any) => s.createdAt >= start && s.createdAt <= end
+      (s) => s.createdAt >= start && s.createdAt <= end
     );
 
     const totalRevenue = salesInRange
-      .filter((s: any) => s.status !== "returned")
-      .reduce((sum: number, s: any) => sum + s.totalAmount, 0);
+      .filter((s) => s.status !== "returned")
+      .reduce((sum, s) => sum + s.totalAmount, 0);
 
     const totalSales = salesInRange.length;
     const completedSales = salesInRange.filter(
-      (s: any) => s.status === "completed"
+      (s) => s.status === "completed"
     ).length;
 
     const products = await ctx.db
       .query("products")
-      .withIndex("by_store_and_archived", (q: any) =>
+      .withIndex("by_store_and_archived", (q) =>
         q.eq("storeId", args.storeId).eq("isArchived", false)
       )
       .collect();
 
     const totalProducts = products.length;
     const lowStockProducts = products.filter(
-      (p: any) => p.quantity <= p.lowStockThreshold
+      (p) => p.quantity <= p.lowStockThreshold
     ).length;
     const outOfStockProducts = products.filter(
-      (p: any) => p.quantity === 0
+      (p) => p.quantity === 0
     ).length;
     const totalInventoryValue = products.reduce(
-      (sum: number, p: any) =>
+      (sum, p) =>
         sum + (p.costPriceUSD ?? p.costPrice ?? 0) * p.quantity,
       0
     );
@@ -155,7 +159,7 @@ export const topProducts = query({
 
     const saleItems = await ctx.db
       .query("saleItems")
-      .withIndex("by_store_and_product", (q: any) =>
+      .withIndex("by_store_and_product", (q) =>
         q.eq("storeId", args.storeId)
       )
       .collect();
@@ -200,12 +204,12 @@ export const salesTrend = query({
 
     const sales = await ctx.db
       .query("sales")
-      .withIndex("by_store_and_date", (q: any) =>
+      .withIndex("by_store_and_date", (q) =>
         q.eq("storeId", args.storeId)
       )
       .collect();
 
-    const salesInRange = sales.filter((s: any) => s.createdAt >= start);
+    const salesInRange = sales.filter((s) => s.createdAt >= start);
 
     const dailyData: Record<string, { revenue: number; count: number }> = {};
 
@@ -261,8 +265,8 @@ export const kpis = query({
 
     const sumRevenue = (from: number, to: number) =>
       sales
-        .filter((s: any) => s.createdAt >= from && s.createdAt < to)
-        .reduce((sum: number, s: any) => sum + saleRevenue(s, itemsBySale), 0);
+        .filter((s) => s.createdAt >= from && s.createdAt < to)
+        .reduce((sum, s) => sum + saleRevenue(s, itemsBySale), 0);
 
     const todayRevenue = sumRevenue(todayStart, todayStart + DAY_MS);
     const yesterdayRevenue = sumRevenue(yesterdayStart, todayStart);
@@ -270,7 +274,7 @@ export const kpis = query({
     const monthRevenue = sumRevenue(thisMonthStart, now + 1);
     const lastMonthRevenue = sumRevenue(lastMonthStart, thisMonthStart);
     const totalRevenue = sales.reduce(
-      (sum: number, s: any) => sum + saleRevenue(s, itemsBySale),
+      (sum, s) => sum + saleRevenue(s, itemsBySale),
       0
     );
 
@@ -281,10 +285,10 @@ export const kpis = query({
     const todaysSaleIds = new Set(
       sales
         .filter(
-          (s: any) =>
+          (s) =>
             s.createdAt >= todayStart && s.createdAt < todayStart + DAY_MS
         )
-        .map((s: any) => String(s._id))
+        .map((s) => String(s._id))
     );
     let unitsSoldToday = 0;
     for (const item of saleItems) {
@@ -378,11 +382,11 @@ export const dailyRevenue = query({
       if (!buckets[key]) continue;
       const items = itemsBySale[String(sale._id)] ?? [];
       const filtered = args.productId
-        ? items.filter((i: any) => i.productId === args.productId)
+        ? items.filter((i) => i.productId === args.productId)
         : items;
       if (args.productId && filtered.length === 0) continue;
       buckets[key].revenue += filtered.reduce(
-        (s: number, i: any) => s + itemRevenue(i),
+        (s, i) => s + itemRevenue(i),
         0
       );
       buckets[key].orders += 1;
@@ -422,10 +426,10 @@ export const weeklyRevenue = query({
       if (!(key in buckets)) continue;
       const items = itemsBySale[String(sale._id)] ?? [];
       const filtered = args.productId
-        ? items.filter((i: any) => i.productId === args.productId)
+        ? items.filter((i) => i.productId === args.productId)
         : items;
       buckets[key] += filtered.reduce(
-        (s: number, i: any) => s + itemRevenue(i),
+        (s, i) => s + itemRevenue(i),
         0
       );
     }
@@ -466,10 +470,10 @@ export const monthlyRevenue = query({
       if (!(key in buckets)) continue;
       const items = itemsBySale[String(sale._id)] ?? [];
       const filtered = args.productId
-        ? items.filter((i: any) => i.productId === args.productId)
+        ? items.filter((i) => i.productId === args.productId)
         : items;
       buckets[key] += filtered.reduce(
-        (s: number, i: any) => s + itemRevenue(i),
+        (s, i) => s + itemRevenue(i),
         0
       );
     }
@@ -573,10 +577,10 @@ export const productShare = query({
     if (others.length > 0) {
       top.push({
         name: "Other",
-        revenue: others.reduce((s: number, t: any) => s + t.revenue, 0),
+        revenue: others.reduce((s, t) => s + t.revenue, 0),
       });
     }
-    const total = top.reduce((s: number, t: any) => s + t.revenue, 0);
+    const total = top.reduce((s, t) => s + t.revenue, 0);
     return top.map((t) => ({
       name: t.name,
       revenue: t.revenue,
@@ -645,13 +649,13 @@ export const ordersByDayOfWeek = query({
         continue;
       const items = itemsBySale[String(sale._id)] ?? [];
       const filtered = args.productId
-        ? items.filter((i: any) => i.productId === args.productId)
+        ? items.filter((i) => i.productId === args.productId)
         : items;
       if (args.productId && filtered.length === 0) continue;
       const dow = new Date(sale.createdAt).getUTCDay();
       buckets[dow].orders += 1;
       buckets[dow].revenue += filtered.reduce(
-        (s: number, i: any) => s + itemRevenue(i),
+        (s, i) => s + itemRevenue(i),
         0
       );
     }
@@ -759,7 +763,7 @@ export const insights = query({
     // Slow-moving products: active products with <=2 units sold in last 30 days
     const products = await ctx.db
       .query("products")
-      .withIndex("by_store_and_archived", (q: any) =>
+      .withIndex("by_store_and_archived", (q) =>
         q.eq("storeId", args.storeId).eq("isArchived", false)
       )
       .collect();
@@ -771,7 +775,7 @@ export const insights = query({
         (recentUnits[String(item.productId)] ?? 0) + itemUnits(item);
     }
     const slowMoving = products
-      .map((p: any) => ({
+      .map((p) => ({
         id: String(p._id),
         name: p.name,
         units: recentUnits[String(p._id)] ?? 0,
@@ -795,12 +799,12 @@ export const insights = query({
 
     // Averages
     const totalRevenue = sales.reduce(
-      (s: number, sale: any) => s + saleRevenue(sale, itemsBySale),
+      (s, sale) => s + saleRevenue(sale, itemsBySale),
       0
     );
     const dayCount = Object.keys(dailyMap).length || 1;
     const avgDailyRevenue = totalRevenue / dayCount;
-    const monthSet = new Set(sales.map((s: any) => monthKey(s.createdAt)));
+    const monthSet = new Set(sales.map((s) => monthKey(s.createdAt)));
     const monthCount = Math.max(monthSet.size, 1);
     const avgMonthlyRevenue = totalRevenue / monthCount;
 
@@ -846,11 +850,11 @@ export const dailySummary = query({
       if (!(key in buckets)) continue;
       const items = itemsBySale[String(sale._id)] ?? [];
       const filtered = args.productId
-        ? items.filter((i: any) => i.productId === args.productId)
+        ? items.filter((i) => i.productId === args.productId)
         : items;
       if (args.productId && filtered.length === 0) continue;
       buckets[key].revenue += filtered.reduce(
-        (s: number, i: any) => s + itemRevenue(i),
+        (s, i) => s + itemRevenue(i),
         0
       );
       buckets[key].orders += 1;

@@ -1,16 +1,9 @@
 import { DatabaseWriter } from "../_generated/server";
-import { Id } from "../_generated/dataModel";
+import { Doc } from "../_generated/dataModel";
 
 export async function createAuditLog(
   db: DatabaseWriter,
-  params: {
-    storeId: Id<"stores">;
-    userId: Id<"users">;
-    action: string;
-    entityType: string;
-    entityId: string;
-    details?: any;
-  }
+  params: Omit<Doc<"auditLogs">, "_id" | "_creationTime" | "timestamp">
 ) {
   await db.insert("auditLogs", {
     ...params,

@@ -144,7 +144,7 @@ export function CustomerPicker({ storeId, value, onChange }: Props) {
 
       {search && customers && customers.length > 0 && (
         <div className="rounded-md border max-h-56 overflow-y-auto divide-y">
-          {customers.map((c: any) => (
+          {customers.map((c) => (
             <button
               key={c._id}
               type="button"

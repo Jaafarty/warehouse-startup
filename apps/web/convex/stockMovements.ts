@@ -17,19 +17,19 @@ export const listByProduct = query({
 
     const movements = await ctx.db
       .query("stockMovements")
-      .withIndex("by_product", (q: any) => q.eq("productId", args.productId))
+      .withIndex("by_product", (q) => q.eq("productId", args.productId))
       .order("desc")
       .collect();
 
     // Attach performer names
-    const userIds = [...new Set(movements.map((m: any) => m.performedBy as Id<"users">))];
-    const users: Record<string, string> = {};
+    const userIds = [...new Set(movements.map((m) => m.performedBy))];
+    const users: Record<Id<"users">, string> = {} as Record<Id<"users">, string>;
     for (const uid of userIds) {
       const user = await ctx.db.get(uid);
-      if (user) users[String(uid)] = user.name;
+      if (user) users[uid] = user.name;
     }
 
-    return movements.map((m: any) => ({
+    return movements.map((m) => ({
       ...m,
       performedByName: users[m.performedBy] ?? "Unknown",
     }));
@@ -54,29 +54,25 @@ export const listByStore = query({
   handler: async (ctx, args) => {
     await assertPageFunction(ctx.db, args.userId, args.storeId, "inventory", "view_history");
 
-    let movements;
-
-    if (args.type) {
-      movements = await ctx.db
-        .query("stockMovements")
-        .withIndex("by_store_and_type", (q: any) =>
-          q.eq("storeId", args.storeId).eq("type", args.type)
-        )
-        .order("desc")
-        .take(200);
-    } else {
-      movements = await ctx.db
-        .query("stockMovements")
-        .withIndex("by_store_and_timestamp", (q: any) =>
-          q.eq("storeId", args.storeId)
-        )
-        .order("desc")
-        .take(200);
-    }
+    const movements = args.type
+      ? await ctx.db
+          .query("stockMovements")
+          .withIndex("by_store_and_type", (q) =>
+            q.eq("storeId", args.storeId).eq("type", args.type!)
+          )
+          .order("desc")
+          .take(200)
+      : await ctx.db
+          .query("stockMovements")
+          .withIndex("by_store_and_timestamp", (q) =>
+            q.eq("storeId", args.storeId)
+          )
+          .order("desc")
+          .take(200);
 
     // Attach product and user names
-    const productCache: Record<string, string> = {};
-    const userCache: Record<string, string> = {};
+    const productCache: Record<Id<"products">, string> = {} as Record<Id<"products">, string>;
+    const userCache: Record<Id<"users">, string> = {} as Record<Id<"users">, string>;
 
     for (const m of movements) {
       if (!productCache[m.productId]) {
@@ -89,7 +85,7 @@ export const listByStore = query({
       }
     }
 
-    return movements.map((m: any) => ({
+    return movements.map((m) => ({
       ...m,
       productName: productCache[m.productId],
       performedByName: userCache[m.performedBy],

@@ -121,13 +121,13 @@ export function AnalyticsView({ storeId }: { storeId: string }) {
 
   const productOptions = useMemo(
     () =>
-      (products ?? []).map((p: any) => ({ _id: String(p._id), name: p.name })),
+      (products ?? []).map((p) => ({ _id: String(p._id), name: p.name })),
     [products]
   );
 
   const topBarData = useMemo(
     () =>
-      (topRanked ?? []).map((p: any) => ({
+      (topRanked ?? []).map((p) => ({
         name: p.name,
         revenue: p.revenue,
       })),

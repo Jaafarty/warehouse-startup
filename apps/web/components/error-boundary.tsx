@@ -17,7 +17,7 @@ export default class ConvexErrorBoundary extends React.Component<
 
   static getDerivedStateFromError(error: Error): State {
     // Only catch ConvexErrors (they have .data)
-    if ((error as any).data !== undefined) return { error };
+    if ((error as { data?: unknown }).data !== undefined) return { error };
     throw error; // re-throw non-Convex errors
   }
 

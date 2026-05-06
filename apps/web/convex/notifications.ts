@@ -6,7 +6,7 @@ export const list = query({
   handler: async (ctx, args) => {
     return ctx.db
       .query("notifications")
-      .withIndex("by_user", (q: any) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .order("desc")
       .take(100);
   },
@@ -17,7 +17,7 @@ export const unreadCount = query({
   handler: async (ctx, args) => {
     const unread = await ctx.db
       .query("notifications")
-      .withIndex("by_user_and_read", (q: any) =>
+      .withIndex("by_user_and_read", (q) =>
         q.eq("userId", args.userId).eq("isRead", false)
       )
       .collect();
@@ -43,7 +43,7 @@ export const markAllAsRead = mutation({
   handler: async (ctx, args) => {
     const unread = await ctx.db
       .query("notifications")
-      .withIndex("by_user_and_read", (q: any) =>
+      .withIndex("by_user_and_read", (q) =>
         q.eq("userId", args.userId).eq("isRead", false)
       )
       .collect();

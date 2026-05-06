@@ -12,7 +12,7 @@ export async function getCurrentRateRow(
 ) {
   return db
     .query("exchangeRates")
-    .withIndex("by_store_and_effective", (q: any) => q.eq("storeId", storeId))
+    .withIndex("by_store_and_effective", (q) => q.eq("storeId", storeId))
     .order("desc")
     .first();
 }
