@@ -18,6 +18,8 @@ export default defineSchema({
     description: v.optional(v.string()),
     ownerId: v.id("users"),
     isActive: v.boolean(),
+    // Optional cashier-shifts feature. Undefined === disabled.
+    shiftsEnabled: v.optional(v.boolean()),
     createdAt: v.float64(),
   }).index("by_owner", ["ownerId"]),
 
@@ -199,6 +201,9 @@ export default defineSchema({
     paidLBP: v.optional(v.float64()),
     note: v.optional(v.string()),
     customerId: v.optional(v.id("customers")),
+    // Set when the store has shifts enabled and a sale is recorded against
+    // the cashier's active shift. Optional so legacy rows remain valid.
+    shiftId: v.optional(v.id("shifts")),
     createdBy: v.id("users"),
     createdAt: v.float64(),
     updatedAt: v.float64(),
@@ -207,7 +212,8 @@ export default defineSchema({
     .index("by_store_and_status", ["storeId", "status"])
     .index("by_store_and_date", ["storeId", "createdAt"])
     .index("by_sale_number", ["storeId", "saleNumber"])
-    .index("by_store_and_customer", ["storeId", "customerId"]),
+    .index("by_store_and_customer", ["storeId", "customerId"])
+    .index("by_shift", ["shiftId"]),
 
   saleItems: defineTable({
     saleId: v.id("sales"),
@@ -250,13 +256,15 @@ export default defineSchema({
     exchangeRate: v.optional(v.float64()),
     refundedUSD: v.optional(v.float64()),
     refundedLBP: v.optional(v.float64()),
+    shiftId: v.optional(v.id("shifts")),
     createdBy: v.id("users"),
     createdAt: v.float64(),
   })
     .index("by_store", ["storeId"])
     .index("by_store_and_date", ["storeId", "createdAt"])
     .index("by_sale", ["saleId"])
-    .index("by_return_number", ["storeId", "returnNumber"]),
+    .index("by_return_number", ["storeId", "returnNumber"])
+    .index("by_shift", ["shiftId"]),
 
   saleReturnItems: defineTable({
     returnId: v.id("saleReturns"),
@@ -292,6 +300,66 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_and_read", ["userId", "isRead"])
     .index("by_user_and_store", ["userId", "storeId"]),
+
+  // ============ CASHIER SHIFTS ============
+  shifts: defineTable({
+    storeId: v.id("stores"),
+    openedBy: v.id("users"),
+    closedBy: v.optional(v.id("users")),
+    status: v.union(v.literal("open"), v.literal("closed")),
+
+    // Opening drawer counts entered by the cashier.
+    openingUSD: v.float64(),
+    openingLBP: v.float64(),
+    // Snapshot rate at open — used for any USD-equivalent display.
+    openingExchangeRate: v.float64(),
+    // True when the opening figures were seeded from this user's last
+    // closed shift's countedUSD/LBP.
+    carriedOver: v.boolean(),
+
+    // Closing — populated when status flips to "closed".
+    countedUSD: v.optional(v.float64()),
+    countedLBP: v.optional(v.float64()),
+    expectedClosingUSD: v.optional(v.float64()),
+    expectedClosingLBP: v.optional(v.float64()),
+    discrepancyUSD: v.optional(v.float64()),
+    discrepancyLBP: v.optional(v.float64()),
+    discrepancyNote: v.optional(v.string()),
+
+    openedAt: v.float64(),
+    closedAt: v.optional(v.float64()),
+  })
+    .index("by_store", ["storeId"])
+    .index("by_store_and_status", ["storeId", "status"])
+    .index("by_store_and_user", ["storeId", "openedBy"])
+    .index("by_store_user_status", ["storeId", "openedBy", "status"])
+    .index("by_store_and_date", ["storeId", "openedAt"]),
+
+  shiftCashEvents: defineTable({
+    storeId: v.id("stores"),
+    shiftId: v.id("shifts"),
+    type: v.union(
+      v.literal("sale"),
+      v.literal("return"),
+      v.literal("change_out"),
+      v.literal("manual_in"),
+      v.literal("manual_out"),
+      v.literal("reopen_adjustment")
+    ),
+    // Signed deltas. Positive = into drawer, negative = out.
+    amountUSD: v.float64(),
+    amountLBP: v.float64(),
+    reason: v.optional(v.string()),
+    referenceType: v.optional(
+      v.union(v.literal("sale"), v.literal("sale_return"))
+    ),
+    referenceId: v.optional(v.string()),
+    performedBy: v.id("users"),
+    createdAt: v.float64(),
+  })
+    .index("by_shift", ["shiftId"])
+    .index("by_shift_and_type", ["shiftId", "type"])
+    .index("by_store_and_date", ["storeId", "createdAt"]),
 
   // ============ AUDIT LOG ============
   auditLogs: defineTable({

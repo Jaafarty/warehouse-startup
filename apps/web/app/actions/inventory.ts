@@ -8,277 +8,313 @@ import { redirect } from "next/navigation";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
-function parseOptionalPositive(raw: FormDataEntryValue | null): number | undefined {
-  if (raw === null) return undefined;
-  const s = String(raw).trim();
-  if (s === "") return undefined;
-  const n = Number(s);
-  return Number.isFinite(n) && n >= 0 ? n : undefined;
+function parseOptionalPositive(
+    raw: FormDataEntryValue | null,
+): number | undefined {
+    if (raw === null) return undefined;
+    const s = String(raw).trim();
+    if (s === "") return undefined;
+    const n = Number(s);
+    return Number.isFinite(n) && n >= 0 ? n : undefined;
 }
 
 export async function createProduct(storeId: string, formData: FormData) {
-  const userId = await requireCurrentUserId();
+    const userId = await requireCurrentUserId();
 
-  const name = formData.get("name") as string;
-  const description = (formData.get("description") as string) || undefined;
-  const categoryId = (formData.get("categoryId") as string) || undefined;
-  const barcode = (formData.get("barcode") as string) || undefined;
-  const sku = (formData.get("sku") as string) || undefined;
-  const quantity = Number(formData.get("quantity") || 0);
-  const costPriceUSD = parseOptionalPositive(formData.get("costPriceUSD"));
-  const costPriceLBP = parseOptionalPositive(formData.get("costPriceLBP"));
-  const sellingPriceUSD = parseOptionalPositive(formData.get("sellingPriceUSD"));
-  const sellingPriceLBP = parseOptionalPositive(formData.get("sellingPriceLBP"));
-  const lowStockThreshold = Number(formData.get("lowStockThreshold") || 5);
+    const name = formData.get("name") as string;
+    const description = (formData.get("description") as string) || undefined;
+    const categoryId = (formData.get("categoryId") as string) || undefined;
+    const barcode = (formData.get("barcode") as string) || undefined;
+    const sku = (formData.get("sku") as string) || undefined;
+    const quantity = Number(formData.get("quantity") || 0);
+    const costPriceUSD = parseOptionalPositive(formData.get("costPriceUSD"));
+    const costPriceLBP = parseOptionalPositive(formData.get("costPriceLBP"));
+    const sellingPriceUSD = parseOptionalPositive(
+        formData.get("sellingPriceUSD"),
+    );
+    const sellingPriceLBP = parseOptionalPositive(
+        formData.get("sellingPriceLBP"),
+    );
+    const lowStockThreshold = Number(formData.get("lowStockThreshold") || 5);
 
-  if (!name || name.trim().length < 1) {
-    return { success: false, error: "Product name is required" };
-  }
-  if (sellingPriceUSD === undefined && sellingPriceLBP === undefined) {
-    return {
-      success: false,
-      error: "At least one selling price (USD or LBP) is required",
-    };
-  }
+    if (!name || name.trim().length < 1) {
+        return { success: false, error: "Product name is required" };
+    }
+    if (sellingPriceUSD === undefined && sellingPriceLBP === undefined) {
+        return {
+            success: false,
+            error: "At least one selling price (USD or LBP) is required",
+        };
+    }
 
-  try {
-    const productId = await convex.mutation(api.products.create, {
-      storeId: storeId as Id<"stores">,
-      userId,
-      name: name.trim(),
-      description: description?.trim(),
-      categoryId: categoryId ? categoryId as Id<"categories"> : undefined,
-      barcode: barcode?.trim() || undefined,
-      sku: sku?.trim() || undefined,
-      quantity,
-      costPriceUSD,
-      costPriceLBP,
-      sellingPriceUSD,
-      sellingPriceLBP,
-      lowStockThreshold,
-    });
-    redirect(`/store/${storeId}/inventory/${productId}`);
-  } catch (error) {
-    if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to create product",
-    };
-  }
+    try {
+        const productId = await convex.mutation(api.products.create, {
+            storeId: storeId as Id<"stores">,
+            userId,
+            name: name.trim(),
+            description: description?.trim(),
+            categoryId: categoryId
+                ? (categoryId as Id<"categories">)
+                : undefined,
+            barcode: barcode?.trim() || undefined,
+            sku: sku?.trim() || undefined,
+            quantity,
+            costPriceUSD,
+            costPriceLBP,
+            sellingPriceUSD,
+            sellingPriceLBP,
+            lowStockThreshold,
+        });
+        redirect(`/store/${storeId}/inventory/${productId}`);
+    } catch (error) {
+        if (error instanceof Error && error.message === "NEXT_REDIRECT")
+            throw error;
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to create product",
+        };
+    }
 }
 
 export async function updateProduct(productId: string, formData: FormData) {
-  const userId = await requireCurrentUserId();
+    const userId = await requireCurrentUserId();
 
-  const name = (formData.get("name") as string) || undefined;
-  const description = (formData.get("description") as string) || undefined;
-  const categoryId = (formData.get("categoryId") as string) || undefined;
-  const barcode = (formData.get("barcode") as string) || undefined;
-  const sku = (formData.get("sku") as string) || undefined;
-  const costPriceUSD = parseOptionalPositive(formData.get("costPriceUSD"));
-  const costPriceLBP = parseOptionalPositive(formData.get("costPriceLBP"));
-  const sellingPriceUSD = parseOptionalPositive(formData.get("sellingPriceUSD"));
-  const sellingPriceLBP = parseOptionalPositive(formData.get("sellingPriceLBP"));
-  const lowStockThreshold = formData.get("lowStockThreshold")
-    ? Number(formData.get("lowStockThreshold"))
-    : undefined;
+    const name = (formData.get("name") as string) || undefined;
+    const description = (formData.get("description") as string) || undefined;
+    const categoryId = (formData.get("categoryId") as string) || undefined;
+    const barcode = (formData.get("barcode") as string) || undefined;
+    const sku = (formData.get("sku") as string) || undefined;
+    const costPriceUSD = parseOptionalPositive(formData.get("costPriceUSD"));
+    const costPriceLBP = parseOptionalPositive(formData.get("costPriceLBP"));
+    const sellingPriceUSD = parseOptionalPositive(
+        formData.get("sellingPriceUSD"),
+    );
+    const sellingPriceLBP = parseOptionalPositive(
+        formData.get("sellingPriceLBP"),
+    );
+    const lowStockThreshold = formData.get("lowStockThreshold")
+        ? Number(formData.get("lowStockThreshold"))
+        : undefined;
 
-  try {
-    await convex.mutation(api.products.update, {
-      productId: productId as Id<"products">,
-      userId,
-      name: name?.trim(),
-      description: description?.trim(),
-      categoryId: categoryId ? categoryId as Id<"categories"> : undefined,
-      barcode: barcode?.trim() || undefined,
-      sku: sku?.trim() || undefined,
-      costPriceUSD,
-      costPriceLBP,
-      sellingPriceUSD,
-      sellingPriceLBP,
-      lowStockThreshold,
-    });
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to update product",
-    };
-  }
+    try {
+        await convex.mutation(api.products.update, {
+            productId: productId as Id<"products">,
+            userId,
+            name: name?.trim(),
+            description: description?.trim(),
+            categoryId: categoryId
+                ? (categoryId as Id<"categories">)
+                : undefined,
+            barcode: barcode?.trim() || undefined,
+            sku: sku?.trim() || undefined,
+            costPriceUSD,
+            costPriceLBP,
+            sellingPriceUSD,
+            sellingPriceLBP,
+            lowStockThreshold,
+        });
+        return { success: true };
+    } catch (error) {
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to update product",
+        };
+    }
 }
 
 export async function archiveProduct(productId: string) {
-  const userId = await requireCurrentUserId();
+    const userId = await requireCurrentUserId();
 
-  try {
-    await convex.mutation(api.products.archive, {
-      productId: productId as Id<"products">,
-      userId,
-    });
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to archive product",
-    };
-  }
+    try {
+        await convex.mutation(api.products.archive, {
+            productId: productId as Id<"products">,
+            userId,
+        });
+        return { success: true };
+    } catch (error) {
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to archive product",
+        };
+    }
 }
 
 export async function restoreProduct(productId: string) {
-  const userId = await requireCurrentUserId();
+    const userId = await requireCurrentUserId();
 
-  try {
-    await convex.mutation(api.products.restore, {
-      productId: productId as Id<"products">,
-      userId,
-    });
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to restore product",
-    };
-  }
+    try {
+        await convex.mutation(api.products.restore, {
+            productId: productId as Id<"products">,
+            userId,
+        });
+        return { success: true };
+    } catch (error) {
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to restore product",
+        };
+    }
 }
 
 export async function adjustProductStock(
-  productId: string,
-  type: "manual_add" | "manual_remove",
-  quantity: number,
-  note?: string
+    productId: string,
+    type: "manual_add" | "manual_remove",
+    quantity: number,
+    note?: string,
 ) {
-  const userId = await requireCurrentUserId();
+    const userId = await requireCurrentUserId();
 
-  if (quantity <= 0) {
-    return { success: false, error: "Quantity must be greater than 0" };
-  }
+    if (quantity <= 0) {
+        return { success: false, error: "Quantity must be greater than 0" };
+    }
 
-  try {
-    await convex.mutation(api.stockMovements.manualAdjust, {
-      productId: productId as Id<"products">,
-      userId,
-      type,
-      quantity,
-      note,
-    });
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Failed to adjust stock",
-    };
-  }
+    try {
+        await convex.mutation(api.stockMovements.manualAdjust, {
+            productId: productId as Id<"products">,
+            userId,
+            type,
+            quantity,
+            note,
+        });
+        return { success: true };
+    } catch (error) {
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to adjust stock",
+        };
+    }
 }
 
 export async function createCategory(storeId: string, formData: FormData) {
-  const userId = await requireCurrentUserId();
+    const userId = await requireCurrentUserId();
 
-  const name = formData.get("name") as string;
-  const description = (formData.get("description") as string) || undefined;
+    const name = formData.get("name") as string;
+    const description = (formData.get("description") as string) || undefined;
 
-  if (!name || name.trim().length < 1) {
-    return { success: false, error: "Category name is required" };
-  }
+    if (!name || name.trim().length < 1) {
+        return { success: false, error: "Category name is required" };
+    }
 
-  try {
-    await convex.mutation(api.categories.create, {
-      storeId: storeId as Id<"stores">,
-      userId,
-      name: name.trim(),
-      description: description?.trim(),
-    });
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Failed to create category",
-    };
-  }
+    try {
+        await convex.mutation(api.categories.create, {
+            storeId: storeId as Id<"stores">,
+            userId,
+            name: name.trim(),
+            description: description?.trim(),
+        });
+        return { success: true };
+    } catch (error) {
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to create category",
+        };
+    }
 }
 
 export async function ensureCategories(
-  storeId: string,
-  names: string[]
+    storeId: string,
+    names: string[],
 ): Promise<
-  | { success: true; map: Record<string, string> }
-  | { success: false; error: string }
+    | { success: true; map: Record<string, string> }
+    | { success: false; error: string }
 > {
-  let userId;
-  try {
-    userId = await requireCurrentUserId();
-  } catch {
-    return { success: false, error: "Unauthorized" };
-  }
+    let userId;
+    try {
+        userId = await requireCurrentUserId();
+    } catch {
+        return { success: false, error: "Unauthorized" };
+    }
 
-  try {
-    const map = await convex.mutation(api.categories.ensureMany, {
-      storeId: storeId as Id<"stores">,
-      userId,
-      names,
-    });
-    return { success: true, map: map as Record<string, string> };
-  } catch (e: unknown) {
-    return {
-      success: false,
-      error: e instanceof Error ? e.message : "Failed to resolve categories",
-    };
-  }
+    try {
+        const map = await convex.mutation(api.categories.ensureMany, {
+            storeId: storeId as Id<"stores">,
+            userId,
+            names,
+        });
+        return { success: true, map: map as Record<string, string> };
+    } catch (e: unknown) {
+        return {
+            success: false,
+            error:
+                e instanceof Error ? e.message : "Failed to resolve categories",
+        };
+    }
 }
 
 export async function bulkImportProducts(
-  storeId: string,
-  products: Array<{
-    name: string;
-    description?: string;
-    categoryId?: string;
-    sku?: string;
-    barcode?: string;
-    costPriceUSD?: number;
-    costPriceLBP?: number;
-    sellingPriceUSD?: number;
-    sellingPriceLBP?: number;
-    quantity: number;
-    lowStockThreshold?: number;
-  }>
+    storeId: string,
+    products: Array<{
+        name: string;
+        description?: string;
+        categoryId?: string;
+        sku?: string;
+        barcode?: string;
+        costPriceUSD?: number;
+        costPriceLBP?: number;
+        sellingPriceUSD?: number;
+        sellingPriceLBP?: number;
+        quantity: number;
+        lowStockThreshold?: number;
+    }>,
 ) {
-  let userId;
-  try {
-    userId = await requireCurrentUserId();
-  } catch {
-    return { success: false, error: "Unauthorized" } as const;
-  }
-
-  let created = 0;
-  let updated = 0;
-  let failed = 0;
-  const errors: string[] = [];
-
-  for (const product of products) {
+    let userId;
     try {
-      const result = await convex.mutation(api.products.importRow, {
-        storeId: storeId as Id<"stores">,
-        userId,
-        name: product.name.trim(),
-        description: product.description?.trim(),
-        categoryId: product.categoryId ? product.categoryId as Id<"categories"> : undefined,
-        sku: product.sku?.trim() || undefined,
-        barcode: product.barcode?.trim() || undefined,
-        quantity: product.quantity,
-        costPriceUSD: product.costPriceUSD,
-        costPriceLBP: product.costPriceLBP,
-        sellingPriceUSD: product.sellingPriceUSD,
-        sellingPriceLBP: product.sellingPriceLBP,
-        lowStockThreshold: product.lowStockThreshold,
-      });
-      if (result.outcome === "created") created++;
-      else if (result.outcome === "updated") updated++;
-    } catch (e: unknown) {
-      failed++;
-      errors.push(`"${product.name}": ${e instanceof Error ? e.message : String(e)}`);
+        userId = await requireCurrentUserId();
+    } catch {
+        return { success: false, error: "Unauthorized" } as const;
     }
-  }
 
-  return { success: true, created, updated, failed, errors } as const;
+    let created = 0;
+    let updated = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    for (const product of products) {
+        try {
+            const result = await convex.mutation(api.products.importRow, {
+                storeId: storeId as Id<"stores">,
+                userId,
+                name: product.name.trim(),
+                description: product.description?.trim(),
+                categoryId: product.categoryId
+                    ? (product.categoryId as Id<"categories">)
+                    : undefined,
+                sku: product.sku?.trim() || undefined,
+                barcode: product.barcode?.trim() || undefined,
+                quantity: product.quantity,
+                costPriceUSD: product.costPriceUSD,
+                costPriceLBP: product.costPriceLBP,
+                sellingPriceUSD: product.sellingPriceUSD,
+                sellingPriceLBP: product.sellingPriceLBP,
+                lowStockThreshold: product.lowStockThreshold,
+            });
+            if (result.outcome === "created") created++;
+            else if (result.outcome === "updated") updated++;
+        } catch (e: unknown) {
+            failed++;
+            errors.push(
+                `"${product.name}": ${e instanceof Error ? e.message : String(e)}`,
+            );
+        }
+    }
+
+    return { success: true, created, updated, failed, errors } as const;
 }

@@ -88,6 +88,7 @@ export const update = mutation({
     userId: v.id("users"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
+    shiftsEnabled: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const store = await ctx.db.get(args.storeId);
@@ -107,6 +108,7 @@ export const update = mutation({
     const patch: Partial<Doc<"stores">> = {};
     if (args.name !== undefined) patch.name = args.name;
     if (args.description !== undefined) patch.description = args.description;
+    if (args.shiftsEnabled !== undefined) patch.shiftsEnabled = args.shiftsEnabled;
 
     await ctx.db.patch(args.storeId, patch);
 

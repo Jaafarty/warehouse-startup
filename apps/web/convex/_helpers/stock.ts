@@ -53,19 +53,21 @@ export async function adjustStock(
     timestamp: Date.now(),
   });
 
-  // Check low stock threshold and create notifications
+  // Fire low-stock alert whenever a decrease lands at or below threshold.
   if (
-    quantityAfter <= product.lowStockThreshold &&
-    quantityBefore > product.lowStockThreshold
+    params.quantityChange < 0 &&
+    quantityAfter <= product.lowStockThreshold
   ) {
-    const admins = await db
+    const recipients = await db
       .query("storeMembers")
       .withIndex("by_store", (q) => q.eq("storeId", params.storeId))
       .collect();
 
-    for (const admin of admins.filter((m) => m.role === "admin")) {
+    for (const recipient of recipients.filter(
+      (m) => m.role === "owner" || m.role === "admin"
+    )) {
       await db.insert("notifications", {
-        userId: admin.userId,
+        userId: recipient.userId,
         storeId: params.storeId,
         type: "low_stock_alert",
         title: "Low Stock Alert",

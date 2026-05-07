@@ -37,10 +37,15 @@ const TYPE_CONFIG: Record<
 export default function NotificationsPage() {
   const { userId } = useCurrentUser();
 
-  const notifications = useQuery(
+  const allNotifications = useQuery(
     api.notifications.list,
     userId ? { userId } : "skip"
   );
+
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const notifications = allNotifications
+    ? allNotifications.filter((n) => n.createdAt >= Date.now() - SEVEN_DAYS_MS)
+    : undefined;
 
   const markAsRead = useMutation(api.notifications.markAsRead);
   const markAllAsRead = useMutation(api.notifications.markAllAsRead);

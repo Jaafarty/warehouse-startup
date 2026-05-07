@@ -67,6 +67,24 @@ export default function ProcessReturnPage() {
     userId ? { saleId: saleId as Id<"sales">, userId: userId } : "skip"
   );
 
+  const store = useQuery(
+    api.stores.getById,
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
+  );
+  const activeShift = useQuery(
+    api.shifts.getActive,
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
+  );
+  const shiftsBlocking = store?.shiftsEnabled === true && activeShift === null;
+  const activeShiftDetail = useQuery(
+    api.shifts.get,
+    userId && activeShift
+      ? { shiftId: activeShift._id, userId }
+      : "skip"
+  );
+  const drawerUSD = activeShiftDetail?.totals.expectedClosingUSD ?? 0;
+  const drawerLBP = activeShiftDetail?.totals.expectedClosingLBP ?? 0;
+
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [qtys, setQtys] = useState<Record<string, number>>({});
   const [reason, setReason] = useState<Reason>("defective");
@@ -100,6 +118,17 @@ export default function ProcessReturnPage() {
     !refundSplitProvided ||
     Math.abs(cashierTotalUSD - refundTotalUSD) <= 0.01;
 
+  // Drawer warning — refunds reduce drawer cash. Warn if refund would push
+  // either currency negative. Not blocking: refunds are an obligation to the
+  // customer and the cashier may legitimately accept negative drawer.
+  const effectiveRefundUSD = refundSplitProvided ? refundedUSD : refundTotalUSD;
+  const effectiveRefundLBP = refundSplitProvided ? refundedLBP : 0;
+  const willOverdrawUSD =
+    !!activeShift && effectiveRefundUSD > drawerUSD + 1e-6;
+  const willOverdrawLBP =
+    !!activeShift && effectiveRefundLBP > drawerLBP + 0.5;
+  const willOverdraw = willOverdrawUSD || willOverdrawLBP;
+
   if (sale === undefined) {
     return (
       <div className="p-6 max-w-3xl mx-auto space-y-6">
@@ -113,6 +142,35 @@ export default function ProcessReturnPage() {
     return (
       <div className="p-6">
         <p className="text-destructive">Sale not found.</p>
+      </div>
+    );
+  }
+
+  if (shiftsBlocking) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <Link href={`/store/${storeId}/sales/${saleId}`}>
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <h1 className="text-2xl font-bold">Process return</h1>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>No active shift</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Refunds reduce drawer cash. Open a shift before processing this
+              return.
+            </p>
+            <Link href={`/store/${storeId}/shifts/new`}>
+              <Button>Open shift</Button>
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -371,6 +429,29 @@ export default function ProcessReturnPage() {
           <p className="text-xs text-muted-foreground">
             Leave both blank to refund the full eligible amount in USD.
           </p>
+          {activeShift && (
+            <div
+              className={`rounded-md border p-3 text-xs space-y-0.5 ${
+                willOverdraw
+                  ? "border-destructive/40 bg-destructive/5"
+                  : "bg-muted/30"
+              }`}
+            >
+              <p className="text-muted-foreground">
+                Drawer balance:{" "}
+                <span className="font-medium text-foreground">
+                  {formatCurrency(drawerUSD, "USD")} ·{" "}
+                  {formatCurrency(drawerLBP, "LBP")}
+                </span>
+              </p>
+              {willOverdraw && (
+                <p className="text-destructive font-medium">
+                  This refund will push the drawer negative. Proceed only if
+                  you intend to settle from outside the till.
+                </p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

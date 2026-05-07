@@ -3,16 +3,19 @@
 import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { formatCurrency } from "@ware-house/shared";
+import { formatCurrency, formatDate } from "@ware-house/shared";
 import {
   DollarSign,
   ShoppingCart,
   Package,
   AlertTriangle,
   TrendingUp,
+  Clock,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -68,6 +71,17 @@ export default function StoreDashboardPage() {
   const isPrivileged = store?.role === "owner" || store?.role === "admin";
   const canViewAnalytics =
     isPrivileged || (store?.effectivePermissions?.analytics?.enabled ?? false);
+  const shiftFns = store?.effectivePermissions?.shifts?.functions ?? {};
+  const canViewOwnShift =
+    isPrivileged || (shiftFns.view_own ?? false);
+  const canOpenShift = isPrivileged || (shiftFns.open_shift ?? false);
+
+  const activeShift = useQuery(
+    api.shifts.getActive,
+    userId && store?.shiftsEnabled && canViewOwnShift
+      ? { storeId: storeId as Id<"stores">, userId }
+      : "skip"
+  );
 
   const analyticsArgs =
     userId && canViewAnalytics
@@ -94,6 +108,51 @@ export default function StoreDashboardPage() {
           Overview of your store performance.
         </p>
       </div>
+
+      {/* Active shift widget — only when feature is enabled and caller can see own shifts */}
+      {store?.shiftsEnabled && canViewOwnShift && (
+        <Card className={activeShift ? "border-primary/40" : ""}>
+          <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <Clock className="h-5 w-5 text-muted-foreground" />
+              {activeShift ? (
+                <div>
+                  <p className="font-medium">Active shift</p>
+                  <p className="text-xs text-muted-foreground">
+                    Opened {formatDate(activeShift.openedAt)} ·{" "}
+                    {formatCurrency(activeShift.openingUSD, "USD")} /{" "}
+                    {formatCurrency(activeShift.openingLBP, "LBP")} opening
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <p className="font-medium">No active shift</p>
+                  <p className="text-xs text-muted-foreground">
+                    {canOpenShift
+                      ? "Sales and returns are blocked until you open one."
+                      : "Ask the cashier to open a shift before recording sales."}
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              {activeShift ? (
+                <Link href={`/store/${storeId}/shifts/${activeShift._id}`}>
+                  <Button variant="outline" size="sm">
+                    Manage shift
+                  </Button>
+                </Link>
+              ) : (
+                canOpenShift && (
+                  <Link href={`/store/${storeId}/shifts/new`}>
+                    <Button size="sm">Open shift</Button>
+                  </Link>
+                )
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Summary Cards */}
       {!canViewAnalytics && !loading ? (

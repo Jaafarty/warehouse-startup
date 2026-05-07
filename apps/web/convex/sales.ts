@@ -9,6 +9,10 @@ import {
   convertToUSD,
   type Currency,
 } from "./_helpers/exchangeRate";
+import {
+  recordCashEvent,
+  requireActiveShiftIfEnabled,
+} from "./_helpers/shifts";
 
 export const list = query({
   args: {
@@ -137,6 +141,13 @@ export const create = mutation({
   handler: async (ctx, args) => {
     await assertPageFunction(ctx.db, args.userId, args.storeId, "sales", "create_sale");
 
+    // Block when feature enabled and no active shift; otherwise null (feature off).
+    const activeShift = await requireActiveShiftIfEnabled(
+      ctx.db,
+      args.userId,
+      args.storeId
+    );
+
     if (args.items.length === 0) {
       throw new Error("Sale must have at least one item");
     }
@@ -253,10 +264,40 @@ export const create = mutation({
       itemCount: totalItems,
       note: args.note,
       customerId: args.customerId,
+      shiftId: activeShift?._id,
       createdBy: args.userId,
       createdAt: now,
       updatedAt: now,
     });
+
+    // Drawer accounting — record the tendered cash and any change paid out.
+    if (activeShift) {
+      await recordCashEvent(ctx.db, {
+        storeId: args.storeId,
+        shiftId: activeShift._id,
+        type: "sale",
+        amountUSD: paidUSD,
+        amountLBP: paidLBP,
+        referenceType: "sale",
+        referenceId: saleId,
+        performedBy: args.userId,
+      });
+      const changeDueUSD = tenderedUSD - totalUSD;
+      if (changeDueUSD > 1e-6) {
+        // Change is paid out in USD by convention — split-currency change is
+        // not modelled today.
+        await recordCashEvent(ctx.db, {
+          storeId: args.storeId,
+          shiftId: activeShift._id,
+          type: "change_out",
+          amountUSD: -changeDueUSD,
+          amountLBP: 0,
+          referenceType: "sale",
+          referenceId: saleId,
+          performedBy: args.userId,
+        });
+      }
+    }
 
     // Create sale items and decrement stock
     for (const detail of itemDetails) {
