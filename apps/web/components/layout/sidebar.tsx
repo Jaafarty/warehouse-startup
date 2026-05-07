@@ -2,29 +2,56 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useQuery } from "convex/react";
 import { LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PAGE_KEYS } from "@ware-house/shared";
 import { PAGE_META } from "@/components/permissions/page-meta";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useCurrentUser } from "@/lib/use-current-user";
 import type { StorePermissions } from "@ware-house/shared";
 
 interface SidebarProps {
   storeId: string;
+  // SSR fallbacks so the first paint doesn't flicker. Live values come from
+  // the Convex subscription below and override these once received.
   storeName: string;
   role: string;
   permissions?: StorePermissions;
 }
 
-export function Sidebar({ storeId, storeName, role, permissions }: SidebarProps) {
+export function Sidebar({
+  storeId,
+  storeName: initialName,
+  role: initialRole,
+  permissions: initialPermissions,
+}: SidebarProps) {
   const pathname = usePathname();
   const basePath = `/store/${storeId}`;
 
+  const { userId } = useCurrentUser();
+  const liveStore = useQuery(
+    api.stores.getById,
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
+  );
+
+  // Reactive overrides — fall back to SSR values during the initial paint.
+  const storeName = liveStore?.name ?? initialName;
+  const role = liveStore?.role ?? initialRole;
+  const permissions = liveStore?.effectivePermissions ?? initialPermissions;
   const isPrivileged = role === "owner" || role === "admin";
 
   const pageLinks = PAGE_KEYS
-    .filter(page => isPrivileged || (permissions?.[page]?.enabled ?? false))
-    .map(page => {
+    .filter(
+      (page) =>
+        // Defensive: PAGE_META is updated on each release. Skip pages we don't
+        // know how to render rather than crash.
+        PAGE_META[page] !== undefined &&
+        (isPrivileged || (permissions?.[page]?.enabled ?? false))
+    )
+    .map((page) => {
       const slug = page === "exchange_rate" ? "exchange-rate" : page;
       const href = `${basePath}/${slug}`;
       return {
@@ -58,7 +85,7 @@ export function Sidebar({ storeId, storeName, role, permissions }: SidebarProps)
           </Button>
         </Link>
 
-        {pageLinks.map(link => (
+        {pageLinks.map((link) => (
           <Link key={link.href} href={link.href}>
             <Button
               variant={link.active ? "secondary" : "ghost"}
