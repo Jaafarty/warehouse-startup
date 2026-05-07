@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { assertPageFunction } from "./_helpers/permissions";
+import { assertPageFunction, assertAnyPageFunction } from "./_helpers/permissions";
 import { createAuditLog } from "./_helpers/audit";
 
 export const list = query({
@@ -136,7 +136,12 @@ export const ensureMany = mutation({
     names: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    await assertPageFunction(ctx.db, args.userId, args.storeId, "inventory", "create_category");
+    // Spreadsheet import needs to materialise unseen categories — allow it
+    // for users with either explicit category-create rights OR import rights.
+    await assertAnyPageFunction(ctx.db, args.userId, args.storeId, [
+      ["inventory", "create_category"],
+      ["inventory", "import_products"],
+    ]);
 
     if (args.names.length === 0) return {};
 
