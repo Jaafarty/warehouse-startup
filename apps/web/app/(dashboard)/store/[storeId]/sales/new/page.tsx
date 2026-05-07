@@ -9,7 +9,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { createSale } from "@/app/actions/sales";
 import { formatCurrency } from "@ware-house/shared";
-import { ArrowLeft, Plus, Trash2, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, ShoppingCart, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,6 +43,7 @@ type Currency = "USD" | "LBP";
 interface CartItem {
   productId: string;
   name: string;
+  categoryName?: string;
   sellingPriceUSD?: number;
   sellingPriceLBP?: number;
   currency: Currency;
@@ -81,14 +82,39 @@ export default function NewSalePage() {
       : "skip"
   );
 
+  const categories = useQuery(
+    api.categories.list,
+    userId
+      ? { storeId: storeId as Id<"stores">, userId }
+      : "skip"
+  );
+  const categoryName = (id?: Id<"categories">) =>
+    id ? categories?.find((c) => c._id === id)?.name : undefined;
+
   const rateRow = useQuery(
     api.exchangeRates.getCurrent,
     userId ? { storeId: storeId as Id<"stores">, userId: userId } : "skip"
   );
   const rate = rateRow?.rate ?? 1;
 
+  const store = useQuery(
+    api.stores.getById,
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
+  );
+  const isPrivileged = store?.role === "owner" || store?.role === "admin";
+  const canViewExchangeRate =
+    isPrivileged ||
+    (store?.effectivePermissions?.exchange_rate?.functions?.view_list ?? false);
+
+  const activeShift = useQuery(
+    api.shifts.getActive,
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
+  );
+  const shiftsEnabled = store?.shiftsEnabled === true;
+  const shiftsBlocking = shiftsEnabled && activeShift === null;
+
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<string>("");
+  const [productSearch, setProductSearch] = useState("");
   const [note, setNote] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,10 +133,10 @@ export default function NewSalePage() {
     return "USD";
   }
 
-  function addToCart() {
-    if (!selectedProduct || !products) return;
+  function addToCart(productId: string) {
+    if (!products) return;
 
-    const product = products.find((p) => p._id === selectedProduct);
+    const product = products.find((p) => p._id === productId);
     if (!product) return;
 
     if (product.quantity <= 0) {
@@ -118,7 +144,7 @@ export default function NewSalePage() {
       return;
     }
 
-    const existing = cart.find((i) => i.productId === selectedProduct);
+    const existing = cart.find((i) => i.productId === productId);
     if (existing) {
       if (existing.quantity >= product.quantity) {
         toast.error(`Only ${product.quantity} available`);
@@ -126,7 +152,7 @@ export default function NewSalePage() {
       }
       setCart(
         cart.map((i) =>
-          i.productId === selectedProduct
+          i.productId === productId
             ? { ...i, quantity: i.quantity + 1 }
             : i
         )
@@ -137,6 +163,7 @@ export default function NewSalePage() {
         {
           productId: product._id,
           name: product.name,
+          categoryName: categoryName(product.categoryId),
           sellingPriceUSD: product.sellingPriceUSD ?? product.sellingPrice,
           sellingPriceLBP: product.sellingPriceLBP,
           currency: defaultCurrencyFor(product),
@@ -145,18 +172,17 @@ export default function NewSalePage() {
         },
       ]);
     }
-    setSelectedProduct("");
+    setProductSearch("");
   }
 
   function updateQuantity(productId: string, qty: number) {
-    if (qty <= 0) {
-      setCart(cart.filter((i) => i.productId !== productId));
-      return;
-    }
+    // Keep the row even when qty is cleared/zero so the user can edit it.
+    // The Complete Sale button is gated on a positive qty per row.
+    const safe = Number.isFinite(qty) && qty > 0 ? qty : 0;
     setCart(
       cart.map((i) =>
         i.productId === productId
-          ? { ...i, quantity: Math.min(qty, i.maxQuantity) }
+          ? { ...i, quantity: Math.min(safe, i.maxQuantity) }
           : i
       )
     );
@@ -183,10 +209,15 @@ export default function NewSalePage() {
   const remainingUSD = totalUSD - tenderedUSD;
   const isCovered = tenderedUSD + 1e-6 >= totalUSD;
   const changeUSD = isCovered ? tenderedUSD - totalUSD : 0;
+  const hasInvalidQty = cart.some((i) => i.quantity <= 0);
 
   async function handleSubmit() {
     if (cart.length === 0) {
       toast.error("Add at least one product");
+      return;
+    }
+    if (hasInvalidQty) {
+      toast.error("Each item needs a quantity of at least 1");
       return;
     }
     if (!isCovered) {
@@ -217,6 +248,53 @@ export default function NewSalePage() {
     (p) => p.quantity > 0 && !p.isArchived
   );
 
+  const productSearchTerm = productSearch.trim().toLowerCase();
+  const productMatches = productSearchTerm
+    ? availableProducts?.filter((p) => {
+        const cat = categoryName(p.categoryId)?.toLowerCase() ?? "";
+        return (
+          p.name.toLowerCase().includes(productSearchTerm) ||
+          p.sku?.toLowerCase().includes(productSearchTerm) ||
+          p.barcode?.toLowerCase().includes(productSearchTerm) ||
+          cat.includes(productSearchTerm)
+        );
+      })
+    : undefined;
+
+  if (shiftsBlocking) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <Link href={`/store/${storeId}/sales`}>
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold">New Sale</h1>
+            <p className="text-muted-foreground">
+              You need an active shift to record a sale.
+            </p>
+          </div>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>No active shift</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              This store requires cashiers to open a shift before recording
+              sales. Open one to continue.
+            </p>
+            <Link href={`/store/${storeId}/shifts/new`}>
+              <Button>Open shift</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
@@ -233,21 +311,31 @@ export default function NewSalePage() {
         </div>
       </div>
 
-      {/* Rate banner */}
-      <Link
-        href={`/store/${storeId}/exchange-rate`}
-        className="block rounded-lg border bg-muted/30 px-4 py-2 text-sm hover:bg-muted/50"
-      >
-        <span className="text-muted-foreground">Current exchange rate: </span>
-        <span className="font-medium">
-          1 USD = {rate.toLocaleString()} LBP
-        </span>
-        {!rateRow && (
-          <span className="text-destructive ml-2">
-            (no rate set — click to configure)
-          </span>
-        )}
-      </Link>
+      {/* Rate banner — hide entirely when no rate is set AND user can't manage it */}
+      {(rateRow || canViewExchangeRate) &&
+        (canViewExchangeRate ? (
+          <Link
+            href={`/store/${storeId}/exchange-rate`}
+            className="block rounded-lg border bg-muted/30 px-4 py-2 text-sm hover:bg-muted/50"
+          >
+            <span className="text-muted-foreground">Current exchange rate: </span>
+            <span className="font-medium">
+              1 USD = {rate.toLocaleString()} LBP
+            </span>
+            {!rateRow && (
+              <span className="text-destructive ml-2">
+                (no rate set — click to configure)
+              </span>
+            )}
+          </Link>
+        ) : (
+          <div className="rounded-lg border bg-muted/30 px-4 py-2 text-sm">
+            <span className="text-muted-foreground">Current exchange rate: </span>
+            <span className="font-medium">
+              1 USD = {rate.toLocaleString()} LBP
+            </span>
+          </div>
+        ))}
 
       <Card>
         <CardHeader>
@@ -276,45 +364,62 @@ export default function NewSalePage() {
         <CardHeader>
           <CardTitle>Add Products</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <Select
-              value={selectedProduct}
-              onValueChange={(v) => setSelectedProduct(v ?? "")}
-            >
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Select a product">
-                  {(value: string) =>
-                    value
-                      ? availableProducts?.find((p) => p._id === value)
-                          ?.name ?? value
-                      : "Select a product"
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {availableProducts?.map((p) => {
-                  const usd = p.sellingPriceUSD ?? p.sellingPrice;
-                  const lbp = p.sellingPriceLBP;
-                  const priceLabel = [
-                    usd !== undefined ? formatCurrency(usd, "USD") : null,
-                    lbp !== undefined ? formatCurrency(lbp, "LBP") : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" / ");
-                  return (
-                    <SelectItem key={p._id} value={p._id} label={p.name}>
-                      {p.name} — {priceLabel} ({p.quantity} in stock)
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-            <Button onClick={addToCart} disabled={!selectedProduct}>
-              <Plus className="h-4 w-4 mr-1" />
-              Add
-            </Button>
+        <CardContent className="space-y-2">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              placeholder="Search by name, SKU, barcode or category"
+              className="pl-8"
+            />
           </div>
+
+          {productSearchTerm && productMatches && productMatches.length > 0 && (
+            <div className="rounded-md border max-h-72 overflow-y-auto divide-y">
+              {productMatches.map((p) => {
+                const usd = p.sellingPriceUSD ?? p.sellingPrice;
+                const lbp = p.sellingPriceLBP;
+                const priceLabel = [
+                  usd !== undefined ? formatCurrency(usd, "USD") : null,
+                  lbp !== undefined ? formatCurrency(lbp, "LBP") : null,
+                ]
+                  .filter(Boolean)
+                  .join(" / ");
+                const cat = categoryName(p.categoryId);
+                return (
+                  <button
+                    key={p._id}
+                    type="button"
+                    onClick={() => addToCart(p._id)}
+                    className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-muted"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">
+                        {p.name}
+                        {cat && (
+                          <span className="text-xs text-muted-foreground ml-1">
+                            ({cat})
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {priceLabel || "No price set"}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {p.quantity} in stock
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {productSearchTerm && productMatches && productMatches.length === 0 && (
+            <p className="px-1 text-xs text-muted-foreground">
+              No matches.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -353,7 +458,14 @@ export default function NewSalePage() {
                       item.sellingPriceLBP === undefined);
                   return (
                     <TableRow key={item.productId}>
-                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div>{item.name}</div>
+                        {item.categoryName && (
+                          <div className="text-xs text-muted-foreground font-normal">
+                            {item.categoryName}
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Select
                           value={item.currency}
@@ -394,14 +506,16 @@ export default function NewSalePage() {
                           type="number"
                           min={1}
                           max={item.maxQuantity}
-                          value={item.quantity}
+                          value={item.quantity === 0 ? "" : item.quantity}
                           onChange={(e) =>
                             updateQuantity(
                               item.productId,
                               Number(e.target.value)
                             )
                           }
-                          className="w-20"
+                          className={`w-20 ${
+                            item.quantity <= 0 ? "border-destructive" : ""
+                          }`}
                         />
                       </TableCell>
                       <TableCell className="text-right font-medium">
@@ -535,7 +649,7 @@ export default function NewSalePage() {
         </Link>
         <Button
           onClick={handleSubmit}
-          disabled={pending || cart.length === 0 || !isCovered}
+          disabled={pending || cart.length === 0 || !isCovered || hasInvalidQty}
         >
           {pending
             ? "Processing..."

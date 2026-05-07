@@ -11,6 +11,7 @@
 import type * as _helpers_audit from "../_helpers/audit.js";
 import type * as _helpers_exchangeRate from "../_helpers/exchangeRate.js";
 import type * as _helpers_permissions from "../_helpers/permissions.js";
+import type * as _helpers_shifts from "../_helpers/shifts.js";
 import type * as _helpers_stock from "../_helpers/stock.js";
 import type * as analytics from "../analytics.js";
 import type * as categories from "../categories.js";
@@ -24,6 +25,7 @@ import type * as notifications from "../notifications.js";
 import type * as products from "../products.js";
 import type * as returns from "../returns.js";
 import type * as sales from "../sales.js";
+import type * as shifts from "../shifts.js";
 import type * as stockMovements from "../stockMovements.js";
 import type * as storeRoles from "../storeRoles.js";
 import type * as stores from "../stores.js";
@@ -39,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   "_helpers/audit": typeof _helpers_audit;
   "_helpers/exchangeRate": typeof _helpers_exchangeRate;
   "_helpers/permissions": typeof _helpers_permissions;
+  "_helpers/shifts": typeof _helpers_shifts;
   "_helpers/stock": typeof _helpers_stock;
   analytics: typeof analytics;
   categories: typeof categories;
@@ -52,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   products: typeof products;
   returns: typeof returns;
   sales: typeof sales;
+  shifts: typeof shifts;
   stockMovements: typeof stockMovements;
   storeRoles: typeof storeRoles;
   stores: typeof stores;

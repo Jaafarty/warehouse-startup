@@ -4,6 +4,10 @@ import { Doc, Id } from "./_generated/dataModel";
 import { assertPageFunction } from "./_helpers/permissions";
 import { adjustStock } from "./_helpers/stock";
 import { createAuditLog } from "./_helpers/audit";
+import {
+  recordCashEvent,
+  requireActiveShiftIfEnabled,
+} from "./_helpers/shifts";
 
 const REASON = v.union(
   v.literal("defective"),
@@ -191,6 +195,12 @@ export const create = mutation({
 
     await assertPageFunction(ctx.db, args.userId, sale.storeId, "returns", "process_return");
 
+    const activeShift = await requireActiveShiftIfEnabled(
+      ctx.db,
+      args.userId,
+      sale.storeId
+    );
+
     if (sale.status === "returned") {
       throw new Error("This sale has already been fully returned");
     }
@@ -300,9 +310,24 @@ export const create = mutation({
       exchangeRate: saleRate,
       refundedUSD: finalRefundedUSD,
       refundedLBP: finalRefundedLBP,
+      shiftId: activeShift?._id,
       createdBy: args.userId,
       createdAt: now,
     });
+
+    if (activeShift) {
+      // Refunds reduce drawer cash → negative deltas.
+      await recordCashEvent(ctx.db, {
+        storeId: sale.storeId,
+        shiftId: activeShift._id,
+        type: "return",
+        amountUSD: -finalRefundedUSD,
+        amountLBP: -finalRefundedLBP,
+        referenceType: "sale_return",
+        referenceId: returnId,
+        performedBy: args.userId,
+      });
+    }
 
     for (const v of validated) {
       await ctx.db.insert("saleReturnItems", {
