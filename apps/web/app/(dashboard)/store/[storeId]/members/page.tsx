@@ -11,6 +11,7 @@ import {
   updateMemberRole,
   removeMember,
 } from "@/app/actions/stores";
+import { canManageRole, SYSTEM_ROLES, type MemberRole } from "@ware-house/shared";
 import { UserPlus, MoreHorizontal, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,6 +92,8 @@ export default function MembersPage() {
 
   const currentUserMember = members?.find((m) => m.userId === userId);
   const currentUserRole = currentUserMember?.role ?? "viewer";
+  const canManageMembers = (SYSTEM_ROLES as readonly string[]).includes(currentUserRole);
+  const canPromoteToAdmin = canManageRole(currentUserRole as MemberRole, "admin");
 
   async function handleInvite(formData: FormData) {
     setPending(true);
@@ -178,7 +181,7 @@ export default function MembersPage() {
             Manage who has access to this store.
           </p>
         </div>
-        {(currentUserRole === "owner" || currentUserRole === "admin") && (
+        {canManageMembers && (
           <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
             <DialogTrigger
               className="inline-flex items-center justify-center rounded-lg bg-primary px-2.5 h-8 text-sm font-medium text-primary-foreground hover:bg-primary/80"
@@ -211,7 +214,7 @@ export default function MembersPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {currentUserRole === "owner" && (
+                      {canPromoteToAdmin && (
                         <SelectItem value="admin">Admin</SelectItem>
                       )}
                       <SelectItem value="employee">Employee</SelectItem>
@@ -263,8 +266,11 @@ export default function MembersPage() {
                 {members.map((member) => {
                   const isOwner = member.role === "owner";
                   const isSelf = member.userId === userId;
-                  const canEdit = !isOwner && !isSelf && (currentUserRole === "owner" || currentUserRole === "admin");
-                  const canEditThisMember = canEdit && !(currentUserRole === "admin" && member.role === "admin");
+                  const canEditThisMember =
+                    !isOwner &&
+                    !isSelf &&
+                    canManageMembers &&
+                    canManageRole(currentUserRole as MemberRole, member.role as MemberRole);
 
                   return (
                     <TableRow key={member._id}>
@@ -289,7 +295,7 @@ export default function MembersPage() {
                               <MoreHorizontal className="h-4 w-4" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              {currentUserRole === "owner" && member.role !== "admin" && (
+                              {canPromoteToAdmin && member.role !== "admin" && (
                                 <DropdownMenuItem
                                   onClick={() => handleRoleChange(member._id, "admin")}
                                 >

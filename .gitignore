@@ -48,3 +48,6 @@ graphify-out/manifest.json
 
 # local token tracking, not useful to share
 graphify-out/cost.json
+
+# per-machine python interpreter path
+graphify-out/.graphify_python

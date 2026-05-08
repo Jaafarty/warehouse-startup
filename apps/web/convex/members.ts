@@ -134,9 +134,8 @@ export const remove = mutation({
       throw new ConvexError({ code: "FORBIDDEN", message: "The store owner cannot be removed." });
     }
 
-    // Admin cannot remove another admin (only owner can)
-    if (caller.role === "admin" && target.role === "admin") {
-      throw new ConvexError({ code: "FORBIDDEN", message: "Admins cannot remove other admins." });
+    if (!canManageRole(caller.role as MemberRole, target.role as MemberRole)) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "You can't remove a member with a role equal to or above your own." });
     }
 
     await ctx.db.delete(args.targetMemberId);
