@@ -553,16 +553,17 @@ export const listStoreCashEvents = query({
       "view_list"
     );
     const take = Math.min(Math.max(args.limit ?? 50, 1), 200);
-    const events = await ctx.db
+    const filtered = await ctx.db
       .query("shiftCashEvents")
       .withIndex("by_store_and_date", (q) => q.eq("storeId", args.storeId))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("type"), "manual_in"),
+          q.eq(q.field("type"), "manual_out")
+        )
+      )
       .order("desc")
       .take(take);
-
-    const filtered = events.filter(
-      (e: Doc<"shiftCashEvents">) =>
-        e.type === "manual_in" || e.type === "manual_out"
-    );
 
     const userCache: Record<Id<"users">, string> = {} as Record<
       Id<"users">,
