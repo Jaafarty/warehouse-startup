@@ -161,12 +161,19 @@ export default function SalesPage() {
                 Create your first sale to start tracking revenue.
               </p>
               {canCreateSale && (
-                <Link href={`/store/${storeId}/sales/new`}>
-                  <Button>
+                rateMissing ? (
+                  <Button disabled title="Set the exchange rate first">
                     <Plus className="h-4 w-4 mr-2" />
                     New Sale
                   </Button>
-                </Link>
+                ) : (
+                  <Link href={`/store/${storeId}/sales/new`}>
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Sale
+                    </Button>
+                  </Link>
+                )
               )}
             </div>
           ) : (
