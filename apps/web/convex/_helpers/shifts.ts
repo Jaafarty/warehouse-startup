@@ -43,7 +43,7 @@ export async function requireActiveShiftIfEnabled(
 
 type CashEventInput = {
   storeId: Id<"stores">;
-  shiftId: Id<"shifts">;
+  shiftId?: Id<"shifts">;
   type: Doc<"shiftCashEvents">["type"];
   amountUSD: number;
   amountLBP: number;

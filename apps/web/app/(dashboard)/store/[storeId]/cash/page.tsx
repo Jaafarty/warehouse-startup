@@ -90,7 +90,7 @@ export default function CashPage() {
       return;
     }
     setSubmitting(true);
-    const res = await recordCash(activeShift._id, direction, usdNum, lbpNum, reason);
+    const res = await recordCash(storeId, direction, usdNum, lbpNum, reason);
     setSubmitting(false);
     if (!res.success) {
       toast.error(res.error ?? "Failed to record");
