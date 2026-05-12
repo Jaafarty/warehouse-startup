@@ -63,6 +63,30 @@ export async function recordCashEvent(
   });
 }
 
+export type StoreDrawer = { drawerUSD: number; drawerLBP: number };
+
+/**
+ * Running store-level drawer balance = sum of all cash events for the store.
+ * Opening shift counts are intentionally NOT included: that cash already
+ * existed in the drawer before the shift opened.
+ */
+export async function computeStoreDrawer(
+  db: DatabaseReader,
+  storeId: Id<"stores">
+): Promise<StoreDrawer> {
+  const events = await db
+    .query("shiftCashEvents")
+    .withIndex("by_store_and_date", (q) => q.eq("storeId", storeId))
+    .collect();
+  let drawerUSD = 0;
+  let drawerLBP = 0;
+  for (const e of events) {
+    drawerUSD += e.amountUSD;
+    drawerLBP += e.amountLBP;
+  }
+  return { drawerUSD, drawerLBP };
+}
+
 export type ShiftTotals = {
   salesUSD: number;
   salesLBP: number;
