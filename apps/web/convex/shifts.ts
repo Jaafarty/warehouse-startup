@@ -523,3 +523,59 @@ export const get = query({
     };
   },
 });
+
+export const getStoreDrawer = query({
+  args: { storeId: v.id("stores"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await assertPageFunction(
+      ctx.db,
+      args.userId,
+      args.storeId,
+      "cash",
+      "view_list"
+    );
+    return computeStoreDrawer(ctx.db, args.storeId);
+  },
+});
+
+export const listStoreCashEvents = query({
+  args: {
+    storeId: v.id("stores"),
+    userId: v.id("users"),
+    limit: v.optional(v.float64()),
+  },
+  handler: async (ctx, args) => {
+    await assertPageFunction(
+      ctx.db,
+      args.userId,
+      args.storeId,
+      "cash",
+      "view_list"
+    );
+    const take = Math.min(Math.max(args.limit ?? 50, 1), 200);
+    const events = await ctx.db
+      .query("shiftCashEvents")
+      .withIndex("by_store_and_date", (q) => q.eq("storeId", args.storeId))
+      .order("desc")
+      .take(take);
+
+    const filtered = events.filter(
+      (e: Doc<"shiftCashEvents">) =>
+        e.type === "manual_in" || e.type === "manual_out"
+    );
+
+    const userCache: Record<Id<"users">, string> = {} as Record<
+      Id<"users">,
+      string
+    >;
+    return Promise.all(
+      filtered.map(async (e: Doc<"shiftCashEvents">) => {
+        if (!userCache[e.performedBy]) {
+          const u = await ctx.db.get(e.performedBy);
+          userCache[e.performedBy] = u?.name ?? "Unknown";
+        }
+        return { ...e, performedByName: userCache[e.performedBy] };
+      })
+    );
+  },
+});
