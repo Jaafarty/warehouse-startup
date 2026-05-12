@@ -60,6 +60,14 @@ export const open = mutation({
       "open_shift"
     );
 
+    const storeRow = await ctx.db.get(args.storeId);
+    if (!storeRow?.shiftsEnabled) {
+      throw new ConvexError({
+        code: "FEATURE_DISABLED",
+        message: "Shifts are disabled for this store. Enable them in settings first.",
+      });
+    }
+
     if (args.openingUSD < 0 || args.openingLBP < 0) {
       throw new ConvexError({
         code: "INVALID",
