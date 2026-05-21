@@ -76,6 +76,14 @@ export default function StoreDashboardPage() {
     isPrivileged || (shiftFns.view_own ?? false);
   const canOpenShift = isPrivileged || (shiftFns.open_shift ?? false);
 
+  const rate = useQuery(
+    api.exchangeRates.getCurrent,
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
+  );
+  const canSetRate =
+    isPrivileged ||
+    (store?.effectivePermissions?.exchange_rate?.functions?.set_rate ?? false);
+
   const activeShift = useQuery(
     api.shifts.getActive,
     userId && store?.shiftsEnabled && canViewOwnShift
@@ -108,6 +116,23 @@ export default function StoreDashboardPage() {
           Overview of your store performance.
         </p>
       </div>
+
+      {rate === null && (
+        <Card className="border-amber-500/40 bg-amber-50/30 dark:bg-amber-950/10">
+          <CardContent className="py-4 text-sm flex items-center justify-between gap-4">
+            <p>
+              No exchange rate set yet. Sales will be blocked until one is configured.
+            </p>
+            {canSetRate && (
+              <Link href={`/store/${storeId}/exchange-rate`}>
+                <Button variant="outline" size="sm">
+                  Set exchange rate
+                </Button>
+              </Link>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Active shift widget — only when feature is enabled and caller can see own shifts */}
       {store?.shiftsEnabled && canViewOwnShift && (

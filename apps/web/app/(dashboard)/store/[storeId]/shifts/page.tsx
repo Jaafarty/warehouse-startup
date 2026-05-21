@@ -78,6 +78,26 @@ export default function ShiftsListPage() {
       : "skip"
   );
 
+  if (store && !store.shiftsEnabled) {
+    return (
+      <div className="p-6 max-w-3xl space-y-4">
+        <h1 className="text-2xl font-bold">Shifts</h1>
+        <Card>
+          <CardContent className="py-6 text-sm text-muted-foreground flex items-center justify-between gap-4">
+            <p>The Shifts feature is disabled for this store.</p>
+            {isPrivileged && (
+              <Link href={`/store/${storeId}/settings`}>
+                <Button variant="outline" size="sm">
+                  Enable in settings
+                </Button>
+              </Link>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-5xl">
       <div className="flex items-center justify-between">

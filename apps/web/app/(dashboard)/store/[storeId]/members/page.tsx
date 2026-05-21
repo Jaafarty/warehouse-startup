@@ -10,9 +10,10 @@ import {
   inviteMember,
   updateMemberRole,
   removeMember,
+  revokeInvitation,
 } from "@/app/actions/stores";
 import { canManageRole, SYSTEM_ROLES, type MemberRole } from "@ware-house/shared";
-import { UserPlus, MoreHorizontal, Copy } from "lucide-react";
+import { Trash2, UserPlus, MoreHorizontal, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -128,6 +129,15 @@ export default function MembersPage() {
       toast.success("Link copied");
     } catch {
       toast.error("Could not copy");
+    }
+  }
+
+  async function handleRevoke(inviteId: string) {
+    const result = await revokeInvitation(storeId, inviteId);
+    if (result.success) {
+      toast.success("Invitation revoked");
+    } else {
+      toast.error(result.error ?? "Failed to revoke");
     }
   }
 
@@ -370,7 +380,7 @@ export default function MembersPage() {
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-20 text-right">Link</TableHead>
+                  <TableHead className="w-32 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -386,14 +396,35 @@ export default function MembersPage() {
                         <Badge variant="secondary">Pending</Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyInviteLink(invite.token)}
-                          title="Copy invite link"
-                        >
-                          <Copy className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="inline-flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => copyInviteLink(invite.token)}
+                            title="Copy invite link"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger className="inline-flex items-center justify-center rounded-md h-8 px-2 text-destructive hover:bg-muted">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Revoke invitation?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  {invite.email} will no longer be able to use this invitation link.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleRevoke(invite._id)}>
+                                  Revoke
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

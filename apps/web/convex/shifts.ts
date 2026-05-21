@@ -10,6 +10,7 @@ import { createAuditLog } from "./_helpers/audit";
 import { getCurrentRate } from "./_helpers/exchangeRate";
 import {
   computeShiftTotals,
+  computeStoreDrawer,
   getActiveShiftFor,
   recordCashEvent,
 } from "./_helpers/shifts";
@@ -59,6 +60,14 @@ export const open = mutation({
       "shifts",
       "open_shift"
     );
+
+    const storeRow = await ctx.db.get(args.storeId);
+    if (!storeRow?.shiftsEnabled) {
+      throw new ConvexError({
+        code: "FEATURE_DISABLED",
+        message: "Shifts are disabled for this store. Enable them in settings first.",
+      });
+    }
 
     if (args.openingUSD < 0 || args.openingLBP < 0) {
       throw new ConvexError({
@@ -303,7 +312,7 @@ export const reopen = mutation({
 
 export const recordManualCash = mutation({
   args: {
-    shiftId: v.id("shifts"),
+    storeId: v.id("stores"),
     userId: v.id("users"),
     direction: v.union(v.literal("in"), v.literal("out")),
     amountUSD: v.float64(),
@@ -311,26 +320,10 @@ export const recordManualCash = mutation({
     reason: v.string(),
   },
   handler: async (ctx, args) => {
-    const shift = await ctx.db.get(args.shiftId);
-    if (!shift) {
-      throw new ConvexError({ code: "NOT_FOUND", message: "Shift not found." });
-    }
-    if (shift.status !== "open") {
-      throw new ConvexError({
-        code: "INVALID",
-        message: "Cash events can only be recorded on an open shift.",
-      });
-    }
-    if (shift.openedBy !== args.userId) {
-      throw new ConvexError({
-        code: "FORBIDDEN",
-        message: "Only the shift's cashier can record cash events.",
-      });
-    }
     await assertPageFunction(
       ctx.db,
       args.userId,
-      shift.storeId,
+      args.storeId,
       "cash",
       args.direction === "in" ? "record_in" : "record_out"
     );
@@ -355,26 +348,32 @@ export const recordManualCash = mutation({
       });
     }
 
-    // Strict block on cash-out: drawer can't pay out money it doesn't have.
-    // Refunds may legitimately push the drawer negative (obligation to the
-    // customer) — that path is intentionally NOT guarded here, only manual
-    // discretionary payouts are.
     if (args.direction === "out") {
-      const totals = await computeShiftTotals(ctx.db, shift);
-      const balanceUSD = totals.expectedClosingUSD;
-      const balanceLBP = totals.expectedClosingLBP;
-      if (args.amountUSD - balanceUSD > 1e-6 || args.amountLBP - balanceLBP > 0.5) {
+      const { drawerUSD, drawerLBP } = await computeStoreDrawer(
+        ctx.db,
+        args.storeId
+      );
+      if (
+        args.amountUSD - drawerUSD > 1e-6 ||
+        args.amountLBP - drawerLBP > 0.5
+      ) {
         throw new ConvexError({
           code: "INSUFFICIENT_DRAWER",
-          message: `Drawer has only ${balanceUSD.toFixed(2)} USD / ${Math.round(balanceLBP)} LBP. Record cash in first or reduce the amount.`,
+          message: `Drawer has only ${drawerUSD.toFixed(2)} USD / ${Math.round(drawerLBP)} LBP. Record cash in first or reduce the amount.`,
         });
       }
     }
 
+    const activeShift = await getActiveShiftFor(
+      ctx.db,
+      args.userId,
+      args.storeId
+    );
+
     const sign = args.direction === "in" ? 1 : -1;
     const eventId = await recordCashEvent(ctx.db, {
-      storeId: shift.storeId,
-      shiftId: args.shiftId,
+      storeId: args.storeId,
+      shiftId: activeShift?._id,
       type: args.direction === "in" ? "manual_in" : "manual_out",
       amountUSD: sign * args.amountUSD,
       amountLBP: sign * args.amountLBP,
@@ -383,16 +382,16 @@ export const recordManualCash = mutation({
     });
 
     await createAuditLog(ctx.db, {
-      storeId: shift.storeId,
+      storeId: args.storeId,
       userId: args.userId,
-      action: args.direction === "in" ? "shift.cash_in" : "shift.cash_out",
-      entityType: "shift",
-      entityId: args.shiftId,
+      action: args.direction === "in" ? "cash.in" : "cash.out",
+      entityType: "cash",
+      entityId: eventId,
       details: {
         amountUSD: args.amountUSD,
         amountLBP: args.amountLBP,
         reason,
-        eventId,
+        shiftId: activeShift?._id ?? null,
       },
     });
 
@@ -522,5 +521,62 @@ export const get = query({
       totals,
       events: eventsEnriched,
     };
+  },
+});
+
+export const getStoreDrawer = query({
+  args: { storeId: v.id("stores"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await assertPageFunction(
+      ctx.db,
+      args.userId,
+      args.storeId,
+      "cash",
+      "view_list"
+    );
+    return computeStoreDrawer(ctx.db, args.storeId);
+  },
+});
+
+export const listStoreCashEvents = query({
+  args: {
+    storeId: v.id("stores"),
+    userId: v.id("users"),
+    limit: v.optional(v.float64()),
+  },
+  handler: async (ctx, args) => {
+    await assertPageFunction(
+      ctx.db,
+      args.userId,
+      args.storeId,
+      "cash",
+      "view_list"
+    );
+    const take = Math.min(Math.max(args.limit ?? 50, 1), 200);
+    const filtered = await ctx.db
+      .query("shiftCashEvents")
+      .withIndex("by_store_and_date", (q) => q.eq("storeId", args.storeId))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("type"), "manual_in"),
+          q.eq(q.field("type"), "manual_out")
+        )
+      )
+      .order("desc")
+      .take(take);
+
+    const userCache: Record<Id<"users">, string> = {} as Record<
+      Id<"users">,
+      string
+    >;
+    return Promise.all(
+      filtered.map(async (e: Doc<"shiftCashEvents">) => {
+        if (!userCache[e.performedBy]) {
+          const u = await ctx.db.get(e.performedBy);
+          userCache[e.performedBy] = u?.name ?? "Unknown";
+        }
+        return { ...e, performedByName: userCache[e.performedBy] };
+      })
+    );
   },
 });

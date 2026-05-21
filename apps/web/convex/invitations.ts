@@ -240,3 +240,33 @@ export const decline = mutation({
     return { success: true };
   },
 });
+
+export const remove = mutation({
+  args: { inviteId: v.id("storeInvitations"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const invite = await ctx.db.get(args.inviteId);
+    if (!invite) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Invitation not found.",
+      });
+    }
+    await assertPageFunction(
+      ctx.db,
+      args.userId,
+      invite.storeId,
+      "members",
+      "invite_member"
+    );
+    await ctx.db.delete(args.inviteId);
+    await createAuditLog(ctx.db, {
+      storeId: invite.storeId,
+      userId: args.userId,
+      action: "invitation.revoke",
+      entityType: "invitation",
+      entityId: args.inviteId,
+      details: { email: invite.email, role: invite.role },
+    });
+    return { success: true };
+  },
+});

@@ -58,6 +58,11 @@ export default function CashPage() {
   const canRecordIn = can("record_in");
   const canRecordOut = can("record_out");
 
+  const drawer = useQuery(
+    api.shifts.getStoreDrawer,
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
+  );
+
   const activeShift = useQuery(
     api.shifts.getActive,
     userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
@@ -67,6 +72,17 @@ export default function CashPage() {
     api.shifts.get,
     userId && activeShift ? { shiftId: activeShift._id, userId } : "skip"
   );
+
+  const cashEvents = useQuery(
+    api.shifts.listStoreCashEvents,
+    userId
+      ? { storeId: storeId as Id<"stores">, userId, limit: 100 }
+      : "skip"
+  );
+
+  const writeAllowedDirections: Array<"in" | "out"> = [];
+  if (canRecordIn) writeAllowedDirections.push("in");
+  if (canRecordOut) writeAllowedDirections.push("out");
 
   const [direction, setDirection] = useState<"in" | "out">("in");
   const [usd, setUsd] = useState("");
@@ -85,12 +101,8 @@ export default function CashPage() {
       toast.error("Enter an amount in USD or LBP");
       return;
     }
-    if (!activeShift) {
-      toast.error("Open a shift first");
-      return;
-    }
     setSubmitting(true);
-    const res = await recordCash(activeShift._id, direction, usdNum, lbpNum, reason);
+    const res = await recordCash(storeId, direction, usdNum, lbpNum, reason);
     setSubmitting(false);
     if (!res.success) {
       toast.error(res.error ?? "Failed to record");
@@ -102,33 +114,8 @@ export default function CashPage() {
     setReason("");
   }
 
-  const cashEvents =
-    shiftDetail?.events.filter(
-      (e) => e.type === "manual_in" || e.type === "manual_out"
-    ) ?? [];
-
-  const drawerUSD = shiftDetail?.totals.expectedClosingUSD ?? 0;
-  const drawerLBP = shiftDetail?.totals.expectedClosingLBP ?? 0;
-  const writeAllowedDirections: Array<"in" | "out"> = [];
-  if (canRecordIn) writeAllowedDirections.push("in");
-  if (canRecordOut) writeAllowedDirections.push("out");
-
-  if (!store?.shiftsEnabled) {
-    return (
-      <div className="p-6 max-w-3xl space-y-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Wallet className="h-6 w-6" />
-          Cash
-        </h1>
-        <Card>
-          <CardContent className="py-8 text-sm text-muted-foreground">
-            Cash management requires the Shifts feature. Enable it in Store
-            Settings.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const drawerUSD = drawer?.drawerUSD ?? 0;
+  const drawerLBP = drawer?.drawerLBP ?? 0;
 
   return (
     <div className="p-6 max-w-4xl space-y-6">
@@ -138,43 +125,19 @@ export default function CashPage() {
           Cash
         </h1>
         <p className="text-muted-foreground">
-          Record paid-in / paid-out events on the active shift.
+          Store drawer balance and paid-in / paid-out events.
         </p>
       </div>
 
-      {/* Drawer status */}
-      {activeShift === undefined ? (
+      {drawer === undefined ? (
         <Skeleton className="h-24" />
-      ) : !activeShift ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>No active shift</CardTitle>
-            <CardDescription>
-              Cash events attach to your open shift. Open one to continue.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href={`/store/${storeId}/shifts/new`}>
-              <Button size="sm">Open shift</Button>
-            </Link>
-          </CardContent>
-        </Card>
       ) : (
         <Card className="border-primary/40">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Drawer balance</CardTitle>
-                <CardDescription>
-                  From shift opened {formatDate(activeShift.openedAt)}.
-                </CardDescription>
-              </div>
-              <Link href={`/store/${storeId}/shifts/${activeShift._id}`}>
-                <Button variant="outline" size="sm">
-                  View shift
-                </Button>
-              </Link>
-            </div>
+            <CardTitle>Store drawer balance</CardTitle>
+            <CardDescription>
+              Running total across all shifts and standalone events.
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4 text-sm">
             <div>
@@ -193,13 +156,47 @@ export default function CashPage() {
         </Card>
       )}
 
-      {/* Record form */}
-      {activeShift && writeAllowedDirections.length > 0 && (
+      {activeShift && shiftDetail && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Active shift sub-total</CardTitle>
+                <CardDescription>
+                  Opened {formatDate(activeShift.openedAt)}.
+                </CardDescription>
+              </div>
+              <Link href={`/store/${storeId}/shifts/${activeShift._id}`}>
+                <Button variant="outline" size="sm">
+                  View shift
+                </Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-muted-foreground">Shift USD</p>
+              <p className="font-mono text-xl font-medium">
+                {formatCurrency(shiftDetail.totals.expectedClosingUSD, "USD")}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Shift LBP</p>
+              <p className="font-mono text-xl font-medium">
+                {formatCurrency(shiftDetail.totals.expectedClosingLBP, "LBP")}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {writeAllowedDirections.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Record cash event</CardTitle>
             <CardDescription>
               Petty cash, change-fund top-up, etc. Reason is required.
+              {activeShift ? " Tagged to your active shift." : ""}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -278,22 +275,23 @@ export default function CashPage() {
         </Card>
       )}
 
-      {/* History */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Recent cash events</CardTitle>
           <CardDescription>
-            Paid-in / paid-out activity on the active shift.
+            Paid-in / paid-out activity across the store.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          {!activeShift ? (
-            <p className="px-6 py-12 text-center text-sm text-muted-foreground">
-              No active shift.
-            </p>
+          {cashEvents === undefined ? (
+            <div className="p-6 space-y-2">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-8" />
+              ))}
+            </div>
           ) : cashEvents.length === 0 ? (
             <p className="px-6 py-12 text-center text-sm text-muted-foreground">
-              No cash events on this shift yet.
+              No cash events yet.
             </p>
           ) : (
             <Table>
@@ -305,6 +303,7 @@ export default function CashPage() {
                   <TableHead className="text-right">LBP</TableHead>
                   <TableHead>Reason</TableHead>
                   <TableHead>By</TableHead>
+                  <TableHead>Shift</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -337,6 +336,18 @@ export default function CashPage() {
                     <TableCell className="text-sm">{e.reason ?? "—"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {e.performedByName}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {e.shiftId ? (
+                        <Link
+                          href={`/store/${storeId}/shifts/${e.shiftId}`}
+                          className="underline"
+                        >
+                          shift
+                        </Link>
+                      ) : (
+                        "—"
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

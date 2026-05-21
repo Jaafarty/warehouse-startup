@@ -43,12 +43,14 @@ export function Sidebar({
   const permissions = liveStore?.effectivePermissions ?? initialPermissions;
   const isPrivileged = role === "owner" || role === "admin";
 
+  const shiftsEnabled = liveStore?.shiftsEnabled ?? false;
   const pageLinks = PAGE_KEYS
     .filter(
       (page) =>
         // Defensive: PAGE_META is updated on each release. Skip pages we don't
         // know how to render rather than crash.
         PAGE_META[page] !== undefined &&
+        (page !== "shifts" || shiftsEnabled) &&
         (isPrivileged || (permissions?.[page]?.enabled ?? false))
     )
     .map((page) => {

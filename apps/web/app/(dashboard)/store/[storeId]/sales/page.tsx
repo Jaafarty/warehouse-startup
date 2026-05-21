@@ -67,6 +67,15 @@ export default function SalesPage() {
   const canCreateSale =
     isPrivileged || (store?.effectivePermissions?.sales?.functions?.create_sale ?? false);
 
+  const rate = useQuery(
+    api.exchangeRates.getCurrent,
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
+  );
+  const canSetRate =
+    isPrivileged ||
+    (store?.effectivePermissions?.exchange_rate?.functions?.set_rate ?? false);
+  const rateMissing = rate === null;
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -77,14 +86,38 @@ export default function SalesPage() {
           </p>
         </div>
         {canCreateSale && (
-          <Link href={`/store/${storeId}/sales/new`}>
-            <Button size="sm">
+          rateMissing ? (
+            <Button size="sm" disabled title="Set the exchange rate first">
               <Plus className="h-4 w-4 mr-2" />
               New Sale
             </Button>
-          </Link>
+          ) : (
+            <Link href={`/store/${storeId}/sales/new`}>
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                New Sale
+              </Button>
+            </Link>
+          )
         )}
       </div>
+
+      {rateMissing && (
+        <Card className="border-amber-500/40 bg-amber-50/30 dark:bg-amber-950/10">
+          <CardContent className="py-4 text-sm flex items-center justify-between gap-4">
+            <p>
+              No exchange rate set. Sales are blocked until an owner or admin sets one.
+            </p>
+            {canSetRate && (
+              <Link href={`/store/${storeId}/exchange-rate`}>
+                <Button variant="outline" size="sm">
+                  Set exchange rate
+                </Button>
+              </Link>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[240px]">
@@ -128,12 +161,19 @@ export default function SalesPage() {
                 Create your first sale to start tracking revenue.
               </p>
               {canCreateSale && (
-                <Link href={`/store/${storeId}/sales/new`}>
-                  <Button>
+                rateMissing ? (
+                  <Button disabled title="Set the exchange rate first">
                     <Plus className="h-4 w-4 mr-2" />
                     New Sale
                   </Button>
-                </Link>
+                ) : (
+                  <Link href={`/store/${storeId}/sales/new`}>
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Sale
+                    </Button>
+                  </Link>
+                )
               )}
             </div>
           ) : (

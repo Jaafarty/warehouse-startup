@@ -337,7 +337,7 @@ export default defineSchema({
 
   shiftCashEvents: defineTable({
     storeId: v.id("stores"),
-    shiftId: v.id("shifts"),
+    shiftId: v.optional(v.id("shifts")),
     type: v.union(
       v.literal("sale"),
       v.literal("return"),

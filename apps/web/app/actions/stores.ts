@@ -162,3 +162,19 @@ export async function deleteStore(storeId: string) {
     return { success: false, error: extractErrorMessage(error, "Failed to delete store") };
   }
 }
+
+export async function revokeInvitation(storeId: string, inviteId: string) {
+  const userId = await requireCurrentUserId();
+  try {
+    await convex.mutation(api.invitations.remove, {
+      inviteId: inviteId as Id<"storeInvitations">,
+      userId,
+    });
+    return { success: true as const };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: extractErrorMessage(error, "Failed to revoke invitation"),
+    };
+  }
+}

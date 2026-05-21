@@ -106,7 +106,7 @@ export async function reopenShift(shiftId: string, reason: string) {
 }
 
 export async function recordCash(
-  shiftId: string,
+  storeId: string,
   direction: "in" | "out",
   amountUSD: number,
   amountLBP: number,
@@ -115,7 +115,7 @@ export async function recordCash(
   const userId = await requireCurrentUserId();
   try {
     await convex.mutation(api.shifts.recordManualCash, {
-      shiftId: shiftId as Id<"shifts">,
+      storeId: storeId as Id<"stores">,
       userId,
       direction,
       amountUSD,
