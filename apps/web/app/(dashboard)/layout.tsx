@@ -1,6 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { Topbar } from "@/components/layout/topbar";
+import { TweaksPanel } from "@/components/layout/tweaks-panel";
 import { getCurrentUserId } from "@/lib/auth";
 import ConvexErrorBoundary from "@/components/error-boundary";
 
@@ -34,6 +35,7 @@ export default async function DashboardLayout({
             <main className="flex-1">
           <ConvexErrorBoundary>{children}</ConvexErrorBoundary>
         </main>
+        <TweaksPanel />
         </div>
     );
 }

@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { DollarSign } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 
 export default function ExchangeRatePage() {
     const { storeId } = useParams<{ storeId: string }>();
@@ -82,14 +84,12 @@ export default function ExchangeRatePage() {
     }
 
     return (
-        <div className="p-6 max-w-3xl space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold">Exchange Rate</h1>
-                <p className="text-muted-foreground text-sm">
-                    Manage the USD ↔ LBP rate. New sales snapshot the current
-                    rate at creation time — past sales are never reconverted.
-                </p>
-            </div>
+        <div style={{ padding: "var(--wh-density-pad)" }} className="max-w-3xl space-y-5">
+            <PageHeader
+                icon={DollarSign}
+                title="Exchange Rate"
+                subtitle="Manage the USD ↔ LBP rate. New sales snapshot the current rate at creation time — past sales are never reconverted."
+            />
 
             <Card>
                 <CardHeader>

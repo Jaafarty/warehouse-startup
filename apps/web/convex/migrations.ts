@@ -1,6 +1,43 @@
 import { internalMutation, mutation } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";
+import { v } from "convex/values";
 import { mergeWithDefaults } from "./_helpers/permissions";
+
+// DESTRUCTIVE. Deletes every row in every table.
+// Run via: npx convex run migrations:wipeAll '{"confirm":"WIPE"}'
+export const wipeAll = internalMutation({
+  args: { confirm: v.string() },
+  handler: async (ctx, { confirm }) => {
+    if (confirm !== "WIPE") throw new Error("Pass confirm: \"WIPE\" to proceed");
+    const tables = [
+      "saleReturnItems",
+      "saleReturns",
+      "saleItems",
+      "sales",
+      "shiftCashEvents",
+      "shifts",
+      "stockMovements",
+      "notifications",
+      "auditLogs",
+      "products",
+      "categories",
+      "customers",
+      "exchangeRates",
+      "storeInvitations",
+      "storeRoles",
+      "storeMembers",
+      "stores",
+      "users",
+    ] as const;
+    const deleted: Record<string, number> = {};
+    for (const t of tables) {
+      const rows = await ctx.db.query(t).collect();
+      for (const r of rows) await ctx.db.delete(r._id);
+      deleted[t] = rows.length;
+    }
+    return deleted;
+  },
+});
 
 /**
  * One-shot backfill for the dual-currency rollout.

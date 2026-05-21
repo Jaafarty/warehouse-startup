@@ -518,9 +518,9 @@ function BalanceRow({
   positive?: boolean;
 }) {
   const usdClass =
-    usd === 0 ? "text-muted-foreground" : positive ? "text-green-600" : "";
+    usd === 0 ? "text-muted-foreground" : positive ? "text-[color:var(--color-success)]" : "";
   const lbpClass =
-    lbp === 0 ? "text-muted-foreground" : positive ? "text-green-600" : "";
+    lbp === 0 ? "text-muted-foreground" : positive ? "text-[color:var(--color-success)]" : "";
   return (
     <TableRow>
       <TableCell>{label}</TableCell>

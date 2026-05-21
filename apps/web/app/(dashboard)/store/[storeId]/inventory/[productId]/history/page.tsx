@@ -40,9 +40,9 @@ function MovementIcon({ type }: { type: string }) {
     return <ArrowDown className="h-4 w-4 text-destructive" />;
   }
   if (type === "return") {
-    return <RotateCcw className="h-4 w-4 text-blue-500" />;
+    return <RotateCcw className="h-4 w-4 text-[color:var(--color-info)]" />;
   }
-  return <ArrowUp className="h-4 w-4 text-green-600" />;
+  return <ArrowUp className="h-4 w-4 text-[color:var(--color-success)]" />;
 }
 
 export default function StockHistoryPage() {
@@ -130,7 +130,7 @@ export default function StockHistoryPage() {
                     <TableCell
                       className={`text-right font-mono ${
                         m.quantityChange > 0
-                          ? "text-green-600"
+                          ? "text-[color:var(--color-success)]"
                           : "text-destructive"
                       }`}
                     >

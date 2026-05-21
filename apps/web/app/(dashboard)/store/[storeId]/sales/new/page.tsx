@@ -596,7 +596,7 @@ export default function NewSalePage() {
                 </span>
               </div>
               {isCovered ? (
-                <div className="flex justify-between font-medium text-green-600">
+                <div className="flex justify-between font-medium text-[color:var(--color-success)]">
                   <span>Change due</span>
                   <span className="font-mono">
                     {formatCurrency(changeUSD, "USD")}

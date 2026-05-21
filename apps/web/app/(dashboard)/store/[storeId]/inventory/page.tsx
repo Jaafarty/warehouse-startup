@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { InventoryImportExport } from "@/components/inventory-import-export";
 import { ManageCategoriesDialog } from "@/components/inventory/manage-categories-dialog";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -134,48 +135,51 @@ export default function InventoryPage() {
     products?.filter((p) => !p.isArchived).length ?? 0;
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Inventory</h1>
-          <p className="text-muted-foreground">
+    <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
+      <PageHeader
+        icon={Package}
+        title="Inventory"
+        subtitle={
+          <>
             {totalProducts} product{totalProducts !== 1 ? "s" : ""}
             {lowStockCount > 0 && (
-              <span className="text-destructive ml-2">
-                ({lowStockCount} low stock)
+              <span className="text-destructive ml-2 font-medium">
+                · {lowStockCount} low stock
               </span>
             )}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {(can("import_products") || can("export_products")) && (
-            <InventoryImportExport
-              storeId={storeId}
-              categories={categories ?? []}
-              products={products ?? []}
-              canImport={can("import_products")}
-              canExport={can("export_products")}
-            />
-          )}
-          {(can("create_category") || can("edit_category") || can("remove_category")) && (
-            <ManageCategoriesDialog
-              storeId={storeId}
-              userId={userId!}
-              canCreate={can("create_category")}
-              canEdit={can("edit_category")}
-              canRemove={can("remove_category")}
-            />
-          )}
-          {can("add_product") && (
-            <Link href={`/store/${storeId}/inventory/new`}>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Product
-              </Button>
-            </Link>
-          )}
-        </div>
-      </div>
+          </>
+        }
+        right={
+          <>
+            {(can("import_products") || can("export_products")) && (
+              <InventoryImportExport
+                storeId={storeId}
+                categories={categories ?? []}
+                products={products ?? []}
+                canImport={can("import_products")}
+                canExport={can("export_products")}
+              />
+            )}
+            {(can("create_category") || can("edit_category") || can("remove_category")) && (
+              <ManageCategoriesDialog
+                storeId={storeId}
+                userId={userId!}
+                canCreate={can("create_category")}
+                canEdit={can("edit_category")}
+                canRemove={can("remove_category")}
+              />
+            )}
+            {can("add_product") && (
+              <Link href={`/store/${storeId}/inventory/new`}>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Product
+                </Button>
+              </Link>
+            )}
+          </>
+        }
+      />
 
       {/* Filters */}
       <div className="flex items-center gap-3">

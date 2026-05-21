@@ -29,9 +29,9 @@ const TYPE_CONFIG: Record<
   { icon: typeof Bell; color: string }
 > = {
   low_stock_alert: { icon: AlertTriangle, color: "text-destructive" },
-  sale_completed: { icon: ShoppingCart, color: "text-green-600" },
-  store_invitation: { icon: UserPlus, color: "text-blue-500" },
-  member_joined: { icon: UserPlus, color: "text-blue-500" },
+  sale_completed: { icon: ShoppingCart, color: "text-[color:var(--color-success)]" },
+  store_invitation: { icon: UserPlus, color: "text-[color:var(--color-info)]" },
+  member_joined: { icon: UserPlus, color: "text-[color:var(--color-info)]" },
 };
 
 export default function NotificationsPage() {

@@ -30,9 +30,9 @@ export function KpiCard({ label, value, sub, icon, trendPct, loading }: Props) {
 
   const trendColor =
     trendKind === "up"
-      ? "text-emerald-500"
+      ? "text-[color:var(--color-success)]"
       : trendKind === "down"
-        ? "text-rose-500"
+        ? "text-destructive"
         : "text-muted-foreground";
 
   return (

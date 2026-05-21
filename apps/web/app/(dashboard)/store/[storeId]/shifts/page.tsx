@@ -9,6 +9,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { formatCurrency, formatDate } from "@ware-house/shared";
 import { Plus, Clock } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -80,8 +81,12 @@ export default function ShiftsListPage() {
 
   if (store && !store.shiftsEnabled) {
     return (
-      <div className="p-6 max-w-3xl space-y-4">
-        <h1 className="text-2xl font-bold">Shifts</h1>
+      <div style={{ padding: "var(--wh-density-pad)" }} className="max-w-3xl space-y-4">
+        <PageHeader
+          icon={Clock}
+          title="Shifts"
+          subtitle="Cashier sessions and drawer reconciliation."
+        />
         <Card>
           <CardContent className="py-6 text-sm text-muted-foreground flex items-center justify-between gap-4">
             <p>The Shifts feature is disabled for this store.</p>
@@ -99,23 +104,25 @@ export default function ShiftsListPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Shifts</h1>
-          <p className="text-muted-foreground">
-            Cashier sessions and drawer reconciliation.
-          </p>
-        </div>
-        {canOpen && !active && (
-          <Link href={`/store/${storeId}/shifts/new`}>
-            <Button size="sm">
-              <Plus className="h-4 w-4 mr-1.5" />
-              Open shift
-            </Button>
-          </Link>
-        )}
-      </div>
+    <div
+      style={{ padding: "var(--wh-density-pad)" }}
+      className="space-y-5 max-w-5xl"
+    >
+      <PageHeader
+        icon={Clock}
+        title="Shifts"
+        subtitle="Cashier sessions and drawer reconciliation."
+        right={
+          canOpen && !active && (
+            <Link href={`/store/${storeId}/shifts/new`}>
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-1.5" />
+                Open shift
+              </Button>
+            </Link>
+          )
+        }
+      />
 
       {active && (
         <Card className="border-primary/40">

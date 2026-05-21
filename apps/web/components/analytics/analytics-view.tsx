@@ -13,6 +13,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BarChart3 } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import { KpiGrid } from "./kpi-grid";
 import {
   RangeFilter,
@@ -135,15 +137,12 @@ export function AnalyticsView({ storeId }: { storeId: string }) {
   );
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Analytics</h1>
-          <p className="text-sm text-muted-foreground">
-            Live sales performance — updates as new sales come in.
-          </p>
-        </div>
-      </div>
+    <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
+      <PageHeader
+        icon={BarChart3}
+        title="Analytics"
+        subtitle="Live sales performance — updates as new sales come in."
+      />
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <RangeFilter value={range} onChange={setRange} />

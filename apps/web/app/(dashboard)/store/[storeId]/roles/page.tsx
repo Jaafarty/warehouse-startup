@@ -6,7 +6,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Plus, Pencil, Trash2, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Shield } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,18 +48,19 @@ export default function RolesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Custom Roles</h1>
-          <p className="text-muted-foreground">Create roles with specific page and feature access.</p>
-        </div>
-        <Link href={`/store/${storeId}/roles/new`}>
-          <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" /> New Role
-          </Button>
-        </Link>
-      </div>
+    <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
+      <PageHeader
+        icon={Shield}
+        title="Custom Roles"
+        subtitle="Create roles with specific page and feature access."
+        right={
+          <Link href={`/store/${storeId}/roles/new`}>
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-2" /> New Role
+            </Button>
+          </Link>
+        }
+      />
 
       {customRoles === undefined ? (
         <p className="text-muted-foreground">Loading...</p>

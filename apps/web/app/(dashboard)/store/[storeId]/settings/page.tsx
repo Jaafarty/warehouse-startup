@@ -32,6 +32,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { Settings as SettingsIcon } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 
 export default function StoreSettingsPage() {
   const { storeId } = useParams<{ storeId: string }>();
@@ -82,8 +84,15 @@ export default function StoreSettingsPage() {
   const canDelete = isOwner && confirmText === store.name;
 
   return (
-    <div className="p-6 max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold">Store Settings</h1>
+    <div
+      style={{ padding: "var(--wh-density-pad)" }}
+      className="max-w-2xl space-y-5"
+    >
+      <PageHeader
+        icon={SettingsIcon}
+        title="Store Settings"
+        subtitle="General configuration and preferences."
+      />
 
       <Card>
         <CardHeader>

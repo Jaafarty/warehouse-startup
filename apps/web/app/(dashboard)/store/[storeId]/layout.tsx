@@ -29,7 +29,7 @@ const store = await convex.query(api.stores.getById, {
   }
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)]">
+    <div className="flex h-[calc(100vh-60px)]">
       <Sidebar
         storeId={storeId}
         storeName={store.name}

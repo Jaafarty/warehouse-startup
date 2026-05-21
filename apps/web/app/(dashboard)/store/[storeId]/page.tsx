@@ -14,8 +14,10 @@ import {
   AlertTriangle,
   TrendingUp,
   Clock,
+  LayoutDashboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import {
   Card,
   CardContent,
@@ -109,16 +111,15 @@ export default function StoreDashboardPage() {
   const loading = store === undefined || (canViewAnalytics && overview === undefined);
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Overview of your store performance.
-        </p>
-      </div>
+    <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
+      <PageHeader
+        icon={LayoutDashboard}
+        title="Dashboard"
+        subtitle="Overview of your store performance."
+      />
 
       {rate === null && (
-        <Card className="border-amber-500/40 bg-amber-50/30 dark:bg-amber-950/10">
+        <Card style={{ borderColor: "var(--color-warning)", background: "var(--color-warning-bg)" }}>
           <CardContent className="py-4 text-sm flex items-center justify-between gap-4">
             <p>
               No exchange rate set yet. Sales will be blocked until one is configured.

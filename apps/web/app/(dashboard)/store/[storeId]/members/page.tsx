@@ -13,7 +13,8 @@ import {
   revokeInvitation,
 } from "@/app/actions/stores";
 import { canManageRole, SYSTEM_ROLES, type MemberRole } from "@ware-house/shared";
-import { Trash2, UserPlus, MoreHorizontal, Copy } from "lucide-react";
+import { Trash2, UserPlus, MoreHorizontal, Copy, Users } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -183,22 +184,20 @@ export default function MembersPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Members</h1>
-          <p className="text-muted-foreground">
-            Manage who has access to this store.
-          </p>
-        </div>
-        {canManageMembers && (
-          <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-            <DialogTrigger
-              className="inline-flex items-center justify-center rounded-lg bg-primary px-2.5 h-8 text-sm font-medium text-primary-foreground hover:bg-primary/80"
-            >
-              <UserPlus className="h-4 w-4 mr-2" />
-              Invite
-            </DialogTrigger>
+    <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
+      <PageHeader
+        icon={Users}
+        title="Members"
+        subtitle="Manage who has access to this store."
+        right={
+          canManageMembers && (
+            <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+              <DialogTrigger
+                className="inline-flex items-center justify-center rounded-lg bg-primary px-2.5 h-8 text-sm font-medium text-primary-foreground hover:bg-primary/80"
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Invite
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Invite a member</DialogTitle>
@@ -248,8 +247,9 @@ export default function MembersPage() {
               </form>
             </DialogContent>
           </Dialog>
-        )}
-      </div>
+          )
+        }
+      />
 
       <Card>
         <CardHeader>

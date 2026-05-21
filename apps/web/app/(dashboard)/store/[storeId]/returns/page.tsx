@@ -10,6 +10,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { formatCurrency, formatDate } from "@ware-house/shared";
 import { RotateCcw, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/layout/page-header";
 import {
   Card,
   CardContent,
@@ -77,15 +78,16 @@ export default function ReturnsListPage() {
   );
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Returns</h1>
-        <p className="text-muted-foreground">
-          {returns
+    <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
+      <PageHeader
+        icon={RotateCcw}
+        title="Returns"
+        subtitle={
+          returns
             ? `${returns.length} return${returns.length !== 1 ? "s" : ""}`
-            : "Loading..."}
-        </p>
-      </div>
+            : "Loading..."
+        }
+      />
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="relative flex-1 min-w-[240px]">

@@ -8,6 +8,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { formatCurrency, formatDate } from "@ware-house/shared";
 import { Plus, ShoppingCart, Search } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -77,33 +78,32 @@ export default function SalesPage() {
   const rateMissing = rate === null;
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Sales</h1>
-          <p className="text-muted-foreground">
-            {sales ? `${sales.length} sale${sales.length !== 1 ? "s" : ""}` : "Loading..."}
-          </p>
-        </div>
-        {canCreateSale && (
-          rateMissing ? (
-            <Button size="sm" disabled title="Set the exchange rate first">
-              <Plus className="h-4 w-4 mr-2" />
-              New Sale
-            </Button>
-          ) : (
-            <Link href={`/store/${storeId}/sales/new`}>
-              <Button size="sm">
+    <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
+      <PageHeader
+        icon={ShoppingCart}
+        title="Sales"
+        subtitle={sales ? `${sales.length} sale${sales.length !== 1 ? "s" : ""}` : "Loading..."}
+        right={
+          canCreateSale && (
+            rateMissing ? (
+              <Button size="sm" disabled title="Set the exchange rate first">
                 <Plus className="h-4 w-4 mr-2" />
                 New Sale
               </Button>
-            </Link>
+            ) : (
+              <Link href={`/store/${storeId}/sales/new`}>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Sale
+                </Button>
+              </Link>
+            )
           )
-        )}
-      </div>
+        }
+      />
 
       {rateMissing && (
-        <Card className="border-amber-500/40 bg-amber-50/30 dark:bg-amber-950/10">
+        <Card style={{ borderColor: "var(--color-warning)", background: "var(--color-warning-bg)" }}>
           <CardContent className="py-4 text-sm flex items-center justify-between gap-4">
             <p>
               No exchange rate set. Sales are blocked until an owner or admin sets one.
