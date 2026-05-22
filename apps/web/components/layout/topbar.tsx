@@ -36,6 +36,7 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
   const segments = pathname.split("/").filter(Boolean);
   const LIST_SECTIONS = new Set([
     "inventory",
+    "categories",
     "sales",
     "returns",
     "members",
@@ -52,6 +53,8 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
     (segments[0] === "store" && segments.length === 2) ||
     (segments[0] === "store" && segments.length === 3 && LIST_SECTIONS.has(segments[2]));
   const showBack = !isRoot;
+
+  const inStore = segments[0] === "store";
 
   const { userId } = useCurrentUser();
   const unreadCount = useQuery(
@@ -100,7 +103,8 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
         </Link>
       </div>
 
-      {/* Center: search (visual-only for now) */}
+      {/* Center: search (visual-only for now) — only inside store */}
+      {inStore && (
       <div className="relative hidden md:block w-[360px] max-w-[40vw]">
         <Search
           className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
@@ -116,6 +120,7 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
           ⌘K
         </span>
       </div>
+      )}
 
       {/* Right: notifications + profile */}
       <div className="flex items-center gap-1">

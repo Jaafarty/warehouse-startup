@@ -8,7 +8,10 @@ import { createAuditLog } from "./_helpers/audit";
 export const list = query({
   args: { storeId: v.id("stores"), userId: v.id("users") },
   handler: async (ctx, args) => {
-    await assertPageFunction(ctx.db, args.userId, args.storeId, "inventory", "view_list");
+    await assertAnyPageFunction(ctx.db, args.userId, args.storeId, [
+      ["categories", "view_list"],
+      ["inventory", "view_list"],
+    ]);
     return ctx.db
       .query("categories")
       .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
@@ -24,7 +27,7 @@ export const create = mutation({
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await assertPageFunction(ctx.db, args.userId, args.storeId, "inventory", "create_category");
+    await assertPageFunction(ctx.db, args.userId, args.storeId, "categories", "create_category");
 
     // Check for duplicate name
     const existing = await ctx.db
@@ -68,7 +71,7 @@ export const update = mutation({
     const category = await ctx.db.get(args.categoryId);
     if (!category) throw new ConvexError({ code: "NOT_FOUND", message: "Category not found." });
 
-    await assertPageFunction(ctx.db, args.userId, category.storeId, "inventory", "edit_category");
+    await assertPageFunction(ctx.db, args.userId, category.storeId, "categories", "edit_category");
 
     const patch: { name?: string; description?: string } = {};
     if (args.name !== undefined) patch.name = args.name.trim();
@@ -100,7 +103,7 @@ export const remove = mutation({
     const category = await ctx.db.get(args.categoryId);
     if (!category) throw new ConvexError({ code: "NOT_FOUND", message: "Category not found." });
 
-    await assertPageFunction(ctx.db, args.userId, category.storeId, "inventory", "remove_category");
+    await assertPageFunction(ctx.db, args.userId, category.storeId, "categories", "remove_category");
 
     // Remove category reference from products
     const products = await ctx.db
@@ -139,7 +142,7 @@ export const ensureMany = mutation({
     // Spreadsheet import needs to materialise unseen categories — allow it
     // for users with either explicit category-create rights OR import rights.
     await assertAnyPageFunction(ctx.db, args.userId, args.storeId, [
-      ["inventory", "create_category"],
+      ["categories", "create_category"],
       ["inventory", "import_products"],
     ]);
 

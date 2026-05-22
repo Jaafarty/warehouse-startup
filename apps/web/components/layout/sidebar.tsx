@@ -7,6 +7,7 @@ import { useQuery } from "convex/react";
 import {
   LayoutDashboard,
   ChevronRight,
+  ChevronLeft,
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
@@ -40,7 +41,7 @@ const SECTIONS: Section[] = [
   {
     id: "operations",
     label: "Operations",
-    pages: ["inventory", "sales", "returns", "cash", "shifts", "exchange_rate"],
+    pages: ["inventory", "categories", "sales", "returns", "cash", "shifts", "exchange_rate"],
   },
   { id: "workspace", label: "Workspace", pages: ["members", "roles", "settings"] },
 ];
@@ -185,20 +186,19 @@ export function Sidebar({
             ←
           </Link>
         ) : (
-          <div className="flex flex-col min-w-0 w-full">
-            <Link
-              href="/dashboard"
-              className="text-[11px] text-muted-foreground hover:text-foreground"
-            >
-              &larr; Stores
-            </Link>
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-1.5 min-w-0 w-full text-muted-foreground hover:text-foreground transition"
+            title="Back to stores"
+          >
+            <ChevronLeft className="h-4 w-4 flex-shrink-0" />
             <p
               className="font-semibold truncate text-[13px] text-sidebar-foreground"
               title={storeName}
             >
               {storeName}
             </p>
-          </div>
+          </Link>
         )}
       </div>
 

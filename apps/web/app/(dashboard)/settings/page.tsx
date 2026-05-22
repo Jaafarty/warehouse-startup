@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { updateProfile } from "@/app/actions/auth";
-import { User, Lock } from "lucide-react";
+import { User, Lock, Settings as SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/layout/page-header";
 
 export default function UserSettingsPage() {
   const { user } = useUser();
@@ -41,14 +42,14 @@ export default function UserSettingsPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">
-          Manage your account settings.
-        </p>
-      </div>
+    <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
+      <PageHeader
+        icon={SettingsIcon}
+        title="Settings"
+        subtitle="Manage your account settings."
+      />
 
+      <div className="max-w-2xl space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -95,6 +96,7 @@ export default function UserSettingsPage() {
           </CardDescription>
         </CardHeader>
       </Card>
+      </div>
     </div>
   );
 }

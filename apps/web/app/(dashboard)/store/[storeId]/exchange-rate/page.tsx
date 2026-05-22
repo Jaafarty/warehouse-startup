@@ -84,13 +84,14 @@ export default function ExchangeRatePage() {
     }
 
     return (
-        <div style={{ padding: "var(--wh-density-pad)" }} className="max-w-3xl space-y-5">
+        <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
             <PageHeader
                 icon={DollarSign}
                 title="Exchange Rate"
                 subtitle="Manage the USD ↔ LBP rate. New sales snapshot the current rate at creation time — past sales are never reconverted."
             />
 
+            <div className="max-w-3xl space-y-5">
             <Card>
                 <CardHeader>
                     <CardTitle>Current rate</CardTitle>
@@ -222,6 +223,7 @@ export default function ExchangeRatePage() {
                     )}
                 </CardContent>
             </Card>
+            </div>
         </div>
     );
 }

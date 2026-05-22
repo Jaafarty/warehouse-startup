@@ -2,6 +2,7 @@ import type { BuiltInRole } from "./roles";
 
 export const PAGE_KEYS = [
   "inventory",
+  "categories",
   "sales",
   "returns",
   "analytics",
@@ -25,10 +26,8 @@ export const PAGE_FUNCTIONS: Record<PageKey, readonly string[]> = {
     "export_products",
     "adjust_stock",
     "view_history",
-    "create_category",
-    "edit_category",
-    "remove_category",
   ],
+  categories: ["view_list", "create_category", "edit_category", "remove_category"],
   sales: ["view_list", "create_sale"],
   returns: ["view_list", "process_return"],
   analytics: ["view_analytics", "export_csv"],
@@ -55,6 +54,7 @@ export type StorePermissions = Record<PageKey, PagePermissions>;
 
 export const LOCKED_FUNCTIONS: Partial<Record<PageKey, readonly string[]>> = {
   inventory: ["view_list"],
+  categories: ["view_list"],
   sales: ["view_list"],
   returns: ["view_list"],
   analytics: ["view_analytics"],
@@ -95,6 +95,7 @@ function makePage(enabled: boolean, fns: readonly string[], enabledFns: string[]
 export const DEFAULT_PERMISSIONS: Record<BuiltInRole, StorePermissions> = {
   owner: {
     inventory: makePage(true, PAGE_FUNCTIONS.inventory, [...PAGE_FUNCTIONS.inventory]),
+    categories: makePage(true, PAGE_FUNCTIONS.categories, [...PAGE_FUNCTIONS.categories]),
     sales: makePage(true, PAGE_FUNCTIONS.sales, [...PAGE_FUNCTIONS.sales]),
     returns: makePage(true, PAGE_FUNCTIONS.returns, [...PAGE_FUNCTIONS.returns]),
     analytics: makePage(true, PAGE_FUNCTIONS.analytics, [...PAGE_FUNCTIONS.analytics]),
@@ -107,6 +108,7 @@ export const DEFAULT_PERMISSIONS: Record<BuiltInRole, StorePermissions> = {
   },
   admin: {
     inventory: makePage(true, PAGE_FUNCTIONS.inventory, [...PAGE_FUNCTIONS.inventory]),
+    categories: makePage(true, PAGE_FUNCTIONS.categories, [...PAGE_FUNCTIONS.categories]),
     sales: makePage(true, PAGE_FUNCTIONS.sales, [...PAGE_FUNCTIONS.sales]),
     returns: makePage(true, PAGE_FUNCTIONS.returns, [...PAGE_FUNCTIONS.returns]),
     analytics: makePage(true, PAGE_FUNCTIONS.analytics, [...PAGE_FUNCTIONS.analytics]),
@@ -120,7 +122,9 @@ export const DEFAULT_PERMISSIONS: Record<BuiltInRole, StorePermissions> = {
   employee: {
     inventory: makePage(true, PAGE_FUNCTIONS.inventory, [
       "view_list", "add_product", "edit_product", "adjust_stock", "view_history",
-      "create_category", "edit_category", "remove_category",
+    ]),
+    categories: makePage(true, PAGE_FUNCTIONS.categories, [
+      "view_list", "create_category", "edit_category", "remove_category",
     ]),
     sales: makePage(true, PAGE_FUNCTIONS.sales, [...PAGE_FUNCTIONS.sales]),
     returns: makePage(true, PAGE_FUNCTIONS.returns, [...PAGE_FUNCTIONS.returns]),
@@ -138,6 +142,7 @@ export const DEFAULT_PERMISSIONS: Record<BuiltInRole, StorePermissions> = {
   },
   viewer: {
     inventory: makePage(true, PAGE_FUNCTIONS.inventory, ["view_list", "view_history"]),
+    categories: makePage(true, PAGE_FUNCTIONS.categories, ["view_list"]),
     sales: makePage(true, PAGE_FUNCTIONS.sales, ["view_list"]),
     returns: makePage(true, PAGE_FUNCTIONS.returns, ["view_list"]),
     analytics: makePage(true, PAGE_FUNCTIONS.analytics, ["view_analytics"]),

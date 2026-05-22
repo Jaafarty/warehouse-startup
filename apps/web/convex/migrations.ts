@@ -169,6 +169,51 @@ export const backfillCurrency = internalMutation({
   },
 });
 
+// Run once: split category permissions out of inventory into the new categories page.
+// Reads any legacy inventory.functions.{create_category,edit_category,remove_category}
+// from each storeRole doc and mirrors them onto the new categories page block.
+// Run via: npx convex run migrations:splitCategoryPerms
+export const splitCategoryPerms = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const roles = await ctx.db.query("storeRoles").collect();
+    let patched = 0;
+    const CAT_FNS = ["create_category", "edit_category", "remove_category"] as const;
+
+    for (const role of roles) {
+      const tree = (role.permissions ?? {}) as Record<
+        string,
+        { enabled?: boolean; functions?: Record<string, boolean> } | undefined
+      >;
+      const inv = tree.inventory;
+      const cat = tree.categories;
+
+      // Build new categories block: existing categories perms OR copied from inventory.
+      const fns: Record<string, boolean> = { view_list: true };
+      let anyGranted = false;
+      for (const fn of CAT_FNS) {
+        const fromInv = inv?.functions?.[fn] ?? false;
+        const fromCat = cat?.functions?.[fn] ?? false;
+        const granted = fromCat || fromInv;
+        fns[fn] = granted;
+        if (granted) anyGranted = true;
+      }
+
+      const next = {
+        ...tree,
+        categories: {
+          enabled: cat?.enabled ?? anyGranted,
+          functions: fns,
+        },
+      };
+
+      await ctx.db.patch(role._id, { permissions: next });
+      patched++;
+    }
+    return { patched };
+  },
+});
+
 // Run once: hydrate custom role docs with any new page/function keys added since they were created.
 // npx convex run migrations:backfillRolesV3
 export const backfillRolesV3 = mutation({

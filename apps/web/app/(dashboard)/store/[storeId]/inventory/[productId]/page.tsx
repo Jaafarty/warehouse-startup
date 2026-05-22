@@ -65,7 +65,9 @@ export default function ProductDetailPage() {
   const store = useQuery(api.stores.getById, userId ? { storeId: storeId as Id<"stores">, userId: userId } : "skip");
   const isPrivileged = store?.role === "owner" || store?.role === "admin";
   const invFns = store?.effectivePermissions?.inventory?.functions ?? {};
-  const can = (fn: string) => isPrivileged || (invFns[fn] ?? false);
+  const catFns = store?.effectivePermissions?.categories?.functions ?? {};
+  const can = (fn: string) =>
+    isPrivileged || (invFns[fn] ?? false) || (catFns[fn] ?? false);
 
   const product = useQuery(
     api.products.get,

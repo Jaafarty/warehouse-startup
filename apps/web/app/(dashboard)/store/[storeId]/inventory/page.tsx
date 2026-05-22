@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useState } from "react";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery } from "convex/react";
@@ -21,9 +22,10 @@ import {
   Eye,
   History,
   Package,
+  PackageX,
+  AlertTriangle,
 } from "lucide-react";
 import { InventoryImportExport } from "@/components/inventory-import-export";
-import { ManageCategoriesDialog } from "@/components/inventory/manage-categories-dialog";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,6 +89,7 @@ export default function InventoryPage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [showArchived, setShowArchived] = useState(false);
+  const [stockFilter, setStockFilter] = useState<"all" | "low" | "out">("all");
   const products = useQuery(
     api.products.list,
     userId
@@ -100,6 +103,18 @@ export default function InventoryPage() {
         }
       : "skip"
   );
+
+  const filteredProducts = React.useMemo(() => {
+    if (!products) return products;
+    if (stockFilter === "all") return products;
+    return products.filter((p: { quantity?: number; lowStockThreshold?: number }) => {
+      const qty = p.quantity ?? 0;
+      const threshold = p.lowStockThreshold ?? 0;
+      if (stockFilter === "out") return qty <= 0;
+      // low: in stock but at/below threshold (skip threshold=0 to avoid noise)
+      return qty > 0 && threshold > 0 && qty <= threshold;
+    });
+  }, [products, stockFilter]);
 
   const categories = useQuery(
     api.categories.list,
@@ -160,15 +175,6 @@ export default function InventoryPage() {
                 canExport={can("export_products")}
               />
             )}
-            {(can("create_category") || can("edit_category") || can("remove_category")) && (
-              <ManageCategoriesDialog
-                storeId={storeId}
-                userId={userId!}
-                canCreate={can("create_category")}
-                canEdit={can("edit_category")}
-                canRemove={can("remove_category")}
-              />
-            )}
             {can("add_product") && (
               <Link href={`/store/${storeId}/inventory/new`}>
                 <Button size="sm">
@@ -182,8 +188,8 @@ export default function InventoryPage() {
       />
 
       {/* Filters */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search products..."
@@ -207,6 +213,37 @@ export default function InventoryPage() {
             ))}
           </SelectContent>
         </Select>
+        <Select
+          value={stockFilter}
+          onValueChange={(v) => setStockFilter((v ?? "all") as "all" | "low" | "out")}
+        >
+          <SelectTrigger className="w-[170px]">
+            <SelectValue placeholder="All stock">
+              {(value: string) =>
+                value === "low"
+                  ? "Low stock"
+                  : value === "out"
+                  ? "Out of stock"
+                  : "All stock"
+              }
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All stock</SelectItem>
+            <SelectItem value="low" label="Low stock">
+              <span className="inline-flex items-center gap-2">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                Low stock
+              </span>
+            </SelectItem>
+            <SelectItem value="out" label="Out of stock">
+              <span className="inline-flex items-center gap-2">
+                <PackageX className="h-3.5 w-3.5 text-destructive" />
+                Out of stock
+              </span>
+            </SelectItem>
+          </SelectContent>
+        </Select>
         <Button
           variant={showArchived ? "secondary" : "outline"}
           size="sm"
@@ -220,22 +257,22 @@ export default function InventoryPage() {
       {/* Products Table */}
       <Card>
         <CardContent className="p-0">
-          {products === undefined ? (
+          {filteredProducts === undefined ? (
             <div className="p-4 space-y-3">
               {[1, 2, 3, 4].map((i) => (
                 <Skeleton key={i} className="h-12" />
               ))}
             </div>
-          ) : products.length === 0 ? (
+          ) : filteredProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Package className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium">No products found</h3>
               <p className="text-sm text-muted-foreground mt-1 mb-4">
-                {search || categoryFilter !== "all"
+                {search || categoryFilter !== "all" || stockFilter !== "all"
                   ? "Try adjusting your filters."
                   : "Add your first product to get started."}
               </p>
-              {!search && categoryFilter === "all" && (
+              {!search && categoryFilter === "all" && stockFilter === "all" && (
                 <Link href={`/store/${storeId}/inventory/new`}>
                   <Button>
                     <Plus className="h-4 w-4 mr-2" />
@@ -258,7 +295,7 @@ export default function InventoryPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.map((product) => (
+                {filteredProducts.map((product) => (
                   <TableRow key={product._id}>
                     <TableCell>
                       <Link

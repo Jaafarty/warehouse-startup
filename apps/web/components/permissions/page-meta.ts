@@ -1,5 +1,6 @@
 import {
   Package,
+  Tag,
   ShoppingCart,
   RotateCcw,
   BarChart3,
@@ -19,8 +20,13 @@ export const PAGE_META: Record<
 > = {
   inventory: {
     label: "Inventory",
-    description: "Products, stock, categories",
+    description: "Products and stock",
     icon: Package,
+  },
+  categories: {
+    label: "Categories",
+    description: "Product category management",
+    icon: Tag,
   },
   sales: {
     label: "Sales",
