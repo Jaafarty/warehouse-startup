@@ -8,7 +8,7 @@ import Link from "next/link";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { formatCurrency, formatDate } from "@ware-house/shared";
-import { Plus, Clock } from "lucide-react";
+import { Plus, Clock, Info, CircleDot, CircleSlash } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -103,10 +103,13 @@ export default function ShiftsListPage() {
     );
   }
 
+  const mineCount = minePage?.page?.length ?? 0;
+  const allCount = allPage?.page?.length ?? 0;
+
   return (
     <div
       style={{ padding: "var(--wh-density-pad)" }}
-      className="space-y-5 max-w-5xl"
+      className="space-y-5"
     >
       <PageHeader
         icon={Clock}
@@ -124,74 +127,148 @@ export default function ShiftsListPage() {
         }
       />
 
-      {active && (
-        <Card className="border-primary/40">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
-                  Active shift
-                </CardTitle>
-                <CardDescription>
-                  Opened {formatDate(active.openedAt)}
-                </CardDescription>
-              </div>
-              <Badge variant="default">Open</Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between gap-4">
-            <div className="flex gap-6 text-sm">
-              <div>
-                <p className="text-muted-foreground">Opening USD</p>
-                <p className="font-mono font-medium">
-                  {formatCurrency(active.openingUSD, "USD")}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Opening LBP</p>
-                <p className="font-mono font-medium">
-                  {formatCurrency(active.openingLBP, "LBP")}
-                </p>
-              </div>
-            </div>
-            <Link href={`/store/${storeId}/shifts/${active._id}`}>
-              <Button variant="outline" size="sm">
-                Manage shift
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      )}
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-5 min-w-0">
+          {active && (
+            <Card className="border-primary/40">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Clock className="h-5 w-5" />
+                      Active shift
+                    </CardTitle>
+                    <CardDescription>
+                      Opened {formatDate(active.openedAt)}
+                    </CardDescription>
+                  </div>
+                  <Badge variant="default">Open</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between gap-4">
+                <div className="flex gap-6 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Opening USD</p>
+                    <p className="font-mono font-medium">
+                      {formatCurrency(active.openingUSD, "USD")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Opening LBP</p>
+                    <p className="font-mono font-medium">
+                      {formatCurrency(active.openingLBP, "LBP")}
+                    </p>
+                  </div>
+                </div>
+                <Link href={`/store/${storeId}/shifts/${active._id}`}>
+                  <Button variant="outline" size="sm">
+                    Manage shift
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
 
-      <Tabs
-        value={tab}
-        onValueChange={(v) => setTab((v ?? "mine") as "mine" | "all")}
-      >
-        <TabsList>
-          <TabsTrigger value="mine">My shifts</TabsTrigger>
-          {canViewAll && <TabsTrigger value="all">All shifts</TabsTrigger>}
-        </TabsList>
+          <Tabs
+            value={tab}
+            onValueChange={(v) => setTab((v ?? "mine") as "mine" | "all")}
+          >
+            <TabsList>
+              <TabsTrigger value="mine">My shifts</TabsTrigger>
+              {canViewAll && <TabsTrigger value="all">All shifts</TabsTrigger>}
+            </TabsList>
 
-        <TabsContent value="mine">
-          <ShiftTable
-            storeId={storeId}
-            page={minePage?.page}
-            loading={minePage === undefined}
-            showCashier={false}
-          />
-        </TabsContent>
-        {canViewAll && (
-          <TabsContent value="all">
-            <ShiftTable
-              storeId={storeId}
-              page={allPage?.page}
-              loading={allPage === undefined}
-              showCashier
-            />
-          </TabsContent>
-        )}
-      </Tabs>
+            <TabsContent value="mine">
+              <ShiftTable
+                storeId={storeId}
+                page={minePage?.page}
+                loading={minePage === undefined}
+                showCashier={false}
+              />
+            </TabsContent>
+            {canViewAll && (
+              <TabsContent value="all">
+                <ShiftTable
+                  storeId={storeId}
+                  page={allPage?.page}
+                  loading={allPage === undefined}
+                  showCashier
+                />
+              </TabsContent>
+            )}
+          </Tabs>
+        </div>
+
+        <aside className="space-y-5 lg:sticky lg:top-4 lg:self-start">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">At a glance</CardTitle>
+              <CardDescription>Drawer status right now.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  {active ? (
+                    <CircleDot className="h-3.5 w-3.5 text-emerald-600" />
+                  ) : (
+                    <CircleSlash className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                  Status
+                </span>
+                <span className="font-medium">
+                  {active ? "Active" : "No open shift"}
+                </span>
+              </div>
+              {active && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Opened</span>
+                    <span>{formatDate(active.openedAt)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Opening USD</span>
+                    <span className="font-mono">
+                      {formatCurrency(active.openingUSD, "USD")}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Opening LBP</span>
+                    <span className="font-mono">
+                      {formatCurrency(active.openingLBP, "LBP")}
+                    </span>
+                  </div>
+                </>
+              )}
+              <div className="border-t pt-3 flex items-center justify-between">
+                <span className="text-muted-foreground">My shifts shown</span>
+                <span className="font-mono">{mineCount}</span>
+              </div>
+              {canViewAll && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">All shifts shown</span>
+                  <span className="font-mono">{allCount}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Info className="h-4 w-4 text-muted-foreground" />
+                Tips
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground space-y-2">
+              <p>Count the drawer before opening and again before closing.</p>
+              <p>
+                Discrepancies above a few cents or 1 LBP require a note for
+                audit.
+              </p>
+            </CardContent>
+          </Card>
+        </aside>
+      </div>
     </div>
   );
 }
