@@ -182,7 +182,7 @@ export default function StoreSettingsPage() {
                     if (!open) setConfirmText("");
                   }}
                 >
-                  <AlertDialogTrigger className="inline-flex h-9 items-center justify-center rounded-lg bg-destructive px-4 text-sm font-medium text-destructive-foreground hover:bg-destructive/90">
+                  <AlertDialogTrigger className="inline-flex h-9 items-center justify-center rounded-lg bg-destructive px-4 text-sm font-medium text-white hover:bg-destructive/90">
                     Delete Store
                   </AlertDialogTrigger>
                   <AlertDialogContent>
