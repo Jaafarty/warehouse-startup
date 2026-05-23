@@ -9,7 +9,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { createReturn } from "@/app/actions/returns";
 import { formatCurrency } from "@ware-house/shared";
-import { ArrowLeft } from "lucide-react";
+import { RotateCcw, Wallet, AlertTriangle, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/layout/page-header";
 
 type Reason =
   | "defective"
@@ -110,6 +111,11 @@ export default function ProcessReturnPage() {
     }, 0);
   }, [sale, selected, qtys, saleRate]);
 
+  const selectedCount = useMemo(
+    () => Object.values(selected).filter(Boolean).length,
+    [selected]
+  );
+
   const refundedUSD = Number(refundUSDStr) || 0;
   const refundedLBP = Number(refundLBPStr) || 0;
   const refundSplitProvided = refundUSDStr !== "" || refundLBPStr !== "";
@@ -118,9 +124,6 @@ export default function ProcessReturnPage() {
     !refundSplitProvided ||
     Math.abs(cashierTotalUSD - refundTotalUSD) <= 0.01;
 
-  // Drawer warning — refunds reduce drawer cash. Warn if refund would push
-  // either currency negative. Not blocking: refunds are an obligation to the
-  // customer and the cashier may legitimately accept negative drawer.
   const effectiveRefundUSD = refundSplitProvided ? refundedUSD : refundTotalUSD;
   const effectiveRefundLBP = refundSplitProvided ? refundedLBP : 0;
   const willOverdrawUSD =
@@ -131,16 +134,19 @@ export default function ProcessReturnPage() {
 
   if (sale === undefined) {
     return (
-      <div className="p-6 max-w-3xl mx-auto space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64" />
+      <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
+        <Skeleton className="h-20 w-full" />
+        <div className="grid gap-5 lg:grid-cols-3">
+          <Skeleton className="lg:col-span-2 h-64" />
+          <Skeleton className="h-64" />
+        </div>
       </div>
     );
   }
 
   if (sale === null) {
     return (
-      <div className="p-6">
+      <div style={{ padding: "var(--wh-density-pad)" }}>
         <p className="text-destructive">Sale not found.</p>
       </div>
     );
@@ -148,16 +154,13 @@ export default function ProcessReturnPage() {
 
   if (shiftsBlocking) {
     return (
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
-        <div className="flex items-center gap-3">
-          <Link href={`/store/${storeId}/sales/${saleId}`}>
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <h1 className="text-2xl font-bold">Process return</h1>
-        </div>
-        <Card>
+      <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
+        <PageHeader
+          icon={RotateCcw}
+          title="Process return"
+          subtitle={`Sale ${sale.saleNumber}`}
+        />
+        <Card className="max-w-2xl">
           <CardHeader>
             <CardTitle>No active shift</CardTitle>
           </CardHeader>
@@ -175,11 +178,11 @@ export default function ProcessReturnPage() {
     );
   }
 
-  function toggleLine(itemId: string, item: { quantity: number; returnedQuantity: number }) {
-    setSelected((prev) => {
-      const next = { ...prev, [itemId]: !prev[itemId] };
-      return next;
-    });
+  function toggleLine(
+    itemId: string,
+    item: { quantity: number; returnedQuantity: number }
+  ) {
+    setSelected((prev) => ({ ...prev, [itemId]: !prev[itemId] }));
     setQtys((prev) => {
       if (prev[itemId] !== undefined) return prev;
       return { ...prev, [itemId]: item.quantity - item.returnedQuantity };
@@ -225,9 +228,7 @@ export default function ProcessReturnPage() {
       items,
       reason,
       note.trim() || undefined,
-      refundSplitProvided
-        ? { refundedUSD, refundedLBP }
-        : undefined
+      refundSplitProvided ? { refundedUSD, refundedLBP } : undefined
     );
     setPending(false);
 
@@ -240,239 +241,313 @@ export default function ProcessReturnPage() {
     router.push(`/store/${storeId}/returns/${result.returnId}`);
   }
 
+  function fillExactUSD() {
+    setRefundUSDStr(refundTotalUSD.toFixed(2));
+    setRefundLBPStr("0");
+  }
+
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href={`/store/${storeId}/sales/${saleId}`}>
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold">
+    <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
+      <PageHeader
+        icon={RotateCcw}
+        title={
+          <span>
             Process return —{" "}
             <span className="font-mono">{sale.saleNumber}</span>
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Tick items to return. Adjust quantities for partial returns.
-          </p>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Items to return</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12" />
-                <TableHead>Product</TableHead>
-                <TableHead className="text-right">Sold</TableHead>
-                <TableHead className="text-right">Already returned</TableHead>
-                <TableHead className="text-right">Return qty</TableHead>
-                <TableHead className="text-right">Refund</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sale.items.map((item) => {
-                const remaining = item.quantity - item.returnedQuantity;
-                const fullyReturned = remaining <= 0;
-                const isSelected = !!selected[item._id];
-                const qty = qtys[item._id] ?? remaining;
-                const itemCurrency = (item.currency ?? "USD") as "USD" | "LBP";
-                const refund = isSelected ? qty * item.unitPrice : 0;
-
-                return (
-                  <TableRow
-                    key={item._id}
-                    className={fullyReturned ? "opacity-50" : ""}
-                  >
-                    <TableCell>
-                      <Checkbox
-                        checked={isSelected}
-                        disabled={fullyReturned}
-                        onCheckedChange={() => toggleLine(item._id, item)}
-                        aria-label={`Return ${item.productName}`}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {item.productName}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {item.quantity}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {item.returnedQuantity}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {isSelected ? (
-                        <Input
-                          type="number"
-                          min={1}
-                          max={remaining}
-                          value={qty}
-                          onChange={(e) =>
-                            setQty(item._id, Number(e.target.value), remaining)
-                          }
-                          className="w-20 ml-auto"
-                        />
-                      ) : (
-                        <span className="text-muted-foreground">
-                          {fullyReturned ? "—" : remaining}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {refund > 0
-                        ? formatCurrency(refund, itemCurrency)
-                        : "—"}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Reason</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Select
-            value={reason}
-            onValueChange={(v) => setReason((v ?? "defective") as Reason)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {REASONS.map((r) => (
-                <SelectItem key={r.value} value={r.value} label={r.label}>
-                  {r.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="space-y-2">
-            <Label>
-              Note{reason === "other" ? " (required)" : " (optional)"}
-            </Label>
-            <Textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={
-                reason === "other"
-                  ? "Describe the reason for the return"
-                  : "Optional details"
-              }
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Refund split</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
-            <div className="text-muted-foreground">
-              Sale rate (locked):{" "}
-              <span className="font-medium text-foreground">
-                1 USD = {saleRate.toLocaleString()} LBP
-              </span>
-            </div>
-            <div className="text-muted-foreground">
-              Eligible refund:{" "}
-              <span className="font-medium text-foreground">
-                {formatCurrency(refundTotalUSD, "USD")} /{" "}
-                {formatCurrency(refundTotalUSD * saleRate, "LBP")}
-              </span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="refundUSD">Refund (USD)</Label>
-              <Input
-                id="refundUSD"
-                type="number"
-                step="0.01"
-                min="0"
-                value={refundUSDStr}
-                onChange={(e) => setRefundUSDStr(e.target.value)}
-                placeholder={refundTotalUSD.toFixed(2)}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="refundLBP">Refund (LBP)</Label>
-              <Input
-                id="refundLBP"
-                type="number"
-                step="1"
-                min="0"
-                value={refundLBPStr}
-                onChange={(e) => setRefundLBPStr(e.target.value)}
-                placeholder="0"
-              />
-            </div>
-          </div>
-          {refundSplitProvided && !splitMatches && (
-            <p className="text-xs text-destructive">
-              Split sums to {formatCurrency(cashierTotalUSD, "USD")} — must
-              equal eligible refund.
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            Leave both blank to refund the full eligible amount in USD.
-          </p>
-          {activeShift && (
-            <div
-              className={`rounded-md border p-3 text-xs space-y-0.5 ${
-                willOverdraw
-                  ? "border-destructive/40 bg-destructive/5"
-                  : "bg-muted/30"
-              }`}
+          </span>
+        }
+        subtitle="Tick items to return. Adjust quantities for partial returns."
+        right={
+          <>
+            <Link href={`/store/${storeId}/sales/${saleId}`}>
+              <Button variant="outline">Cancel</Button>
+            </Link>
+            <Button
+              onClick={handleSubmit}
+              disabled={pending || refundTotalUSD <= 0}
             >
-              <p className="text-muted-foreground">
-                Drawer balance:{" "}
-                <span className="font-medium text-foreground">
-                  {formatCurrency(drawerUSD, "USD")} ·{" "}
-                  {formatCurrency(drawerLBP, "LBP")}
+              {pending
+                ? "Processing..."
+                : `Save return · ${formatCurrency(refundTotalUSD, "USD")}`}
+            </Button>
+          </>
+        }
+      />
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-5 min-w-0">
+          <Card>
+            <CardHeader>
+              <CardTitle>Items to return</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12" />
+                    <TableHead>Product</TableHead>
+                    <TableHead className="text-right">Sold</TableHead>
+                    <TableHead className="text-right">
+                      Already returned
+                    </TableHead>
+                    <TableHead className="text-right">Return qty</TableHead>
+                    <TableHead className="text-right">Refund</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sale.items.map((item) => {
+                    const remaining = item.quantity - item.returnedQuantity;
+                    const fullyReturned = remaining <= 0;
+                    const isSelected = !!selected[item._id];
+                    const qty = qtys[item._id] ?? remaining;
+                    const itemCurrency = (item.currency ?? "USD") as
+                      | "USD"
+                      | "LBP";
+                    const refund = isSelected ? qty * item.unitPrice : 0;
+
+                    return (
+                      <TableRow
+                        key={item._id}
+                        className={fullyReturned ? "opacity-50" : ""}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={isSelected}
+                            disabled={fullyReturned}
+                            onCheckedChange={() => toggleLine(item._id, item)}
+                            aria-label={`Return ${item.productName}`}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {item.productName}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {item.quantity}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {item.returnedQuantity}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {isSelected ? (
+                            <Input
+                              type="number"
+                              min={1}
+                              max={remaining}
+                              value={qty}
+                              onChange={(e) =>
+                                setQty(
+                                  item._id,
+                                  Number(e.target.value),
+                                  remaining
+                                )
+                              }
+                              className="w-20 ml-auto"
+                            />
+                          ) : (
+                            <span className="text-muted-foreground">
+                              {fullyReturned ? "—" : remaining}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {refund > 0
+                            ? formatCurrency(refund, itemCurrency)
+                            : "—"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Reason</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Reason</Label>
+                  <Select
+                    value={reason}
+                    onValueChange={(v) =>
+                      setReason((v ?? "defective") as Reason)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue>
+                        {(v) =>
+                          REASONS.find((r) => r.value === v)?.label ?? v
+                        }
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {REASONS.map((r) => (
+                        <SelectItem
+                          key={r.value}
+                          value={r.value}
+                          label={r.label}
+                        >
+                          {r.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>
+                  Note{reason === "other" ? " (required)" : " (optional)"}
+                </Label>
+                <Textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder={
+                    reason === "other"
+                      ? "Describe the reason for the return"
+                      : "Optional details"
+                  }
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <aside className="space-y-5 lg:sticky lg:top-4 lg:self-start">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Wallet className="h-4 w-4 text-muted-foreground" />
+                Refund summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Refund total</p>
+                <p className="text-3xl font-bold">
+                  {formatCurrency(refundTotalUSD, "USD")}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {formatCurrency(refundTotalUSD * saleRate, "LBP")}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border p-2.5">
+                  <p className="text-xs text-muted-foreground">Lines</p>
+                  <p className="text-xl font-bold">{selectedCount}</p>
+                </div>
+                <div className="rounded-lg border p-2.5">
+                  <p className="text-xs text-muted-foreground">Reason</p>
+                  <p className="text-sm font-medium truncate">
+                    {REASONS.find((r) => r.value === reason)?.label}
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs flex items-center gap-2">
+                <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-muted-foreground">
+                  Locked rate:{" "}
+                  <span className="font-medium text-foreground font-mono">
+                    1 USD = {saleRate.toLocaleString()} LBP
+                  </span>
                 </span>
-              </p>
-              {willOverdraw && (
-                <p className="text-destructive font-medium">
-                  This refund will push the drawer negative. Proceed only if
-                  you intend to settle from outside the till.
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Refund split</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="refundUSD" className="text-xs">
+                    USD
+                  </Label>
+                  <Input
+                    id="refundUSD"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={refundUSDStr}
+                    onChange={(e) => setRefundUSDStr(e.target.value)}
+                    placeholder={refundTotalUSD.toFixed(2)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="refundLBP" className="text-xs">
+                    LBP
+                  </Label>
+                  <Input
+                    id="refundLBP"
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={refundLBPStr}
+                    onChange={(e) => setRefundLBPStr(e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={fillExactUSD}
+                disabled={refundTotalUSD <= 0}
+              >
+                Fill exact USD
+              </Button>
+              {refundSplitProvided && !splitMatches && (
+                <p className="text-xs text-destructive">
+                  Split sums to {formatCurrency(cashierTotalUSD, "USD")} —
+                  must equal eligible refund.
                 </p>
               )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              <p className="text-xs text-muted-foreground">
+                Leave blank to refund full eligible amount in USD.
+              </p>
+            </CardContent>
+          </Card>
 
-      <div className="flex items-center justify-between border-t pt-4">
-        <div>
-          <p className="text-sm text-muted-foreground">Refund total</p>
-          <p className="text-2xl font-bold">
-            {formatCurrency(refundTotalUSD, "USD")}
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Link href={`/store/${storeId}/sales/${saleId}`}>
-            <Button variant="outline">Cancel</Button>
-          </Link>
-          <Button
-            onClick={handleSubmit}
-            disabled={pending || refundTotalUSD <= 0}
-          >
-            {pending ? "Processing..." : "Save return"}
-          </Button>
-        </div>
+          {activeShift && (
+            <Card className={willOverdraw ? "border-destructive/40" : ""}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Wallet className="h-4 w-4 text-muted-foreground" />
+                  Drawer balance
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">USD</span>
+                  <span className="font-medium font-mono">
+                    {formatCurrency(drawerUSD, "USD")}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">LBP</span>
+                  <span className="font-medium font-mono">
+                    {formatCurrency(drawerLBP, "LBP")}
+                  </span>
+                </div>
+                {willOverdraw && (
+                  <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
+                    <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                    <span>
+                      This refund will push the drawer negative. Proceed only
+                      if you intend to settle from outside the till.
+                    </span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </aside>
       </div>
     </div>
   );

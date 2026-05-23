@@ -32,8 +32,15 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Settings as SettingsIcon } from "lucide-react";
+import {
+  Settings as SettingsIcon,
+  Store as StoreIcon,
+  ShieldAlert,
+  Clock,
+  Info,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { formatDate } from "@ware-house/shared";
 
 export default function StoreSettingsPage() {
   const { storeId } = useParams<{ storeId: string }>();
@@ -84,137 +91,196 @@ export default function StoreSettingsPage() {
   const canDelete = isOwner && confirmText === store.name;
 
   return (
-    <div
-      style={{ padding: "var(--wh-density-pad)" }}
-      className="max-w-2xl space-y-5"
-    >
+    <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
       <PageHeader
         icon={SettingsIcon}
         title="Store Settings"
         subtitle="General configuration and preferences."
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>General</CardTitle>
-          <CardDescription>Update your store details.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={handleUpdate} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Store Name</Label>
-              <Input
-                id="name"
-                name="name"
-                defaultValue={store.name}
-                required
-                minLength={2}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                name="description"
-                defaultValue={store.description ?? ""}
-              />
-            </div>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving..." : "Save Changes"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {canManageStore && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Cashier Shifts</CardTitle>
-            <CardDescription>
-              When enabled, cashiers must open a shift before recording sales or
-              returns. The drawer is reconciled at close.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Require shifts</p>
-                <p className="text-xs text-muted-foreground">
-                  {store.shiftsEnabled
-                    ? "Sales and returns are blocked without an active shift."
-                    : "Sales and returns work without a shift."}
-                </p>
-              </div>
-              <Switch
-                checked={store.shiftsEnabled ?? false}
-                onCheckedChange={handleShiftsToggle}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {isOwner && (
-        <Card className="border-destructive/50">
-          <CardHeader>
-            <CardTitle className="text-destructive">Danger Zone</CardTitle>
-            <CardDescription>
-              Deleting the store hides it from everyone and cannot be undone.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AlertDialog
-              open={deleteOpen}
-              onOpenChange={(open) => {
-                setDeleteOpen(open);
-                if (!open) setConfirmText("");
-              }}
-            >
-              <AlertDialogTrigger
-                className="inline-flex h-9 items-center justify-center rounded-lg bg-destructive px-4 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
-              >
-                Delete Store
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete this store?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will hide the store from all members. To confirm, type{" "}
-                    <span className="font-mono font-semibold text-foreground">
-                      {store.name}
-                    </span>{" "}
-                    below.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-5 min-w-0">
+          <Card>
+            <CardHeader>
+              <CardTitle>General</CardTitle>
+              <CardDescription>Update your store details.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form action={handleUpdate} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-name" className="sr-only">
-                    Confirm store name
-                  </Label>
+                  <Label htmlFor="name">Store Name</Label>
                   <Input
-                    id="confirm-name"
-                    value={confirmText}
-                    onChange={(e) => setConfirmText(e.target.value)}
-                    placeholder={store.name}
-                    autoComplete="off"
+                    id="name"
+                    name="name"
+                    defaultValue={store.name}
+                    required
+                    minLength={2}
                   />
                 </div>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={deleting}>
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    disabled={!canDelete || deleting}
-                    onClick={handleDelete}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    {deleting ? "Deleting..." : "Delete Store"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardContent>
-        </Card>
-      )}
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    defaultValue={store.description ?? ""}
+                  />
+                </div>
+                <Button type="submit" disabled={pending}>
+                  {pending ? "Saving..." : "Save Changes"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {canManageStore && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  Cashier Shifts
+                </CardTitle>
+                <CardDescription>
+                  When enabled, cashiers must open a shift before recording
+                  sales or returns. The drawer is reconciled at close.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium">Require shifts</p>
+                    <p className="text-xs text-muted-foreground">
+                      {store.shiftsEnabled
+                        ? "Sales and returns are blocked without an active shift."
+                        : "Sales and returns work without a shift."}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={store.shiftsEnabled ?? false}
+                    onCheckedChange={handleShiftsToggle}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {isOwner && (
+            <Card className="border-destructive/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-destructive">
+                  <ShieldAlert className="h-4 w-4" />
+                  Danger Zone
+                </CardTitle>
+                <CardDescription>
+                  Deleting the store hides it from everyone and cannot be undone.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AlertDialog
+                  open={deleteOpen}
+                  onOpenChange={(open) => {
+                    setDeleteOpen(open);
+                    if (!open) setConfirmText("");
+                  }}
+                >
+                  <AlertDialogTrigger className="inline-flex h-9 items-center justify-center rounded-lg bg-destructive px-4 text-sm font-medium text-destructive-foreground hover:bg-destructive/90">
+                    Delete Store
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete this store?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will hide the store from all members. To confirm,
+                        type{" "}
+                        <span className="font-mono font-semibold text-foreground">
+                          {store.name}
+                        </span>{" "}
+                        below.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-name" className="sr-only">
+                        Confirm store name
+                      </Label>
+                      <Input
+                        id="confirm-name"
+                        value={confirmText}
+                        onChange={(e) => setConfirmText(e.target.value)}
+                        placeholder={store.name}
+                        autoComplete="off"
+                      />
+                    </div>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={deleting}>
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        disabled={!canDelete || deleting}
+                        onClick={handleDelete}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {deleting ? "Deleting..." : "Delete Store"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        <aside className="space-y-5 lg:sticky lg:top-4 lg:self-start">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <StoreIcon className="h-4 w-4 text-muted-foreground" />
+                Store info
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">Name</p>
+                <p className="font-medium truncate">{store.name}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Your role</p>
+                <p className="font-medium capitalize">{store.role}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Shifts</p>
+                <p className="font-medium">
+                  {store.shiftsEnabled ? "Required" : "Optional"}
+                </p>
+              </div>
+              {store._creationTime && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Created</p>
+                  <p className="font-medium">
+                    {formatDate(store._creationTime)}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Info className="h-4 w-4 text-muted-foreground" />
+                Need more?
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p>
+                Manage who can do what on the Members and Roles pages.
+              </p>
+              <p>
+                Set the USD ↔ LBP rate on the Exchange Rate page — it locks per
+                sale.
+              </p>
+            </CardContent>
+          </Card>
+        </aside>
+      </div>
     </div>
   );
 }

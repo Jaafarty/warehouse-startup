@@ -7,7 +7,14 @@ import Link from "next/link";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { formatCurrency, formatDate } from "@ware-house/shared";
-import { ArrowLeft } from "lucide-react";
+import {
+  RotateCcw,
+  Package,
+  StickyNote,
+  User,
+  Receipt,
+  Lock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,6 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/layout/page-header";
 
 const REASON_LABEL: Record<string, string> = {
   defective: "Defective",
@@ -49,158 +57,208 @@ export default function ReturnDetailPage() {
 
   if (ret === undefined) {
     return (
-      <div className="p-6 max-w-3xl mx-auto space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-48" />
+      <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
+        <Skeleton className="h-20 w-full" />
+        <div className="grid gap-5 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-5">
+            <Skeleton className="h-64" />
+            <Skeleton className="h-48" />
+          </div>
+          <Skeleton className="h-72" />
+        </div>
       </div>
     );
   }
 
   if (ret === null) {
     return (
-      <div className="p-6">
-        <p className="text-destructive">Return not found.</p>
+      <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-4">
+        <PageHeader
+          icon={RotateCcw}
+          title="Return not found"
+          subtitle="This return may have been removed."
+        />
         <Link href={`/store/${storeId}/returns`}>
-          <Button variant="link" className="px-0 mt-2">
-            Back to returns
-          </Button>
+          <Button variant="outline">Back to returns</Button>
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href={`/store/${storeId}/returns`}>
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold font-mono">{ret.returnNumber}</h1>
-          <p className="text-sm text-muted-foreground">
-            {formatDate(ret.createdAt)} by {ret.processedByName}
-          </p>
-        </div>
-      </div>
+    <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
+      <PageHeader
+        icon={RotateCcw}
+        title={<span className="font-mono">{ret.returnNumber}</span>}
+        subtitle={`${formatDate(ret.createdAt)} by ${ret.processedByName}`}
+        right={
+          ret.sale ? (
+            <Link href={`/store/${storeId}/sales/${ret.sale._id}`}>
+              <Button variant="outline">
+                <Receipt className="h-4 w-4 mr-2" />
+                View sale
+              </Button>
+            </Link>
+          ) : null
+        }
+      />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Total refund</p>
-            <p className="text-2xl font-bold">
-              {formatCurrency(ret.totalRefund, "USD")}
-            </p>
-            {(ret.refundedUSD !== undefined ||
-              ret.refundedLBP !== undefined) && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {ret.refundedUSD
-                  ? formatCurrency(ret.refundedUSD, "USD")
-                  : null}
-                {ret.refundedUSD && ret.refundedLBP ? " + " : ""}
-                {ret.refundedLBP
-                  ? formatCurrency(ret.refundedLBP, "LBP")
-                  : null}
-                {ret.exchangeRate
-                  ? ` @ ${ret.exchangeRate.toLocaleString()}`
-                  : ""}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Items</p>
-            <p className="text-2xl font-bold">{ret.itemCount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Reason</p>
-            <p className="font-medium mt-1">
-              {REASON_LABEL[ret.reason] ?? ret.reason}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Original sale</p>
-            {ret.sale ? (
-              <Link
-                href={`/store/${storeId}/sales/${ret.sale._id}`}
-                className="font-mono font-medium mt-1 inline-block hover:underline"
-              >
-                {ret.sale.saleNumber}
-              </Link>
-            ) : (
-              <p className="text-muted-foreground mt-1">—</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">Customer</p>
-          {ret.customer ? (
-            <div className="mt-1">
-              <p className="font-medium">{ret.customer.name}</p>
-              <p className="text-sm text-muted-foreground">
-                {ret.customer.phone}
-              </p>
-            </div>
-          ) : (
-            <p className="mt-1">Walk-in</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {ret.note && (
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Note</p>
-            <p className="mt-1 whitespace-pre-wrap">{ret.note}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Returned items</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead className="text-right">Unit price</TableHead>
-                <TableHead className="text-right">Qty</TableHead>
-                <TableHead className="text-right">Refund</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {ret.items.map((it) => {
-                const cur = (it.currency ?? "USD") as "USD" | "LBP";
-                return (
-                  <TableRow key={it._id}>
-                    <TableCell className="font-medium">
-                      {it.productName}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(it.unitPrice, cur)}
-                    </TableCell>
-                    <TableCell className="text-right">{it.quantity}</TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(it.totalRefund, cur)}
-                    </TableCell>
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-5 min-w-0">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                Returned items
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead className="text-right">Unit price</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">Refund</TableHead>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {ret.items.map((it) => {
+                    const cur = (it.currency ?? "USD") as "USD" | "LBP";
+                    return (
+                      <TableRow key={it._id}>
+                        <TableCell className="font-medium">
+                          {it.productName}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(it.unitPrice, cur)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {it.quantity}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(it.totalRefund, cur)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {ret.note && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <StickyNote className="h-4 w-4 text-muted-foreground" />
+                  Note
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm whitespace-pre-wrap">{ret.note}</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        <aside className="space-y-5 lg:sticky lg:top-4 lg:self-start">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Refund summary</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Total refund</p>
+                <p className="text-3xl font-bold">
+                  {formatCurrency(ret.totalRefund, "USD")}
+                </p>
+                {(ret.refundedUSD !== undefined ||
+                  ret.refundedLBP !== undefined) &&
+                  ((ret.refundedUSD ?? 0) > 0 ||
+                    (ret.refundedLBP ?? 0) > 0) && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {ret.refundedUSD
+                        ? formatCurrency(ret.refundedUSD, "USD")
+                        : null}
+                      {ret.refundedUSD && ret.refundedLBP ? " + " : ""}
+                      {ret.refundedLBP
+                        ? formatCurrency(ret.refundedLBP, "LBP")
+                        : null}
+                    </p>
+                  )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border p-2.5">
+                  <p className="text-xs text-muted-foreground">Items</p>
+                  <p className="text-xl font-bold">{ret.itemCount}</p>
+                </div>
+                <div className="rounded-lg border p-2.5">
+                  <p className="text-xs text-muted-foreground">Reason</p>
+                  <p className="text-sm font-medium truncate">
+                    {REASON_LABEL[ret.reason] ?? ret.reason}
+                  </p>
+                </div>
+              </div>
+              {ret.exchangeRate && (
+                <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs flex items-center gap-2">
+                  <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-muted-foreground">
+                    Locked rate:{" "}
+                    <span className="font-medium text-foreground font-mono">
+                      1 USD = {ret.exchangeRate.toLocaleString()} LBP
+                    </span>
+                  </span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Receipt className="h-4 w-4 text-muted-foreground" />
+                Original sale
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {ret.sale ? (
+                <Link
+                  href={`/store/${storeId}/sales/${ret.sale._id}`}
+                  className="font-mono font-medium hover:underline"
+                >
+                  {ret.sale.saleNumber}
+                </Link>
+              ) : (
+                <p className="text-sm text-muted-foreground">—</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <User className="h-4 w-4 text-muted-foreground" />
+                Customer
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {ret.customer ? (
+                <div className="space-y-0.5">
+                  <p className="font-medium truncate">{ret.customer.name}</p>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {ret.customer.phone}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Walk-in customer.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </aside>
+      </div>
     </div>
   );
 }
