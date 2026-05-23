@@ -56,6 +56,12 @@ export default function NewProductPage() {
     userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
   );
 
+  const rateRow = useQuery(
+    api.exchangeRates.getCurrent,
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
+  );
+  const rate = rateRow?.rate ?? 0;
+
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,7 +69,9 @@ export default function NewProductPage() {
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [sellingUSD, setSellingUSD] = useState("");
+  const [sellingLBP, setSellingLBP] = useState("");
   const [costUSD, setCostUSD] = useState("");
+  const [costLBP, setCostLBP] = useState("");
   const [quantity, setQuantity] = useState("0");
   const [lowStockThreshold, setLowStockThreshold] = useState("5");
 
@@ -72,13 +80,27 @@ export default function NewProductPage() {
     [categories, categoryId]
   );
 
+  const toUSD = (usdStr: string, lbpStr: string): number | null => {
+    const usd = parseFloat(usdStr);
+    if (Number.isFinite(usd) && usd > 0) return usd;
+    const lbp = parseFloat(lbpStr);
+    if (Number.isFinite(lbp) && lbp > 0 && rate > 0) return lbp / rate;
+    return null;
+  };
+
+  const sellUSDPreview = useMemo(
+    () => toUSD(sellingUSD, sellingLBP),
+    [sellingUSD, sellingLBP, rate]
+  );
+  const costUSDPreview = useMemo(
+    () => toUSD(costUSD, costLBP),
+    [costUSD, costLBP, rate]
+  );
+
   const margin = useMemo(() => {
-    const sell = parseFloat(sellingUSD);
-    const cost = parseFloat(costUSD);
-    if (!Number.isFinite(sell) || sell <= 0) return null;
-    if (!Number.isFinite(cost) || cost <= 0) return null;
-    return ((sell - cost) / sell) * 100;
-  }, [sellingUSD, costUSD]);
+    if (sellUSDPreview == null || costUSDPreview == null) return null;
+    return ((sellUSDPreview - costUSDPreview) / sellUSDPreview) * 100;
+  }, [sellUSDPreview, costUSDPreview]);
 
   const qtyNum = parseInt(quantity, 10) || 0;
   const thresholdNum = parseInt(lowStockThreshold, 10) || 0;
@@ -262,6 +284,8 @@ export default function NewProductPage() {
                         step="1"
                         min="0"
                         placeholder="0"
+                        value={costLBP}
+                        onChange={(e) => setCostLBP(e.target.value)}
                       />
                     </div>
                   </div>
@@ -297,6 +321,8 @@ export default function NewProductPage() {
                         step="1"
                         min="0"
                         placeholder="0"
+                        value={sellingLBP}
+                        onChange={(e) => setSellingLBP(e.target.value)}
                       />
                     </div>
                   </div>
@@ -373,13 +399,17 @@ export default function NewProductPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Cost</span>
                     <span className="font-mono">
-                      {costUSD ? `$${costUSD}` : "—"}
+                      {costUSDPreview != null
+                        ? `$${costUSDPreview.toFixed(2)}`
+                        : "—"}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Sell</span>
                     <span className="font-mono font-semibold">
-                      {sellingUSD ? `$${sellingUSD}` : "—"}
+                      {sellUSDPreview != null
+                        ? `$${sellUSDPreview.toFixed(2)}`
+                        : "—"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between pt-1 border-t">
