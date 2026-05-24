@@ -4,6 +4,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { requireCurrentUserId } from "@/lib/auth";
+import { friendlyMessage } from "@/lib/extract-error";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -52,8 +53,7 @@ export async function createReturn(
   } catch (error) {
     return {
       success: false,
-      error:
-        error instanceof Error ? error.message : "Failed to process return",
+      error: friendlyMessage(error, "Failed to process return"),
     };
   }
 }

@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";
 import { assertPageFunction, assertAnyPageFunction } from "./_helpers/permissions";
@@ -64,7 +64,7 @@ export const get = query({
   },
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.productId);
-    if (!product) throw new Error("Product not found");
+    if (!product) throw new ConvexError({ code: "NOT_FOUND", message: "Product not found" });
 
     await assertPageFunction(ctx.db, args.userId, product.storeId, "inventory", "view_list");
 
@@ -102,7 +102,10 @@ export const create = mutation({
       args.sellingPriceUSD === undefined &&
       args.sellingPriceLBP === undefined
     ) {
-      throw new Error("At least one selling price (USD or LBP) is required");
+      throw new ConvexError({
+        code: "VALIDATION",
+        message: "At least one selling price (USD or LBP) is required",
+      });
     }
 
     // Check for duplicate barcode within store
@@ -114,7 +117,10 @@ export const create = mutation({
         )
         .unique();
       if (existing) {
-        throw new Error("A product with this barcode already exists");
+        throw new ConvexError({
+          code: "CONFLICT",
+          message: "A product with this barcode already exists",
+        });
       }
     }
 
@@ -178,7 +184,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.productId);
-    if (!product) throw new Error("Product not found");
+    if (!product) throw new ConvexError({ code: "NOT_FOUND", message: "Product not found" });
 
     await assertPageFunction(ctx.db, args.userId, product.storeId, "inventory", "edit_product");
 
@@ -191,7 +197,10 @@ export const update = mutation({
         )
         .unique();
       if (existing) {
-        throw new Error("A product with this barcode already exists");
+        throw new ConvexError({
+          code: "CONFLICT",
+          message: "A product with this barcode already exists",
+        });
       }
     }
 
@@ -234,7 +243,7 @@ export const archive = mutation({
   },
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.productId);
-    if (!product) throw new Error("Product not found");
+    if (!product) throw new ConvexError({ code: "NOT_FOUND", message: "Product not found" });
 
     await assertPageFunction(ctx.db, args.userId, product.storeId, "inventory", "archive_product");
 
@@ -263,7 +272,7 @@ export const restore = mutation({
   },
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.productId);
-    if (!product) throw new Error("Product not found");
+    if (!product) throw new ConvexError({ code: "NOT_FOUND", message: "Product not found" });
 
     await assertPageFunction(ctx.db, args.userId, product.storeId, "inventory", "archive_product");
 
@@ -306,9 +315,10 @@ export const importRow = mutation({
       args.sellingPriceUSD === undefined &&
       args.sellingPriceLBP === undefined
     ) {
-      throw new Error(
-        "Each row needs at least one selling price (USD or LBP)"
-      );
+      throw new ConvexError({
+        code: "VALIDATION",
+        message: "Each row needs at least one selling price (USD or LBP)",
+      });
     }
     await assertPageFunction(ctx.db, args.userId, args.storeId, "inventory", "import_products");
 
@@ -363,7 +373,10 @@ export const importRow = mutation({
           )
           .unique();
         if (dupe && dupe._id !== match._id) {
-          throw new Error("A product with this barcode already exists");
+          throw new ConvexError({
+            code: "CONFLICT",
+            message: "A product with this barcode already exists",
+          });
         }
         patch.barcode = barcode;
       }
@@ -417,7 +430,10 @@ export const importRow = mutation({
         )
         .unique();
       if (dupe) {
-        throw new Error("A product with this barcode already exists");
+        throw new ConvexError({
+          code: "CONFLICT",
+          message: "A product with this barcode already exists",
+        });
       }
     }
 

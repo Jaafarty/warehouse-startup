@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { assertPageFunction } from "./_helpers/permissions";
@@ -108,7 +108,7 @@ export const getBySale = query({
   },
   handler: async (ctx, args) => {
     const sale = await ctx.db.get(args.saleId);
-    if (!sale) throw new Error("Sale not found");
+    if (!sale) throw new ConvexError({ code: "NOT_FOUND", message: "Sale not found" });
 
     await assertPageFunction(ctx.db, args.userId, sale.storeId, "returns", "view_list");
 
@@ -140,7 +140,7 @@ export const get = query({
   },
   handler: async (ctx, args) => {
     const ret = await ctx.db.get(args.returnId);
-    if (!ret) throw new Error("Return not found");
+    if (!ret) throw new ConvexError({ code: "NOT_FOUND", message: "Return not found" });
 
     await assertPageFunction(ctx.db, args.userId, ret.storeId, "returns", "view_list");
 
@@ -191,7 +191,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const sale = await ctx.db.get(args.saleId);
-    if (!sale) throw new Error("Sale not found");
+    if (!sale) throw new ConvexError({ code: "NOT_FOUND", message: "Sale not found" });
 
     await assertPageFunction(ctx.db, args.userId, sale.storeId, "returns", "process_return");
 
@@ -202,16 +202,25 @@ export const create = mutation({
     );
 
     if (sale.status === "returned") {
-      throw new Error("This sale has already been fully returned");
+      throw new ConvexError({
+        code: "ALREADY_RETURNED",
+        message: "This sale has already been fully returned",
+      });
     }
 
     if (args.items.length === 0) {
-      throw new Error("Select at least one item to return");
+      throw new ConvexError({
+        code: "VALIDATION",
+        message: "Select at least one item to return",
+      });
     }
 
     const trimmedNote = args.note?.trim() || undefined;
     if (args.reason === "other" && !trimmedNote) {
-      throw new Error('Note is required when reason is "Other"');
+      throw new ConvexError({
+        code: "VALIDATION",
+        message: 'Note is required when reason is "Other"',
+      });
     }
 
     // Use the SALE's snapshot rate (NEVER the current rate) so refund math
@@ -234,20 +243,27 @@ export const create = mutation({
 
     for (const item of args.items) {
       if (item.quantity <= 0) {
-        throw new Error("Return quantity must be positive");
+        throw new ConvexError({
+          code: "VALIDATION",
+          message: "Return quantity must be positive",
+        });
       }
 
       const saleItem = await ctx.db.get(item.saleItemId);
-      if (!saleItem) throw new Error("Sale item not found");
+      if (!saleItem) throw new ConvexError({ code: "NOT_FOUND", message: "Sale item not found" });
       if (saleItem.saleId !== args.saleId) {
-        throw new Error("Sale item does not belong to this sale");
+        throw new ConvexError({
+          code: "VALIDATION",
+          message: "Sale item does not belong to this sale",
+        });
       }
 
       const remaining = saleItem.quantity - saleItem.returnedQuantity;
       if (item.quantity > remaining) {
-        throw new Error(
-          `Cannot return ${item.quantity} of "${saleItem.productName}". Max returnable: ${remaining}`
-        );
+        throw new ConvexError({
+          code: "VALIDATION",
+          message: `Cannot return ${item.quantity} of "${saleItem.productName}". Max returnable: ${remaining}`,
+        });
       }
 
       const itemCurrency: "USD" | "LBP" = saleItem.currency ?? "USD";
@@ -276,7 +292,10 @@ export const create = mutation({
     const refundedUSD = args.refundedUSD ?? 0;
     const refundedLBP = args.refundedLBP ?? 0;
     if (refundedUSD < 0 || refundedLBP < 0) {
-      throw new Error("Refund amounts cannot be negative");
+      throw new ConvexError({
+        code: "VALIDATION",
+        message: "Refund amounts cannot be negative",
+      });
     }
     const cashierTotalUSD = refundedUSD + refundedLBP / saleRate;
     // If both are zero we treat it as "refund the full eligible amount in USD"
@@ -287,9 +306,10 @@ export const create = mutation({
       refundedUSD === 0 && refundedLBP === 0 ? 0 : refundedLBP;
     if (refundedUSD !== 0 || refundedLBP !== 0) {
       if (Math.abs(cashierTotalUSD - totalRefundUSD) > 0.01) {
-        throw new Error(
-          `Refund split (USD-eq $${cashierTotalUSD.toFixed(2)}) must equal eligible refund $${totalRefundUSD.toFixed(2)}`
-        );
+        throw new ConvexError({
+          code: "VALIDATION",
+          message: `Refund split (USD-eq $${cashierTotalUSD.toFixed(2)}) must equal eligible refund $${totalRefundUSD.toFixed(2)}`,
+        });
       }
     }
 

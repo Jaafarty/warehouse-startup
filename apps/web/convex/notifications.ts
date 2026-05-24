@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 export const list = query({
@@ -29,9 +29,11 @@ export const markAsRead = mutation({
   args: { notificationId: v.id("notifications"), userId: v.id("users") },
   handler: async (ctx, args) => {
     const notification = await ctx.db.get(args.notificationId);
-    if (!notification) throw new Error("Notification not found");
+    if (!notification) {
+      throw new ConvexError({ code: "NOT_FOUND", message: "Notification not found" });
+    }
     if (notification.userId !== args.userId) {
-      throw new Error("Not your notification");
+      throw new ConvexError({ code: "FORBIDDEN", message: "Not your notification" });
     }
     await ctx.db.patch(args.notificationId, { isRead: true });
     return { success: true };

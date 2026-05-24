@@ -3,6 +3,7 @@
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 import { requireCurrentUserId } from "@/lib/auth";
+import { friendlyMessage } from "@/lib/extract-error";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -35,8 +36,7 @@ export async function updateProfile(formData: FormData): Promise<AuthResult> {
   } catch (error) {
     return {
       success: false,
-      error:
-        error instanceof Error ? error.message : "Failed to update profile",
+      error: friendlyMessage(error, "Failed to update profile"),
     };
   }
 }

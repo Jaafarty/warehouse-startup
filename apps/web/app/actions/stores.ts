@@ -1,22 +1,13 @@
 "use server";
 
 import { ConvexHttpClient } from "convex/browser";
-import { ConvexError } from "convex/values";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { requireCurrentUserId } from "@/lib/auth";
+import { friendlyMessage } from "@/lib/extract-error";
 import { redirect } from "next/navigation";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-
-function extractErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof ConvexError) {
-    const data = error.data as { message?: string };
-    return data?.message ?? fallback;
-  }
-  if (error instanceof Error) return error.message;
-  return fallback;
-}
 
 export async function createStore(formData: FormData) {
   const userId = await requireCurrentUserId();
@@ -37,7 +28,7 @@ export async function createStore(formData: FormData) {
     redirect(`/store/${storeId}`);
   } catch (error) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
-    return { success: false, error: extractErrorMessage(error, "Failed to create store") };
+    return { success: false, error: friendlyMessage(error, "Failed to create store") };
   }
 }
 
@@ -56,7 +47,7 @@ export async function updateStore(storeId: string, formData: FormData) {
     });
     return { success: true };
   } catch (error) {
-    return { success: false, error: extractErrorMessage(error, "Failed to update store") };
+    return { success: false, error: friendlyMessage(error, "Failed to update store") };
   }
 }
 
@@ -79,7 +70,7 @@ export async function inviteMember(storeId: string, formData: FormData) {
     });
     return { success: true, token: result.token };
   } catch (error) {
-    return { success: false, error: extractErrorMessage(error, "Failed to send invitation") };
+    return { success: false, error: friendlyMessage(error, "Failed to send invitation") };
   }
 }
 
@@ -101,7 +92,7 @@ export async function updateMemberRole(
     });
     return { success: true };
   } catch (error) {
-    return { success: false, error: extractErrorMessage(error, "Failed to update role") };
+    return { success: false, error: friendlyMessage(error, "Failed to update role") };
   }
 }
 
@@ -116,7 +107,7 @@ export async function removeMember(storeId: string, memberId: string) {
     });
     return { success: true };
   } catch (error) {
-    return { success: false, error: extractErrorMessage(error, "Failed to remove member") };
+    return { success: false, error: friendlyMessage(error, "Failed to remove member") };
   }
 }
 
@@ -131,7 +122,7 @@ export async function acceptInvitation(token: string) {
     redirect(`/store/${result.storeId}`);
   } catch (error) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
-    return { success: false, error: extractErrorMessage(error, "Failed to accept invitation") };
+    return { success: false, error: friendlyMessage(error, "Failed to accept invitation") };
   }
 }
 
@@ -145,7 +136,7 @@ export async function declineInvitation(token: string) {
     });
     return { success: true };
   } catch (error) {
-    return { success: false, error: extractErrorMessage(error, "Failed to decline invitation") };
+    return { success: false, error: friendlyMessage(error, "Failed to decline invitation") };
   }
 }
 
@@ -159,7 +150,7 @@ export async function deleteStore(storeId: string) {
     redirect("/dashboard");
   } catch (error) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
-    return { success: false, error: extractErrorMessage(error, "Failed to delete store") };
+    return { success: false, error: friendlyMessage(error, "Failed to delete store") };
   }
 }
 
@@ -174,7 +165,7 @@ export async function revokeInvitation(storeId: string, inviteId: string) {
   } catch (error) {
     return {
       success: false as const,
-      error: extractErrorMessage(error, "Failed to revoke invitation"),
+      error: friendlyMessage(error, "Failed to revoke invitation"),
     };
   }
 }

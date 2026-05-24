@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { friendlyMessage } from "@/lib/extract-error";
 import { DollarSign, TrendingDown, TrendingUp, Activity, Info } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 
@@ -87,7 +88,7 @@ export default function ExchangeRatePage() {
             setRateStr("");
             setNote("");
         } catch (e) {
-            toast.error((e as Error)?.message ?? "Failed to update rate");
+            toast.error(friendlyMessage(e, "Failed to update rate"));
         } finally {
             setPending(false);
         }

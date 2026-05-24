@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 // Upsert a user record for the currently authenticated Clerk identity.
@@ -77,7 +77,7 @@ export const updateProfile = mutation({
   handler: async (ctx, args) => {
     const { userId, ...updates } = args;
     const user = await ctx.db.get(userId);
-    if (!user) throw new Error("User not found");
+    if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
 
     const patch: Record<string, string | undefined> = {};
     if (updates.name !== undefined) patch.name = updates.name;

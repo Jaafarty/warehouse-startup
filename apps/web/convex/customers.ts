@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { assertPageFunction } from "./_helpers/permissions";
 import { createAuditLog } from "./_helpers/audit";
@@ -59,8 +59,8 @@ export const create = mutation({
     const name = args.name.trim();
     const phone = args.phone.trim();
 
-    if (!name) throw new Error("Name is required");
-    if (!phone) throw new Error("Phone is required");
+    if (!name) throw new ConvexError({ code: "VALIDATION", message: "Name is required" });
+    if (!phone) throw new ConvexError({ code: "VALIDATION", message: "Phone is required" });
 
     const existing = await ctx.db
       .query("customers")
@@ -70,7 +70,10 @@ export const create = mutation({
       .unique();
 
     if (existing) {
-      throw new Error("A customer with this phone already exists");
+      throw new ConvexError({
+        code: "CONFLICT",
+        message: "A customer with this phone already exists",
+      });
     }
 
     const now = Date.now();

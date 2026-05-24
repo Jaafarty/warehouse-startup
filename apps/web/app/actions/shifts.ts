@@ -1,22 +1,13 @@
 "use server";
 
 import { ConvexHttpClient } from "convex/browser";
-import { ConvexError } from "convex/values";
 import { redirect } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { requireCurrentUserId } from "@/lib/auth";
+import { friendlyMessage } from "@/lib/extract-error";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-
-function extractErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof ConvexError) {
-    const data = error.data as { message?: string };
-    return data?.message ?? fallback;
-  }
-  if (error instanceof Error) return error.message;
-  return fallback;
-}
 
 function parseAmount(value: FormDataEntryValue | null): number {
   if (typeof value !== "string") return 0;
@@ -36,7 +27,7 @@ export async function setShiftsEnabled(storeId: string, enabled: boolean) {
   } catch (error) {
     return {
       success: false as const,
-      error: extractErrorMessage(error, "Failed to update store"),
+      error: friendlyMessage(error, "Failed to update store"),
     };
   }
 }
@@ -59,7 +50,7 @@ export async function openShift(storeId: string, formData: FormData) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
     return {
       success: false as const,
-      error: extractErrorMessage(error, "Failed to open shift"),
+      error: friendlyMessage(error, "Failed to open shift"),
     };
   }
 }
@@ -83,7 +74,7 @@ export async function closeShift(
   } catch (error) {
     return {
       success: false as const,
-      error: extractErrorMessage(error, "Failed to close shift"),
+      error: friendlyMessage(error, "Failed to close shift"),
     };
   }
 }
@@ -100,7 +91,7 @@ export async function reopenShift(shiftId: string, reason: string) {
   } catch (error) {
     return {
       success: false as const,
-      error: extractErrorMessage(error, "Failed to reopen shift"),
+      error: friendlyMessage(error, "Failed to reopen shift"),
     };
   }
 }
@@ -126,7 +117,7 @@ export async function recordCash(
   } catch (error) {
     return {
       success: false as const,
-      error: extractErrorMessage(error, "Failed to record cash event"),
+      error: friendlyMessage(error, "Failed to record cash event"),
     };
   }
 }

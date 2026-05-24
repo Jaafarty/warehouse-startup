@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import { DatabaseWriter } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 
@@ -21,15 +22,16 @@ export async function adjustStock(
   }
 ) {
   const product = await db.get(params.productId);
-  if (!product) throw new Error("Product not found");
+  if (!product) throw new ConvexError({ code: "NOT_FOUND", message: "Product not found" });
 
   const quantityBefore = product.quantity;
   const quantityAfter = quantityBefore + params.quantityChange;
 
   if (quantityAfter < 0) {
-    throw new Error(
-      `Insufficient stock. Available: ${quantityBefore}, Requested: ${Math.abs(params.quantityChange)}`
-    );
+    throw new ConvexError({
+      code: "INSUFFICIENT_STOCK",
+      message: `Insufficient stock. Available: ${quantityBefore}, Requested: ${Math.abs(params.quantityChange)}`,
+    });
   }
 
   // Update product quantity

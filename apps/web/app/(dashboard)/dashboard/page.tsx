@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 export default function DashboardPage() {
     const { userId } = useCurrentUser();
@@ -47,7 +48,9 @@ export default function DashboardPage() {
         const result = await createStore(formData);
         setPending(false);
         if (result && !result.success) {
-            setError(result.error ?? "Failed to create store");
+            const message = result.error ?? "Failed to create store";
+            setError(message);
+            toast.error(message);
         } else {
             setOpen(false);
         }

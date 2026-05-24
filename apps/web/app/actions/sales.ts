@@ -4,6 +4,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { requireCurrentUserId } from "@/lib/auth";
+import { friendlyMessage } from "@/lib/extract-error";
 import { redirect } from "next/navigation";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -39,7 +40,7 @@ export async function createSale(
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to create sale",
+      error: friendlyMessage(error, "Failed to create sale"),
     };
   }
 }

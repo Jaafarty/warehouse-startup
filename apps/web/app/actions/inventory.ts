@@ -4,6 +4,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { requireCurrentUserId } from "@/lib/auth";
+import { friendlyMessage } from "@/lib/extract-error";
 import { redirect } from "next/navigation";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -71,10 +72,7 @@ export async function createProduct(storeId: string, formData: FormData) {
             throw error;
         return {
             success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Failed to create product",
+            error: friendlyMessage(error, "Failed to create product"),
         };
     }
 }
@@ -120,10 +118,7 @@ export async function updateProduct(productId: string, formData: FormData) {
     } catch (error) {
         return {
             success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Failed to update product",
+            error: friendlyMessage(error, "Failed to update product"),
         };
     }
 }
@@ -140,10 +135,7 @@ export async function archiveProduct(productId: string) {
     } catch (error) {
         return {
             success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Failed to archive product",
+            error: friendlyMessage(error, "Failed to archive product"),
         };
     }
 }
@@ -160,10 +152,7 @@ export async function restoreProduct(productId: string) {
     } catch (error) {
         return {
             success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Failed to restore product",
+            error: friendlyMessage(error, "Failed to restore product"),
         };
     }
 }
@@ -192,10 +181,7 @@ export async function adjustProductStock(
     } catch (error) {
         return {
             success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Failed to adjust stock",
+            error: friendlyMessage(error, "Failed to adjust stock"),
         };
     }
 }
@@ -221,10 +207,7 @@ export async function createCategory(storeId: string, formData: FormData) {
     } catch (error) {
         return {
             success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Failed to create category",
+            error: friendlyMessage(error, "Failed to create category"),
         };
     }
 }
@@ -253,8 +236,7 @@ export async function ensureCategories(
     } catch (e: unknown) {
         return {
             success: false,
-            error:
-                e instanceof Error ? e.message : "Failed to resolve categories",
+            error: friendlyMessage(e, "Failed to resolve categories"),
         };
     }
 }
@@ -311,7 +293,7 @@ export async function bulkImportProducts(
         } catch (e: unknown) {
             failed++;
             errors.push(
-                `"${product.name}": ${e instanceof Error ? e.message : String(e)}`,
+                `"${product.name}": ${friendlyMessage(e, "Import failed")}`,
             );
         }
     }

@@ -149,13 +149,19 @@ export const create = mutation({
     );
 
     if (args.items.length === 0) {
-      throw new Error("Sale must have at least one item");
+      throw new ConvexError({
+        code: "VALIDATION",
+        message: "Sale must have at least one item",
+      });
     }
 
     if (args.customerId) {
       const customer = await ctx.db.get(args.customerId);
       if (!customer || customer.storeId !== args.storeId) {
-        throw new Error("Customer does not belong to this store");
+        throw new ConvexError({
+          code: "VALIDATION",
+          message: "Customer does not belong to this store",
+        });
       }
     }
 
@@ -163,7 +169,10 @@ export const create = mutation({
     // touch this sale's totals or refunds.
     const exchangeRate = await getCurrentRate(ctx.db, args.storeId);
     if (exchangeRate <= 0) {
-      throw new Error("Exchange rate must be set before creating sales");
+      throw new ConvexError({
+        code: "NO_EXCHANGE_RATE",
+        message: "Exchange rate must be set before creating sales",
+      });
     }
 
     // Generate sale number: S-YYYYMMDD-XXXX
@@ -187,21 +196,31 @@ export const create = mutation({
 
     for (const item of args.items) {
       if (item.quantity <= 0) {
-        throw new Error("Quantity must be positive");
+        throw new ConvexError({
+          code: "VALIDATION",
+          message: "Quantity must be positive",
+        });
       }
 
       const product = await ctx.db.get(item.productId);
-      if (!product) throw new Error("Product not found");
+      if (!product) throw new ConvexError({ code: "NOT_FOUND", message: "Product not found" });
       if (product.storeId !== args.storeId) {
-        throw new Error("Product does not belong to this store");
+        throw new ConvexError({
+          code: "VALIDATION",
+          message: "Product does not belong to this store",
+        });
       }
       if (product.isArchived) {
-        throw new Error(`Product "${product.name}" is archived`);
+        throw new ConvexError({
+          code: "ARCHIVED",
+          message: `Product "${product.name}" is archived`,
+        });
       }
       if (product.quantity < item.quantity) {
-        throw new Error(
-          `Insufficient stock for "${product.name}". Available: ${product.quantity}, Requested: ${item.quantity}`
-        );
+        throw new ConvexError({
+          code: "INSUFFICIENT_STOCK",
+          message: `Insufficient stock for "${product.name}". Available: ${product.quantity}, Requested: ${item.quantity}`,
+        });
       }
 
       // Resolve unit price in the requested currency. Falls back to the other
@@ -214,11 +233,11 @@ export const create = mutation({
       if (item.currency === "USD") {
         if (usdPrice !== undefined) unitPrice = usdPrice;
         else if (lbpPrice !== undefined) unitPrice = lbpPrice / exchangeRate;
-        else throw new Error(`Product "${product.name}" has no price set`);
+        else throw new ConvexError({ code: "NO_PRICE", message: `Product "${product.name}" has no price set` });
       } else {
         if (lbpPrice !== undefined) unitPrice = lbpPrice;
         else if (usdPrice !== undefined) unitPrice = usdPrice * exchangeRate;
-        else throw new Error(`Product "${product.name}" has no price set`);
+        else throw new ConvexError({ code: "NO_PRICE", message: `Product "${product.name}" has no price set` });
       }
 
       const unitPriceUSD = convertToUSD(unitPrice, item.currency, exchangeRate);
@@ -238,14 +257,18 @@ export const create = mutation({
     const paidUSD = args.payments.paidUSD;
     const paidLBP = args.payments.paidLBP;
     if (paidUSD < 0 || paidLBP < 0) {
-      throw new Error("Payment amounts cannot be negative");
+      throw new ConvexError({
+        code: "VALIDATION",
+        message: "Payment amounts cannot be negative",
+      });
     }
     const tenderedUSD = paidUSD + paidLBP / exchangeRate;
     // Allow a small floating-point tolerance.
     if (tenderedUSD + 1e-6 < totalUSD) {
-      throw new Error(
-        `Insufficient payment. Total $${totalUSD.toFixed(2)} (incl LBP ${(totalUSD * exchangeRate).toFixed(0)}); tendered equivalent $${tenderedUSD.toFixed(2)}`
-      );
+      throw new ConvexError({
+        code: "INSUFFICIENT_PAYMENT",
+        message: `Insufficient payment. Total $${totalUSD.toFixed(2)} (incl LBP ${(totalUSD * exchangeRate).toFixed(0)}); tendered equivalent $${tenderedUSD.toFixed(2)}`,
+      });
     }
 
     const totalLBP = totalUSD * exchangeRate;

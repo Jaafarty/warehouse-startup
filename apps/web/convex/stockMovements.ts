@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { assertPageFunction } from "./_helpers/permissions";
@@ -11,7 +11,7 @@ export const listByProduct = query({
   },
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.productId);
-    if (!product) throw new Error("Product not found");
+    if (!product) throw new ConvexError({ code: "NOT_FOUND", message: "Product not found" });
 
     await assertPageFunction(ctx.db, args.userId, product.storeId, "inventory", "view_history");
 
@@ -103,12 +103,15 @@ export const manualAdjust = mutation({
   },
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.productId);
-    if (!product) throw new Error("Product not found");
+    if (!product) throw new ConvexError({ code: "NOT_FOUND", message: "Product not found" });
 
     await assertPageFunction(ctx.db, args.userId, product.storeId, "inventory", "adjust_stock");
 
     if (args.quantity <= 0) {
-      throw new Error("Quantity must be positive");
+      throw new ConvexError({
+        code: "VALIDATION",
+        message: "Quantity must be positive",
+      });
     }
 
     const quantityChange =
