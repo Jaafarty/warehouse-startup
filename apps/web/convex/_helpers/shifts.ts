@@ -9,19 +9,29 @@ import { Doc, Id } from "../_generated/dataModel";
  * Defensive: if data ever ends up with multiple open shifts for a user
  * (e.g. a reopened shift while another was already open), returns the most
  * recently opened one instead of throwing — keeps the dashboard alive.
+ * Also logs a warning so the orphaned-shift corruption is at least visible
+ * in deployment logs (would otherwise be silent).
  */
 export async function getActiveShiftFor(
   db: DatabaseReader,
   userId: Id<"users">,
   storeId: Id<"stores">
 ): Promise<Doc<"shifts"> | null> {
-  return db
+  const open = await db
     .query("shifts")
     .withIndex("by_store_user_status", (q) =>
       q.eq("storeId", storeId).eq("openedBy", userId).eq("status", "open")
     )
     .order("desc")
-    .first();
+    .take(2);
+  if (open.length > 1) {
+    console.warn(
+      `[shifts] multiple open shifts detected for user ${userId} in store ${storeId}: ${open
+        .map((s) => s._id)
+        .join(", ")} — using newest. Investigate and close the orphan.`
+    );
+  }
+  return open[0] ?? null;
 }
 
 /**

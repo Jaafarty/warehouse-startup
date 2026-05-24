@@ -283,10 +283,11 @@ export const reopen = mutation({
       shift.storeId
     );
     if (cashierOpen) {
+      const cashier = await ctx.db.get(shift.openedBy);
+      const cashierName = cashier?.name ?? "this cashier";
       throw new ConvexError({
         code: "CONFLICT",
-        message:
-          "This cashier already has another open shift. Close it before reopening this one.",
+        message: `${cashierName} already has another open shift (#${cashierOpen._id.slice(-6)}). Close that shift first before reopening this one.`,
       });
     }
 

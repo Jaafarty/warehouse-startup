@@ -1,22 +1,62 @@
-const GENERIC_FALLBACK = "Something went wrong. Please try again.";
+const GENERIC_FALLBACK = "Something went wrong.";
 
-const NOISE_MARKERS = [
-  "[CONVEX",
-  "Server Error",
-  "Uncaught Error",
-  "Request ID",
-];
+// Markers that are unique to Convex's ConvexHttpClient wire format. Generic
+// substrings like "Server Error" are deliberately NOT included — they appear
+// in legitimate non-Convex error messages (Clerk session errors, fetch
+// failures, etc.) where we want the original message to reach the user.
+const NOISE_MARKERS = ["[CONVEX", "[convex", "Request ID:", "request id:"];
 
+/**
+ * Pull the embedded `ConvexError: {...}` payload out of a noisy
+ * ConvexHttpClient error message, using balanced-brace scanning so it works
+ * even when the inner `message` field contains `}` characters (e.g. product
+ * names like "Office } Tech").
+ */
 function unwrapEmbeddedConvexError(raw: string): string | null {
-  const match = raw.match(/ConvexError:\s*(\{[\s\S]*?\})(?:\s|$)/);
-  if (!match) return null;
-  try {
-    const parsed = JSON.parse(match[1]) as { message?: unknown };
-    if (typeof parsed.message === "string" && parsed.message.length > 0) {
-      return parsed.message;
+  const marker = "ConvexError:";
+  const markerIdx = raw.indexOf(marker);
+  if (markerIdx === -1) return null;
+
+  const start = raw.indexOf("{", markerIdx);
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  for (let j = start; j < raw.length; j++) {
+    const c = raw[j];
+    if (inStr) {
+      if (esc) {
+        esc = false;
+      } else if (c === "\\") {
+        esc = true;
+      } else if (c === '"') {
+        inStr = false;
+      }
+      continue;
     }
-  } catch {
-    // fall through
+    if (c === '"') {
+      inStr = true;
+      continue;
+    }
+    if (c === "{") {
+      depth++;
+    } else if (c === "}") {
+      depth--;
+      if (depth === 0) {
+        try {
+          const parsed = JSON.parse(raw.slice(start, j + 1)) as {
+            message?: unknown;
+          };
+          if (typeof parsed.message === "string" && parsed.message.length > 0) {
+            return parsed.message;
+          }
+        } catch {
+          // fall through
+        }
+        return null;
+      }
+    }
   }
   return null;
 }
@@ -32,10 +72,10 @@ function looksNoisy(raw: string): boolean {
  * Order:
  * 1. ConvexError instance → unwrap `data.message`.
  * 2. Plain Error whose message embeds `ConvexError: {...}` (the format
- *    ConvexHttpClient produces) → regex-unwrap the inner `message`.
+ *    ConvexHttpClient produces) → balanced-brace unwrap the inner `message`.
  * 3. Plain Error with a clean message → pass through.
- * 4. Anything that looks like raw server noise → fallback (raw is
- *    console.error'd so developers can still see it).
+ * 4. Anything that looks like raw Convex transport noise → fallback (raw
+ *    is console.error'd so developers can still see it).
  * 5. Anything else → fallback.
  */
 export function friendlyMessage(
