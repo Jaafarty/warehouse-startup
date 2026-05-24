@@ -25,13 +25,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -696,7 +689,10 @@ function CashEntryModal({
 
   const usdNum = Number(usd || "0");
   const lbpNum = Number(lbp || "0");
-  const valid = (usdNum > 0 || lbpNum > 0) && Number.isFinite(usdNum) && Number.isFinite(lbpNum);
+  const valid =
+    (usdNum > 0 || lbpNum > 0) &&
+    Number.isFinite(usdNum) &&
+    Number.isFinite(lbpNum);
 
   const accentFg = isIn ? "var(--color-success)" : "var(--destructive)";
   const accentBg = isIn ? "var(--color-success-bg)" : "oklch(0.94 0.04 27)";
@@ -719,128 +715,158 @@ function CashEntryModal({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[460px]">
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-md flex-shrink-0"
-              style={{ background: accentBg, color: accentFg }}
-            >
-              {isIn ? (
-                <ArrowDownToLine className="h-[18px] w-[18px]" />
-              ) : (
-                <ArrowUpFromLine className="h-[18px] w-[18px]" />
-              )}
-            </div>
-            <div className="flex flex-col">
-              <DialogTitle className="text-[17px] tracking-tight">
-                {isIn ? "Cash In" : "Cash Out"}
-              </DialogTitle>
-              <DialogDescription className="text-[12px]">
-                {isIn
-                  ? "Record money added to the drawer."
-                  : "Record money taken from the drawer."}
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[480px] overflow-hidden p-0">
+        {/* Accent bar */}
+        <div className="h-1 w-full" style={{ background: accentFg }} />
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="cash-usd">USD</Label>
-              <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[14px] font-semibold text-muted-foreground">
-                  $
-                </span>
+        <div className="px-6 pt-5 pb-6 space-y-5">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div
+                className="flex h-11 w-11 items-center justify-center rounded-lg flex-shrink-0"
+                style={{ background: accentBg, color: accentFg }}
+              >
+                {isIn ? (
+                  <ArrowDownToLine className="h-5 w-5" />
+                ) : (
+                  <ArrowUpFromLine className="h-5 w-5" />
+                )}
+              </div>
+              <div className="flex flex-col text-left">
+                <DialogTitle className="text-[17px] tracking-tight">
+                  {isIn ? "Cash In" : "Cash Out"}
+                </DialogTitle>
+                <DialogDescription className="text-[12px]">
+                  {isIn
+                    ? "Record money added to the drawer."
+                    : "Record money taken from the drawer."}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Amount inputs — prominent */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="cash-usd"
+                  className="text-[10px] uppercase tracking-wider text-muted-foreground"
+                >
+                  USD
+                </Label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xl font-semibold text-muted-foreground">
+                    $
+                  </span>
+                  <Input
+                    id="cash-usd"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    inputMode="decimal"
+                    value={usd}
+                    onChange={(e) => setUsd(e.target.value)}
+                    placeholder="0.00"
+                    className="pl-8 h-12 text-xl font-mono font-bold tracking-tight"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="cash-lbp"
+                  className="text-[10px] uppercase tracking-wider text-muted-foreground"
+                >
+                  LBP
+                </Label>
                 <Input
-                  id="cash-usd"
+                  id="cash-lbp"
                   type="number"
-                  step="0.01"
+                  step="1"
                   min="0"
                   inputMode="decimal"
-                  value={usd}
-                  onChange={(e) => setUsd(e.target.value)}
-                  placeholder="0.00"
-                  className="pl-7 font-semibold"
-                  autoFocus
+                  value={lbp}
+                  onChange={(e) => setLbp(e.target.value)}
+                  placeholder="0"
+                  className="h-12 text-xl font-mono font-bold tracking-tight"
                 />
               </div>
             </div>
+
+            {/* Reason chips */}
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Reason
+              </Label>
+              <div className="flex flex-wrap gap-1.5">
+                {reasons.map((r) => {
+                  const active = reasonValue === r.value;
+                  return (
+                    <button
+                      key={r.value}
+                      type="button"
+                      onClick={() => setReasonValue(r.value)}
+                      className="h-8 px-3 rounded-full text-[12px] font-semibold border transition cursor-pointer"
+                      style={{
+                        background: active ? accentBg : "var(--card)",
+                        color: active ? accentFg : "var(--muted-foreground)",
+                        borderColor: active ? accentFg : "var(--border)",
+                      }}
+                    >
+                      {r.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Note */}
             <div className="space-y-1.5">
-              <Label htmlFor="cash-lbp">LBP</Label>
-              <Input
-                id="cash-lbp"
-                type="number"
-                step="1"
-                min="0"
-                inputMode="decimal"
-                value={lbp}
-                onChange={(e) => setLbp(e.target.value)}
-                placeholder="0"
-                className="font-semibold"
+              <Label
+                htmlFor="cash-note"
+                className="text-[10px] uppercase tracking-wider text-muted-foreground"
+              >
+                Note{" "}
+                <span className="font-normal normal-case tracking-normal">
+                  (optional)
+                </span>
+              </Label>
+              <Textarea
+                id="cash-note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={
+                  isIn
+                    ? "Reference, e.g. S-20260512-0008"
+                    : "Reference, e.g. Supplier invoice #4421"
+                }
+                rows={2}
               />
             </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="cash-reason">Reason</Label>
-            <Select
-              value={reasonValue}
-              onValueChange={(v) => setReasonValue(v ?? reasons[0].value)}
-            >
-              <SelectTrigger id="cash-reason">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {reasons.map((r) => (
-                  <SelectItem key={r.value} value={r.value}>
-                    {r.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="cash-note">
-              Note <span className="text-muted-foreground font-normal">(optional)</span>
-            </Label>
-            <Textarea
-              id="cash-note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={
-                isIn
-                  ? "Reference, e.g. S-20260512-0008"
-                  : "Reference, e.g. Supplier invoice #4421"
-              }
-              rows={2}
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={!valid || submitting}
-              style={{
-                background: accentFg,
-                color: "var(--primary-foreground)",
-                opacity: valid ? 1 : 0.5,
-              }}
-            >
-              {isIn ? (
-                <Plus className="h-4 w-4 mr-1.5" />
-              ) : (
-                <Minus className="h-4 w-4 mr-1.5" />
-              )}
-              {submitting ? "Saving…" : isIn ? "Cash In" : "Cash Out"}
-            </Button>
-          </div>
-        </form>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!valid || submitting}
+                style={{
+                  background: accentFg,
+                  color: "var(--primary-foreground)",
+                }}
+              >
+                {isIn ? (
+                  <Plus className="h-4 w-4 mr-1.5" />
+                ) : (
+                  <Minus className="h-4 w-4 mr-1.5" />
+                )}
+                {submitting ? "Saving…" : isIn ? "Cash In" : "Cash Out"}
+              </Button>
+            </div>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

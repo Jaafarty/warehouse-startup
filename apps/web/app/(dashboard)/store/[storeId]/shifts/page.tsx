@@ -8,23 +8,11 @@ import Link from "next/link";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { formatCurrency, formatDate } from "@ware-house/shared";
-import { Plus, Clock, Info, CircleDot, CircleSlash } from "lucide-react";
+import { Plus, Clock } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -36,6 +24,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 const PAGE_SIZE = 20;
+
+type Scope = "mine" | "all";
 
 export default function ShiftsListPage() {
   const { storeId } = useParams<{ storeId: string }>();
@@ -56,7 +46,7 @@ export default function ShiftsListPage() {
     userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
   );
 
-  const [tab, setTab] = useState<"mine" | "all">("mine");
+  const [scope, setScope] = useState<Scope>("mine");
 
   const minePage = useQuery(
     api.shifts.listMine,
@@ -79,9 +69,14 @@ export default function ShiftsListPage() {
       : "skip"
   );
 
+  const currentPage = scope === "all" ? allPage : minePage;
+  const shifts = currentPage?.page;
+  const loading = currentPage === undefined;
+  const count = shifts?.length ?? 0;
+
   if (store && !store.shiftsEnabled) {
     return (
-      <div style={{ padding: "var(--wh-density-pad)" }} className="max-w-3xl space-y-4">
+      <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
         <PageHeader
           icon={Clock}
           title="Shifts"
@@ -103,23 +98,21 @@ export default function ShiftsListPage() {
     );
   }
 
-  const mineCount = minePage?.page?.length ?? 0;
-  const allCount = allPage?.page?.length ?? 0;
-
   return (
-    <div
-      style={{ padding: "var(--wh-density-pad)" }}
-      className="space-y-5"
-    >
+    <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
       <PageHeader
         icon={Clock}
         title="Shifts"
-        subtitle="Cashier sessions and drawer reconciliation."
+        subtitle={
+          loading
+            ? "Loading..."
+            : `${count} shift${count !== 1 ? "s" : ""}`
+        }
         right={
           canOpen && !active && (
             <Link href={`/store/${storeId}/shifts/new`}>
               <Button size="sm">
-                <Plus className="h-4 w-4 mr-1.5" />
+                <Plus className="h-4 w-4 mr-2" />
                 Open shift
               </Button>
             </Link>
@@ -127,148 +120,145 @@ export default function ShiftsListPage() {
         }
       />
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-5 min-w-0">
-          {active && (
-            <Card className="border-primary/40">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Clock className="h-5 w-5" />
-                      Active shift
-                    </CardTitle>
-                    <CardDescription>
-                      Opened {formatDate(active.openedAt)}
-                    </CardDescription>
-                  </div>
+      {active && (
+        <Card
+          style={{
+            borderColor: "var(--primary)",
+            background: "var(--primary-soft, var(--accent))",
+          }}
+        >
+          <CardContent className="py-4 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-md flex-shrink-0"
+                style={{
+                  background: "var(--primary)",
+                  color: "var(--primary-foreground)",
+                }}
+              >
+                <Clock className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[15px] font-semibold">
+                    Active shift
+                  </span>
                   <Badge variant="default">Open</Badge>
                 </div>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between gap-4">
-                <div className="flex gap-6 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Opening USD</p>
-                    <p className="font-mono font-medium">
-                      {formatCurrency(active.openingUSD, "USD")}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Opening LBP</p>
-                    <p className="font-mono font-medium">
-                      {formatCurrency(active.openingLBP, "LBP")}
-                    </p>
-                  </div>
+                <p className="text-xs text-muted-foreground">
+                  Opened {formatDate(active.openedAt)}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-5">
+              <div className="text-right">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Opening USD
                 </div>
-                <Link href={`/store/${storeId}/shifts/${active._id}`}>
-                  <Button variant="outline" size="sm">
-                    Manage shift
+                <div className="font-mono text-[15px] font-semibold">
+                  {formatCurrency(active.openingUSD, "USD")}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Opening LBP
+                </div>
+                <div className="font-mono text-[15px] font-semibold">
+                  {formatCurrency(active.openingLBP, "LBP")}
+                </div>
+              </div>
+              <Link href={`/store/${storeId}/shifts/${active._id}`}>
+                <Button variant="outline" size="sm">
+                  Manage shift
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {canViewAll && (
+        <div className="flex flex-wrap items-center gap-3">
+          <SegmentedScope value={scope} onChange={setScope} />
+        </div>
+      )}
+
+      <Card>
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="p-4 space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-12" />
+              ))}
+            </div>
+          ) : !shifts || shifts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Clock className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">No shifts yet</h3>
+              <p className="text-sm text-muted-foreground mt-1 mb-4">
+                {canOpen
+                  ? "Open a shift to start tracking your drawer."
+                  : "Shifts will appear here once a cashier opens one."}
+              </p>
+              {canOpen && !active && (
+                <Link href={`/store/${storeId}/shifts/new`}>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Open shift
                   </Button>
                 </Link>
-              </CardContent>
-            </Card>
+              )}
+            </div>
+          ) : (
+            <ShiftTable
+              storeId={storeId}
+              page={shifts}
+              showCashier={scope === "all"}
+            />
           )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
-          <Tabs
-            value={tab}
-            onValueChange={(v) => setTab((v ?? "mine") as "mine" | "all")}
+function SegmentedScope({
+  value,
+  onChange,
+}: {
+  value: Scope;
+  onChange: (v: Scope) => void;
+}) {
+  const options: { v: Scope; label: string }[] = [
+    { v: "mine", label: "My shifts" },
+    { v: "all", label: "All shifts" },
+  ];
+  return (
+    <div
+      className="inline-flex p-[3px] gap-0.5 rounded-lg border"
+      style={{
+        background: "var(--card)",
+        borderColor: "var(--border)",
+        boxShadow: "var(--shadow-xs)",
+      }}
+    >
+      {options.map((o) => {
+        const active = value === o.v;
+        return (
+          <button
+            key={o.v}
+            type="button"
+            onClick={() => onChange(o.v)}
+            className="h-[30px] px-3.5 rounded-md text-[12px] font-semibold border-none cursor-pointer transition"
+            style={{
+              background: active ? "var(--secondary)" : "transparent",
+              color: active ? "var(--foreground)" : "var(--muted-foreground)",
+            }}
           >
-            <TabsList>
-              <TabsTrigger value="mine">My shifts</TabsTrigger>
-              {canViewAll && <TabsTrigger value="all">All shifts</TabsTrigger>}
-            </TabsList>
-
-            <TabsContent value="mine">
-              <ShiftTable
-                storeId={storeId}
-                page={minePage?.page}
-                loading={minePage === undefined}
-                showCashier={false}
-              />
-            </TabsContent>
-            {canViewAll && (
-              <TabsContent value="all">
-                <ShiftTable
-                  storeId={storeId}
-                  page={allPage?.page}
-                  loading={allPage === undefined}
-                  showCashier
-                />
-              </TabsContent>
-            )}
-          </Tabs>
-        </div>
-
-        <aside className="space-y-5 lg:sticky lg:top-4 lg:self-start">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">At a glance</CardTitle>
-              <CardDescription>Drawer status right now.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  {active ? (
-                    <CircleDot className="h-3.5 w-3.5 text-emerald-600" />
-                  ) : (
-                    <CircleSlash className="h-3.5 w-3.5 text-muted-foreground" />
-                  )}
-                  Status
-                </span>
-                <span className="font-medium">
-                  {active ? "Active" : "No open shift"}
-                </span>
-              </div>
-              {active && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Opened</span>
-                    <span>{formatDate(active.openedAt)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Opening USD</span>
-                    <span className="font-mono">
-                      {formatCurrency(active.openingUSD, "USD")}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Opening LBP</span>
-                    <span className="font-mono">
-                      {formatCurrency(active.openingLBP, "LBP")}
-                    </span>
-                  </div>
-                </>
-              )}
-              <div className="border-t pt-3 flex items-center justify-between">
-                <span className="text-muted-foreground">My shifts shown</span>
-                <span className="font-mono">{mineCount}</span>
-              </div>
-              {canViewAll && (
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">All shifts shown</span>
-                  <span className="font-mono">{allCount}</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Info className="h-4 w-4 text-muted-foreground" />
-                Tips
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground space-y-2">
-              <p>Count the drawer before opening and again before closing.</p>
-              <p>
-                Discrepancies above a few cents or 1 LBP require a note for
-                audit.
-              </p>
-            </CardContent>
-          </Card>
-        </aside>
-      </div>
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -290,91 +280,75 @@ type ShiftRow = {
 function ShiftTable({
   storeId,
   page,
-  loading,
   showCashier,
 }: {
   storeId: string;
-  page: ShiftRow[] | undefined;
-  loading: boolean;
+  page: ShiftRow[];
   showCashier: boolean;
 }) {
-  if (loading) {
-    return (
-      <div className="space-y-2 mt-4">
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-10" />
-        ))}
-      </div>
-    );
-  }
-  if (!page || page.length === 0) {
-    return (
-      <div className="rounded-md border py-12 text-center text-sm text-muted-foreground">
-        No shifts yet.
-      </div>
-    );
-  }
   return (
-    <div className="rounded-md border mt-4">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Opened</TableHead>
-            {showCashier && <TableHead>Cashier</TableHead>}
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Opening (USD)</TableHead>
-            <TableHead className="text-right">Counted (USD)</TableHead>
-            <TableHead className="text-right">Discrepancy</TableHead>
-            <TableHead />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {page.map((s) => {
-            const dUSD = s.discrepancyUSD ?? 0;
-            const dLBP = s.discrepancyLBP ?? 0;
-            const hasDisc =
-              s.status === "closed" &&
-              (Math.abs(dUSD) > 0.005 || Math.abs(dLBP) >= 1);
-            return (
-              <TableRow key={s._id}>
-                <TableCell className="text-sm whitespace-nowrap">
-                  {formatDate(s.openedAt)}
-                </TableCell>
-                {showCashier && <TableCell>{s.openedByName ?? "—"}</TableCell>}
-                <TableCell>
-                  <Badge variant={s.status === "open" ? "default" : "secondary"}>
-                    {s.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatCurrency(s.openingUSD, "USD")}
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {s.countedUSD !== undefined
-                    ? formatCurrency(s.countedUSD, "USD")
-                    : "—"}
-                </TableCell>
-                <TableCell
-                  className={`text-right font-mono text-sm ${
-                    hasDisc ? "text-destructive" : "text-muted-foreground"
-                  }`}
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Opened</TableHead>
+          {showCashier && <TableHead>Cashier</TableHead>}
+          <TableHead>Status</TableHead>
+          <TableHead className="text-right">Opening (USD)</TableHead>
+          <TableHead className="text-right">Counted (USD)</TableHead>
+          <TableHead className="text-right">Discrepancy</TableHead>
+          <TableHead />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {page.map((s) => {
+          const dUSD = s.discrepancyUSD ?? 0;
+          const dLBP = s.discrepancyLBP ?? 0;
+          const hasDisc =
+            s.status === "closed" &&
+            (Math.abs(dUSD) > 0.005 || Math.abs(dLBP) >= 1);
+          return (
+            <TableRow key={s._id}>
+              <TableCell className="text-sm whitespace-nowrap">
+                {formatDate(s.openedAt)}
+              </TableCell>
+              {showCashier && (
+                <TableCell>{s.openedByName ?? "—"}</TableCell>
+              )}
+              <TableCell>
+                <Badge
+                  variant={s.status === "open" ? "default" : "secondary"}
                 >
-                  {s.status === "closed"
-                    ? `${dUSD >= 0 ? "+" : ""}${formatCurrency(dUSD, "USD")}`
-                    : "—"}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Link href={`/store/${storeId}/shifts/${s._id}`}>
-                    <Button variant="ghost" size="sm">
-                      View
-                    </Button>
-                  </Link>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </div>
+                  {s.status}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-right font-mono">
+                {formatCurrency(s.openingUSD, "USD")}
+              </TableCell>
+              <TableCell className="text-right font-mono">
+                {s.countedUSD !== undefined
+                  ? formatCurrency(s.countedUSD, "USD")
+                  : "—"}
+              </TableCell>
+              <TableCell
+                className={`text-right font-mono text-sm ${
+                  hasDisc ? "text-destructive" : "text-muted-foreground"
+                }`}
+              >
+                {s.status === "closed"
+                  ? `${dUSD >= 0 ? "+" : ""}${formatCurrency(dUSD, "USD")}`
+                  : "—"}
+              </TableCell>
+              <TableCell className="text-right">
+                <Link href={`/store/${storeId}/shifts/${s._id}`}>
+                  <Button variant="ghost" size="sm">
+                    View
+                  </Button>
+                </Link>
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
   );
 }
