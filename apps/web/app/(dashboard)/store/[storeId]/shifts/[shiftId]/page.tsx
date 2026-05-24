@@ -9,19 +9,14 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { closeShift, reopenShift } from "@/app/actions/shifts";
 import { formatCurrency, formatDate } from "@ware-house/shared";
-import { ArrowLeft, Lock, Unlock, Wallet } from "lucide-react";
+import { ArrowLeft, Clock, Lock, Unlock } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -36,7 +31,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -47,7 +41,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -81,35 +74,41 @@ export default function ShiftDetailPage() {
     userId ? { shiftId: shiftId as Id<"shifts">, userId } : "skip"
   );
 
-  // Close form state
   const [closeOpen, setCloseOpen] = useState(false);
+  const [reopenOpen, setReopenOpen] = useState(false);
   const [countedUSD, setCountedUSD] = useState("");
   const [countedLBP, setCountedLBP] = useState("");
   const [closeNote, setCloseNote] = useState("");
   const [closing, setClosing] = useState(false);
-
-  // Reopen
   const [reopenReason, setReopenReason] = useState("");
   const [reopening, setReopening] = useState(false);
 
   if (shift === undefined) {
     return (
-      <div className="p-6 max-w-4xl space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-32" />
+      <div
+        style={{ padding: "var(--wh-density-pad)" }}
+        className="space-y-5"
+      >
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-48" />
         <Skeleton className="h-64" />
       </div>
     );
   }
   if (shift === null) {
     return (
-      <div className="p-6">
-        <p className="text-destructive">Shift not found.</p>
+      <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-4">
         <Link href={`/store/${storeId}/shifts`}>
-          <Button variant="link" className="px-0 mt-2">
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="h-4 w-4 mr-1.5" />
             Back to shifts
           </Button>
         </Link>
+        <Card>
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            Shift not found.
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -169,176 +168,71 @@ export default function ShiftDetailPage() {
     }
     toast.success("Shift reopened");
     setReopenReason("");
+    setReopenOpen(false);
   }
 
+  const canClose = isOpen && isOwn && can("close_shift");
+  const canReopen = !isOpen && can("reopen_shift");
+
   return (
-    <div className="p-6 max-w-4xl space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Link href={`/store/${storeId}/shifts`}>
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold">Shift</h1>
-              <Badge variant={isOpen ? "default" : "secondary"}>
-                {shift.status}
-              </Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Opened {formatDate(shift.openedAt)} by {shift.openedByName}
-              {shift.closedAt &&
-                ` · Closed ${formatDate(shift.closedAt)}${
-                  shift.closedByName ? ` by ${shift.closedByName}` : ""
-                }`}
-            </p>
+    <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
+      <PageHeader
+        icon={Clock}
+        title={
+          <div className="flex items-center gap-2">
+            <span>Shift</span>
+            <Badge variant={isOpen ? "default" : "secondary"}>
+              {shift.status}
+            </Badge>
           </div>
-        </div>
-
-        {isOpen && isOwn && can("close_shift") && (
-          <Dialog open={closeOpen} onOpenChange={setCloseOpen}>
-            <DialogTrigger className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-destructive px-4 text-sm font-medium text-destructive-foreground hover:bg-destructive/90">
-              <Lock className="h-4 w-4" />
-              Close shift
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Close shift</DialogTitle>
-                <DialogDescription>
-                  Count the drawer and record the closing balance.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3 rounded-md border bg-muted/30 p-3 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Expected USD</p>
-                    <p className="font-mono font-medium">
-                      {formatCurrency(totals.expectedClosingUSD, "USD")}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Expected LBP</p>
-                    <p className="font-mono font-medium">
-                      {formatCurrency(totals.expectedClosingLBP, "LBP")}
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <Label htmlFor="counted-usd">Counted USD</Label>
-                    <Input
-                      id="counted-usd"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={countedUSD}
-                      onChange={(e) => setCountedUSD(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="counted-lbp">Counted LBP</Label>
-                    <Input
-                      id="counted-lbp"
-                      type="number"
-                      step="1"
-                      min="0"
-                      value={countedLBP}
-                      onChange={(e) => setCountedLBP(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {previewHasDisc && (countedUSD !== "" || countedLBP !== "") && (
-                  <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm space-y-1">
-                    <p className="font-medium text-destructive">
-                      Discrepancy: {previewDiscUSD >= 0 ? "+" : ""}
-                      {formatCurrency(previewDiscUSD, "USD")} ·{" "}
-                      {previewDiscLBP >= 0 ? "+" : ""}
-                      {formatCurrency(previewDiscLBP, "LBP")}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      A note explaining the variance is required.
-                    </p>
-                  </div>
-                )}
-
-                <div className="space-y-1">
-                  <Label htmlFor="close-note">
-                    Note {previewHasDisc && <span className="text-destructive">*</span>}
-                  </Label>
-                  <Textarea
-                    id="close-note"
-                    value={closeNote}
-                    onChange={(e) => setCloseNote(e.target.value)}
-                    placeholder="Reason if there is a discrepancy"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setCloseOpen(false)}
-                    disabled={closing}
-                  >
-                    Cancel
-                  </Button>
-                  <Button onClick={handleClose} disabled={closing}>
-                    {closing ? "Closing..." : "Close shift"}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
-
-        {!isOpen && can("reopen_shift") && (
-          <AlertDialog>
-            <AlertDialogTrigger className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent">
-              <Unlock className="h-4 w-4" />
-              Reopen
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Reopen this shift?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Closed totals will be cleared. The reason is recorded in the
-                  audit log and as a cash event on the shift.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <div className="space-y-1">
-                <Label htmlFor="reopen-reason">Reason</Label>
-                <Textarea
-                  id="reopen-reason"
-                  value={reopenReason}
-                  onChange={(e) => setReopenReason(e.target.value)}
-                  placeholder="Why are you reopening this shift?"
-                />
-              </div>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={reopening}>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleReopen}
-                  disabled={reopening}
-                >
-                  {reopening ? "Reopening..." : "Reopen"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-      </div>
+        }
+        subtitle={
+          <>
+            Opened {formatDate(shift.openedAt)} by {shift.openedByName}
+            {shift.closedAt &&
+              ` · Closed ${formatDate(shift.closedAt)}${
+                shift.closedByName ? ` by ${shift.closedByName}` : ""
+              }`}
+          </>
+        }
+        right={
+          <>
+            {canReopen && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setReopenOpen(true)}
+              >
+                <Unlock className="h-4 w-4 mr-1.5" />
+                Reopen
+              </Button>
+            )}
+            {canClose && (
+              <Button
+                size="sm"
+                onClick={() => setCloseOpen(true)}
+                style={{
+                  background: "var(--destructive)",
+                  color: "#ffffff",
+                }}
+              >
+                <Lock className="h-4 w-4 mr-1.5" />
+                Close shift
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {/* Balance breakdown */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Drawer balance</CardTitle>
-          <CardDescription>
-            Opening + sales + cash in − refunds − cash out − change given.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
+          <div className="px-6 pt-5 pb-3">
+            <h3 className="text-[15px] font-semibold">Drawer balance</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Opening + sales + cash in − refunds − cash out − change given.
+            </p>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -348,12 +242,38 @@ export default function ShiftDetailPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              <BalanceRow label="Opening" usd={shift.openingUSD} lbp={shift.openingLBP} />
-              <BalanceRow label="+ Sales" usd={totals.salesUSD} lbp={totals.salesLBP} positive />
-              <BalanceRow label="− Refunds" usd={totals.returnsUSD} lbp={totals.returnsLBP} />
-              <BalanceRow label="+ Cash in" usd={totals.manualInUSD} lbp={totals.manualInLBP} positive />
-              <BalanceRow label="− Cash out" usd={totals.manualOutUSD} lbp={totals.manualOutLBP} />
-              <BalanceRow label="− Change given" usd={totals.changeOutUSD} lbp={totals.changeOutLBP} />
+              <BalanceRow
+                label="Opening"
+                usd={shift.openingUSD}
+                lbp={shift.openingLBP}
+              />
+              <BalanceRow
+                label="+ Sales"
+                usd={totals.salesUSD}
+                lbp={totals.salesLBP}
+                positive
+              />
+              <BalanceRow
+                label="− Refunds"
+                usd={totals.returnsUSD}
+                lbp={totals.returnsLBP}
+              />
+              <BalanceRow
+                label="+ Cash in"
+                usd={totals.manualInUSD}
+                lbp={totals.manualInLBP}
+                positive
+              />
+              <BalanceRow
+                label="− Cash out"
+                usd={totals.manualOutUSD}
+                lbp={totals.manualOutLBP}
+              />
+              <BalanceRow
+                label="− Change given"
+                usd={totals.changeOutUSD}
+                lbp={totals.changeOutLBP}
+              />
               <TableRow className="border-t-2 font-medium">
                 <TableCell>Expected closing</TableCell>
                 <TableCell className="text-right font-mono">
@@ -406,45 +326,34 @@ export default function ShiftDetailPage() {
             </TableBody>
           </Table>
           {!isOpen && shift.discrepancyNote && (
-            <div className="mt-3 rounded-md border bg-muted/30 p-3 text-sm">
+            <div className="mx-6 my-4 rounded-md border bg-muted/30 p-3 text-sm">
               <p className="text-xs text-muted-foreground">Discrepancy note</p>
-              <p className="mt-0.5 whitespace-pre-wrap">{shift.discrepancyNote}</p>
+              <p className="mt-0.5 whitespace-pre-wrap">
+                {shift.discrepancyNote}
+              </p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Cash management lives on its own page now — quick link for the open shift owner. */}
-      {isOpen && isOwn && (
-        <div className="rounded-md border bg-muted/30 px-4 py-3 flex items-center justify-between">
-          <div className="text-sm">
-            <p className="font-medium">Need to record paid-in / paid-out?</p>
-            <p className="text-muted-foreground text-xs">
-              Cash events live on the Cash page now.
+      {/* Cash events */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="px-6 pt-5 pb-3">
+            <h3 className="text-[15px] font-semibold">Cash events</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Every drawer movement during this shift, newest first.
             </p>
           </div>
-          <Link href={`/store/${storeId}/cash`}>
-            <Button variant="outline" size="sm">
-              <Wallet className="h-4 w-4 mr-1.5" />
-              Open Cash page
-            </Button>
-          </Link>
-        </div>
-      )}
-
-      {/* Events log */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Cash events</CardTitle>
-          <CardDescription>
-            Every drawer movement during this shift, newest first.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
           {shift.events.length === 0 ? (
-            <p className="px-6 py-12 text-center text-sm text-muted-foreground">
-              No activity yet.
-            </p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Clock className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">No activity yet</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Events will appear here as sales, returns, and cash entries
+                land.
+              </p>
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -502,6 +411,197 @@ export default function ShiftDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Close shift dialog */}
+      <Dialog open={closeOpen} onOpenChange={setCloseOpen}>
+        <DialogContent className="sm:max-w-[480px] overflow-hidden p-0">
+          <div
+            className="h-1 w-full"
+            style={{ background: "var(--destructive)" }}
+          />
+          <div className="px-6 pt-5 pb-6 space-y-5">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex h-11 w-11 items-center justify-center rounded-lg flex-shrink-0"
+                  style={{
+                    background: "oklch(0.94 0.04 27)",
+                    color: "var(--destructive)",
+                  }}
+                >
+                  <Lock className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <DialogTitle className="text-[17px] tracking-tight">
+                    Close shift
+                  </DialogTitle>
+                  <DialogDescription className="text-[12px]">
+                    Count the drawer and record the closing balance.
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 gap-3 rounded-md border bg-muted/30 p-3 text-sm">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Expected USD
+                  </p>
+                  <p className="font-mono font-semibold mt-0.5">
+                    {formatCurrency(totals.expectedClosingUSD, "USD")}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Expected LBP
+                  </p>
+                  <p className="font-mono font-semibold mt-0.5">
+                    {formatCurrency(totals.expectedClosingLBP, "LBP")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="counted-usd"
+                    className="text-[10px] uppercase tracking-wider text-muted-foreground"
+                  >
+                    Counted USD
+                  </Label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xl font-semibold text-muted-foreground">
+                      $
+                    </span>
+                    <Input
+                      id="counted-usd"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      value={countedUSD}
+                      onChange={(e) => setCountedUSD(e.target.value)}
+                      placeholder="0.00"
+                      className="pl-8 h-12 text-xl font-mono font-bold tracking-tight"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="counted-lbp"
+                    className="text-[10px] uppercase tracking-wider text-muted-foreground"
+                  >
+                    Counted LBP
+                  </Label>
+                  <Input
+                    id="counted-lbp"
+                    type="number"
+                    step="1"
+                    min="0"
+                    inputMode="decimal"
+                    value={countedLBP}
+                    onChange={(e) => setCountedLBP(e.target.value)}
+                    placeholder="0"
+                    className="h-12 text-xl font-mono font-bold tracking-tight"
+                  />
+                </div>
+              </div>
+
+              {previewHasDisc &&
+                (countedUSD !== "" || countedLBP !== "") && (
+                  <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm space-y-1">
+                    <p className="font-medium text-destructive">
+                      Discrepancy: {previewDiscUSD >= 0 ? "+" : ""}
+                      {formatCurrency(previewDiscUSD, "USD")} ·{" "}
+                      {previewDiscLBP >= 0 ? "+" : ""}
+                      {formatCurrency(previewDiscLBP, "LBP")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      A note explaining the variance is required.
+                    </p>
+                  </div>
+                )}
+
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="close-note"
+                  className="text-[10px] uppercase tracking-wider text-muted-foreground"
+                >
+                  Note{" "}
+                  {previewHasDisc && (
+                    <span className="text-destructive normal-case">*</span>
+                  )}
+                </Label>
+                <Textarea
+                  id="close-note"
+                  value={closeNote}
+                  onChange={(e) => setCloseNote(e.target.value)}
+                  placeholder="Reason if there is a discrepancy"
+                  rows={2}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCloseOpen(false)}
+                  disabled={closing}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleClose}
+                  disabled={closing}
+                  style={{
+                    background: "var(--destructive)",
+                    color: "#ffffff",
+                  }}
+                >
+                  <Lock className="h-4 w-4 mr-1.5" />
+                  {closing ? "Closing…" : "Close shift"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reopen shift dialog */}
+      <AlertDialog open={reopenOpen} onOpenChange={setReopenOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reopen this shift?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Closed totals will be cleared. The reason is recorded in the
+              audit log and as a cash event on the shift.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="reopen-reason"
+              className="text-[10px] uppercase tracking-wider text-muted-foreground"
+            >
+              Reason
+            </Label>
+            <Textarea
+              id="reopen-reason"
+              value={reopenReason}
+              onChange={(e) => setReopenReason(e.target.value)}
+              placeholder="Why are you reopening this shift?"
+              rows={2}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={reopening}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleReopen} disabled={reopening}>
+              {reopening ? "Reopening…" : "Reopen"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -518,14 +618,21 @@ function BalanceRow({
   positive?: boolean;
 }) {
   const usdClass =
-    usd === 0 ? "text-muted-foreground" : positive ? "text-[color:var(--color-success)]" : "";
+    usd === 0
+      ? "text-muted-foreground"
+      : positive
+        ? "text-[color:var(--color-success)]"
+        : "";
   const lbpClass =
-    lbp === 0 ? "text-muted-foreground" : positive ? "text-[color:var(--color-success)]" : "";
+    lbp === 0
+      ? "text-muted-foreground"
+      : positive
+        ? "text-[color:var(--color-success)]"
+        : "";
   return (
     <TableRow>
       <TableCell>{label}</TableCell>
       <TableCell className={`text-right font-mono ${usdClass}`}>
-        {usd >= 0 ? "" : ""}
         {formatCurrency(usd, "USD")}
       </TableCell>
       <TableCell className={`text-right font-mono ${lbpClass}`}>
