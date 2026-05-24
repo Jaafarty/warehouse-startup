@@ -5,6 +5,10 @@ import { Doc, Id } from "../_generated/dataModel";
 /**
  * Returns the caller's currently-open shift in the store, or null.
  * Used by sales/returns guards and dashboard widgets.
+ *
+ * Defensive: if data ever ends up with multiple open shifts for a user
+ * (e.g. a reopened shift while another was already open), returns the most
+ * recently opened one instead of throwing — keeps the dashboard alive.
  */
 export async function getActiveShiftFor(
   db: DatabaseReader,
@@ -16,7 +20,8 @@ export async function getActiveShiftFor(
     .withIndex("by_store_user_status", (q) =>
       q.eq("storeId", storeId).eq("openedBy", userId).eq("status", "open")
     )
-    .unique();
+    .order("desc")
+    .first();
 }
 
 /**

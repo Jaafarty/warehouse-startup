@@ -274,6 +274,22 @@ export const reopen = mutation({
       });
     }
 
+    // Guard: cashier can only have one open shift at a time. Without this,
+    // reopening a closed shift while another is already open silently creates
+    // two active shifts and breaks getActive() (unique() throws).
+    const cashierOpen = await getActiveShiftFor(
+      ctx.db,
+      shift.openedBy,
+      shift.storeId
+    );
+    if (cashierOpen) {
+      throw new ConvexError({
+        code: "CONFLICT",
+        message:
+          "This cashier already has another open shift. Close it before reopening this one.",
+      });
+    }
+
     await ctx.db.patch(args.shiftId, {
       status: "open",
       closedBy: undefined,
