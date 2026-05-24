@@ -68,7 +68,6 @@ export function Sidebar({
   const role = liveStore?.role ?? initialRole;
   const permissions = liveStore?.effectivePermissions ?? initialPermissions;
   const isPrivileged = role === "owner" || role === "admin";
-  const shiftsEnabled = liveStore?.shiftsEnabled ?? false;
 
   // Build full visible link list (existing permission filtering preserved).
   const visiblePages: NavLink[] = React.useMemo(() => {
@@ -84,7 +83,6 @@ export function Sidebar({
       .filter(
         (p) =>
           PAGE_META[p] !== undefined &&
-          (p !== "shifts" || shiftsEnabled) &&
           (isPrivileged || (permissions?.[p]?.enabled ?? false))
       )
       .map((p) => {
@@ -100,7 +98,7 @@ export function Sidebar({
       });
 
     return [dashboardLink, ...pageLinks];
-  }, [basePath, pathname, isPrivileged, permissions, shiftsEnabled]);
+  }, [basePath, pathname, isPrivileged, permissions]);
 
   // Group into sections, skipping sections that end up empty.
   const sections = React.useMemo(() => {

@@ -68,15 +68,11 @@ export default function ProcessReturnPage() {
     userId ? { saleId: saleId as Id<"sales">, userId: userId } : "skip"
   );
 
-  const store = useQuery(
-    api.stores.getById,
-    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
-  );
   const activeShift = useQuery(
     api.shifts.getActive,
     userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
   );
-  const shiftsBlocking = store?.shiftsEnabled === true && activeShift === null;
+  const shiftsBlocking = activeShift === null;
   const activeShiftDetail = useQuery(
     api.shifts.get,
     userId && activeShift

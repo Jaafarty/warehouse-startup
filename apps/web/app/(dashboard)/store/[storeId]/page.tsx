@@ -88,7 +88,7 @@ export default function StoreDashboardPage() {
 
   const activeShift = useQuery(
     api.shifts.getActive,
-    userId && store?.shiftsEnabled && canViewOwnShift
+    userId && canViewOwnShift
       ? { storeId: storeId as Id<"stores">, userId }
       : "skip"
   );
@@ -135,8 +135,8 @@ export default function StoreDashboardPage() {
         </Card>
       )}
 
-      {/* Active shift widget — only when feature is enabled and caller can see own shifts */}
-      {store?.shiftsEnabled && canViewOwnShift && (
+      {/* Active shift widget — only when caller can see own shifts */}
+      {canViewOwnShift && (
         <Card className={activeShift ? "border-primary/40" : ""}>
           <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">

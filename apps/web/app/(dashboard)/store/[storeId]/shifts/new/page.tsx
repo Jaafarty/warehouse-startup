@@ -26,12 +26,6 @@ export default function OpenShiftPage() {
   const { storeId } = useParams<{ storeId: string }>();
   const { userId } = useCurrentUser();
 
-  const store = useQuery(
-    api.stores.getById,
-    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
-  );
-  const isPrivileged = store?.role === "owner" || store?.role === "admin";
-
   const lastClosed = useQuery(
     api.shifts.getLastClosedForUser,
     userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
@@ -62,26 +56,6 @@ export default function OpenShiftPage() {
 
   const carriedUSD = lastClosed?.countedUSD ?? 0;
   const carriedLBP = lastClosed?.countedLBP ?? 0;
-
-  if (store && !store.shiftsEnabled) {
-    return (
-      <div className="p-6 max-w-xl space-y-4">
-        <h1 className="text-2xl font-bold">Open shift</h1>
-        <Card>
-          <CardContent className="py-6 text-sm text-muted-foreground flex items-center justify-between gap-4">
-            <p>The Shifts feature is disabled for this store.</p>
-            {isPrivileged && (
-              <Link href={`/store/${storeId}/settings`}>
-                <Button variant="outline" size="sm">
-                  Enable in settings
-                </Button>
-              </Link>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="p-6 max-w-xl space-y-6">

@@ -15,23 +15,6 @@ function parseAmount(value: FormDataEntryValue | null): number {
   return Number.isFinite(n) ? Math.max(0, n) : 0;
 }
 
-export async function setShiftsEnabled(storeId: string, enabled: boolean) {
-  const userId = await requireCurrentUserId();
-  try {
-    await convex.mutation(api.stores.update, {
-      storeId: storeId as Id<"stores">,
-      userId,
-      shiftsEnabled: enabled,
-    });
-    return { success: true as const };
-  } catch (error) {
-    return {
-      success: false as const,
-      error: friendlyMessage(error, "Failed to update store"),
-    };
-  }
-}
-
 export async function openShift(storeId: string, formData: FormData) {
   const userId = await requireCurrentUserId();
   const carryOver = formData.get("carryOver") === "on";
