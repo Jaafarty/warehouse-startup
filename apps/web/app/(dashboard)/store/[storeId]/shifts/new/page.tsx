@@ -14,6 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -26,22 +33,52 @@ export default function OpenShiftPage() {
   const { storeId } = useParams<{ storeId: string }>();
   const { userId } = useCurrentUser();
 
-  const lastClosed = useQuery(
-    api.shifts.getLastClosedForUser,
+  const registers = useQuery(
+    api.registers.listActive,
     userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
   );
+  const hasRegisters = (registers?.length ?? 0) > 0;
 
+  const [registerId, setRegisterId] = useState("");
   const [carryOver, setCarryOver] = useState(false);
   const [usd, setUsd] = useState("");
   const [lbp, setLbp] = useState("");
   const [pending, setPending] = useState(false);
 
+  // Carry-over follows the last close on the SELECTED register (or, for a
+  // store with no registers, the store's last close). Don't query until we
+  // know which.
+  const carrySource = useQuery(
+    api.shifts.getCarryOverSource,
+    userId && registers !== undefined && (!hasRegisters || registerId)
+      ? {
+          storeId: storeId as Id<"stores">,
+          userId,
+          registerId: registerId ? (registerId as Id<"registers">) : undefined,
+        }
+      : "skip"
+  );
+
+  const carriedUSD = carrySource?.countedUSD ?? 0;
+  const carriedLBP = carrySource?.countedLBP ?? 0;
+  const canCarry =
+    carrySource?.countedUSD != null && carrySource?.countedLBP != null;
+
+  const selected = registers?.find((r) => r._id === registerId);
+
   async function handleSubmit(formData: FormData) {
-    if (carryOver) {
-      // Backend ignores opening fields and uses last closed shift values, but
-      // pass them anyway as a defensive default.
-      formData.set("openingUSD", String(lastClosed?.countedUSD ?? 0));
-      formData.set("openingLBP", String(lastClosed?.countedLBP ?? 0));
+    if (hasRegisters && !registerId) {
+      toast.error("Select a register to open a shift on.");
+      return;
+    }
+    if (selected?.inUse) {
+      toast.error("That register is already in use. Pick another.");
+      return;
+    }
+    if (registerId) formData.set("registerId", registerId);
+    if (carryOver && canCarry) {
+      formData.set("openingUSD", String(carriedUSD));
+      formData.set("openingLBP", String(carriedLBP));
     } else {
       formData.set("openingUSD", usd || "0");
       formData.set("openingLBP", lbp || "0");
@@ -54,8 +91,10 @@ export default function OpenShiftPage() {
     }
   }
 
-  const carriedUSD = lastClosed?.countedUSD ?? 0;
-  const carriedLBP = lastClosed?.countedLBP ?? 0;
+  const registerLabel = (id: string) =>
+    registers?.find((r) => r._id === id)?.name ?? "Select a register";
+
+  const carryDisabled = carryOver && canCarry;
 
   return (
     <div className="p-6 max-w-xl space-y-6">
@@ -82,7 +121,50 @@ export default function OpenShiftPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {lastClosed && (
+            {hasRegisters && (
+              <div className="space-y-1.5">
+                <Label htmlFor="register-select">Register</Label>
+                <Select
+                  value={registerId}
+                  onValueChange={(v) => {
+                    setRegisterId(v ?? "");
+                    setCarryOver(false);
+                  }}
+                >
+                  <SelectTrigger id="register-select">
+                    <SelectValue placeholder="Select a register">
+                      {(value: string) => registerLabel(value)}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {registers?.map((r) => (
+                      <SelectItem
+                        key={r._id}
+                        value={r._id}
+                        label={r.name}
+                        disabled={r.inUse}
+                      >
+                        <span className="flex items-center justify-between gap-3 w-full">
+                          <span>{r.name}</span>
+                          {r.inUse && (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                              <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-success)]" />
+                              In use{r.heldByName ? ` · ${r.heldByName}` : ""}
+                            </span>
+                          )}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  A register in use has an open shift and can&apos;t be
+                  selected until it&apos;s closed.
+                </p>
+              </div>
+            )}
+
+            {(!hasRegisters || registerId) && canCarry && (
               <label className="flex items-start gap-3 rounded-md border p-3 cursor-pointer hover:bg-muted/40">
                 <input
                   name="carryOver"
@@ -93,11 +175,15 @@ export default function OpenShiftPage() {
                 />
                 <div className="space-y-0.5">
                   <p className="text-sm font-medium">
-                    Carry over from my last closed shift
+                    Carry over from last closed shift
+                    {hasRegisters ? " on this register" : ""}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {formatCurrency(carriedUSD, "USD")} ·{" "}
                     {formatCurrency(carriedLBP, "LBP")}
+                    {carrySource?.closedByName
+                      ? ` · closed by ${carrySource.closedByName}`
+                      : ""}
                   </p>
                 </div>
               </label>
@@ -111,9 +197,9 @@ export default function OpenShiftPage() {
                   type="number"
                   step="0.01"
                   min="0"
-                  value={carryOver ? carriedUSD.toFixed(2) : usd}
+                  value={carryDisabled ? carriedUSD.toFixed(2) : usd}
                   onChange={(e) => setUsd(e.target.value)}
-                  disabled={carryOver}
+                  disabled={carryDisabled}
                   placeholder="0.00"
                 />
               </div>
@@ -124,9 +210,9 @@ export default function OpenShiftPage() {
                   type="number"
                   step="1"
                   min="0"
-                  value={carryOver ? String(carriedLBP) : lbp}
+                  value={carryDisabled ? String(carriedLBP) : lbp}
                   onChange={(e) => setLbp(e.target.value)}
-                  disabled={carryOver}
+                  disabled={carryDisabled}
                   placeholder="0"
                 />
               </div>
@@ -140,7 +226,7 @@ export default function OpenShiftPage() {
               Cancel
             </Button>
           </Link>
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" disabled={pending || selected?.inUse}>
             {pending ? "Opening..." : "Open shift"}
           </Button>
         </div>

@@ -301,6 +301,21 @@ export default defineSchema({
     .index("by_user_and_read", ["userId", "isRead"])
     .index("by_user_and_store", ["userId", "storeId"]),
 
+  // ============ REGISTERS (physical cash registers / tills) ============
+  // Optional: a store with zero registers uses a single implicit drawer
+  // (legacy behaviour). Once defined, a shift is opened on a specific register.
+  registers: defineTable({
+    storeId: v.id("stores"),
+    name: v.string(),
+    // Archived registers (isActive=false) keep history but can't be selected.
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.float64(),
+  })
+    .index("by_store", ["storeId"])
+    .index("by_store_and_active", ["storeId", "isActive"])
+    .index("by_store_and_name", ["storeId", "name"]),
+
   // ============ CASHIER SHIFTS ============
   shifts: defineTable({
     storeId: v.id("stores"),
@@ -308,13 +323,17 @@ export default defineSchema({
     closedBy: v.optional(v.id("users")),
     status: v.union(v.literal("open"), v.literal("closed")),
 
+    // Which register this shift was opened on. Absent on legacy shifts and on
+    // stores that have no registers defined (implicit single drawer).
+    registerId: v.optional(v.id("registers")),
+
     // Opening drawer counts entered by the cashier.
     openingUSD: v.float64(),
     openingLBP: v.float64(),
     // Snapshot rate at open — used for any USD-equivalent display.
     openingExchangeRate: v.float64(),
-    // True when the opening figures were seeded from this user's last
-    // closed shift's countedUSD/LBP.
+    // True when the opening figures were seeded from the last closed shift
+    // on the same register's countedUSD/LBP.
     carriedOver: v.boolean(),
 
     // Closing — populated when status flips to "closed".
@@ -333,11 +352,15 @@ export default defineSchema({
     .index("by_store_and_status", ["storeId", "status"])
     .index("by_store_and_user", ["storeId", "openedBy"])
     .index("by_store_user_status", ["storeId", "openedBy", "status"])
+    .index("by_register_and_status", ["registerId", "status"])
     .index("by_store_and_date", ["storeId", "openedAt"]),
 
   shiftCashEvents: defineTable({
     storeId: v.id("stores"),
     shiftId: v.optional(v.id("shifts")),
+    // Register this event belongs to (copied from the originating shift).
+    // Absent for legacy events and events on the implicit single drawer.
+    registerId: v.optional(v.id("registers")),
     type: v.union(
       v.literal("sale"),
       v.literal("return"),
@@ -359,6 +382,7 @@ export default defineSchema({
   })
     .index("by_shift", ["shiftId"])
     .index("by_shift_and_type", ["shiftId", "type"])
+    .index("by_register_and_date", ["registerId", "createdAt"])
     .index("by_store_and_date", ["storeId", "createdAt"]),
 
   // ============ AUDIT LOG ============

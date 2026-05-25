@@ -23,6 +23,7 @@ import type * as members from "../members.js";
 import type * as migrations from "../migrations.js";
 import type * as notifications from "../notifications.js";
 import type * as products from "../products.js";
+import type * as registers from "../registers.js";
 import type * as returns from "../returns.js";
 import type * as sales from "../sales.js";
 import type * as shifts from "../shifts.js";
@@ -53,6 +54,7 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   notifications: typeof notifications;
   products: typeof products;
+  registers: typeof registers;
   returns: typeof returns;
   sales: typeof sales;
   shifts: typeof shifts;

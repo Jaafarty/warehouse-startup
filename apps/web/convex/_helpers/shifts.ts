@@ -56,6 +56,7 @@ export async function requireActiveShift(
 type CashEventInput = {
   storeId: Id<"stores">;
   shiftId?: Id<"shifts">;
+  registerId?: Id<"registers">;
   type: Doc<"shiftCashEvents">["type"];
   amountUSD: number;
   amountLBP: number;
@@ -89,6 +90,29 @@ export async function computeStoreDrawer(
   const events = await db
     .query("shiftCashEvents")
     .withIndex("by_store_and_date", (q) => q.eq("storeId", storeId))
+    .collect();
+  let drawerUSD = 0;
+  let drawerLBP = 0;
+  for (const e of events) {
+    drawerUSD += e.amountUSD;
+    drawerLBP += e.amountLBP;
+  }
+  return { drawerUSD, drawerLBP };
+}
+
+/**
+ * Running drawer balance for a single register = sum of all cash events tagged
+ * with that registerId. Used once a store defines registers; each register is
+ * its own pool. Opening shift counts are NOT included (same rationale as the
+ * store-wide drawer).
+ */
+export async function computeRegisterDrawer(
+  db: DatabaseReader,
+  registerId: Id<"registers">
+): Promise<StoreDrawer> {
+  const events = await db
+    .query("shiftCashEvents")
+    .withIndex("by_register_and_date", (q) => q.eq("registerId", registerId))
     .collect();
   let drawerUSD = 0;
   let drawerLBP = 0;

@@ -171,7 +171,12 @@ export default function ShiftDetailPage() {
     setReopenOpen(false);
   }
 
-  const canClose = isOpen && isOwn && can("close_shift");
+  // Cashier closes own shift with close_shift. Owner/admin can close any
+  // cashier's open shift on their behalf (backend enforces the same in
+  // shifts.close).
+  const canClose =
+    isOpen && ((isOwn && can("close_shift")) || (!isOwn && isPrivileged));
+  const closingForOther = canClose && !isOwn;
   const canReopen = !isOpen && can("reopen_shift");
 
   return (
@@ -188,6 +193,11 @@ export default function ShiftDetailPage() {
         }
         subtitle={
           <>
+            {shift.registerName && (
+              <span className="font-medium text-foreground">
+                {shift.registerName} ·{" "}
+              </span>
+            )}
             Opened {formatDate(shift.openedAt)} by {shift.openedByName}
             {shift.closedAt &&
               ` · Closed ${formatDate(shift.closedAt)}${
@@ -436,7 +446,9 @@ export default function ShiftDetailPage() {
                     Close shift
                   </DialogTitle>
                   <DialogDescription className="text-[12px]">
-                    Count the drawer and record the closing balance.
+                    {closingForOther
+                      ? `Closing on behalf of ${shift.openedByName}. Count the drawer and record the closing balance.`
+                      : "Count the drawer and record the closing balance."}
                   </DialogDescription>
                 </div>
               </div>

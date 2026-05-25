@@ -251,6 +251,7 @@ type ShiftRow = {
   discrepancyUSD?: number;
   discrepancyLBP?: number;
   openedByName?: string;
+  registerName?: string | null;
 };
 
 function ShiftTable({
@@ -268,6 +269,7 @@ function ShiftTable({
         <TableRow>
           <TableHead>Opened</TableHead>
           {showCashier && <TableHead>Cashier</TableHead>}
+          {showCashier && <TableHead>Register</TableHead>}
           <TableHead>Status</TableHead>
           <TableHead className="text-right">Opening (USD)</TableHead>
           <TableHead className="text-right">Counted (USD)</TableHead>
@@ -289,6 +291,11 @@ function ShiftTable({
               </TableCell>
               {showCashier && (
                 <TableCell>{s.openedByName ?? "—"}</TableCell>
+              )}
+              {showCashier && (
+                <TableCell className="text-sm text-muted-foreground">
+                  {s.registerName ?? "—"}
+                </TableCell>
               )}
               <TableCell>
                 <Badge

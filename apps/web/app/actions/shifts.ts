@@ -20,6 +20,11 @@ export async function openShift(storeId: string, formData: FormData) {
   const carryOver = formData.get("carryOver") === "on";
   const openingUSD = parseAmount(formData.get("openingUSD"));
   const openingLBP = parseAmount(formData.get("openingLBP"));
+  const registerRaw = formData.get("registerId");
+  const registerId =
+    typeof registerRaw === "string" && registerRaw
+      ? (registerRaw as Id<"registers">)
+      : undefined;
   try {
     const result = await convex.mutation(api.shifts.open, {
       storeId: storeId as Id<"stores">,
@@ -27,6 +32,7 @@ export async function openShift(storeId: string, formData: FormData) {
       openingUSD,
       openingLBP,
       carryOver,
+      registerId,
     });
     redirect(`/store/${storeId}/shifts/${result.shiftId}`);
   } catch (error) {

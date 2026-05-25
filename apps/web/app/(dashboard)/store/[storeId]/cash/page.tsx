@@ -97,6 +97,13 @@ export default function CashPage() {
     userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
   );
 
+  // Per-register drawers (empty when the store has no registers defined).
+  const registerDrawers = useQuery(
+    api.shifts.getRegisterDrawers,
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
+  );
+  const hasRegisters = (registerDrawers?.length ?? 0) > 0;
+
   const activeShift = useQuery(
     api.shifts.getActive,
     userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
@@ -278,6 +285,61 @@ export default function CashPage() {
           loading={kpis === null}
         />
       </div>
+
+      {/* Per-register drawers (only when the store has registers defined) */}
+      {hasRegisters && (
+        <div className="space-y-2">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Registers
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {registerDrawers!.map((c) => (
+              <div
+                key={c.registerId}
+                className="wh-card px-4 py-3.5"
+                style={{
+                  background: "var(--card)",
+                  borderRadius: "var(--radius-xl)",
+                  boxShadow: "var(--shadow-card)",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[13px] font-semibold truncate">
+                    {c.name}
+                  </span>
+                  <span
+                    className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                    style={{
+                      background: c.openShift
+                        ? "var(--primary-soft)"
+                        : "var(--muted)",
+                      color: c.openShift
+                        ? "var(--primary)"
+                        : "var(--muted-foreground)",
+                    }}
+                  >
+                    {c.openShift ? "Open" : "Closed"}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-baseline gap-3">
+                  <span className="font-mono text-[15px] font-semibold">
+                    {formatCurrency(c.drawerUSD, "USD")}
+                  </span>
+                  <span className="font-mono text-[13px] text-muted-foreground">
+                    {formatCurrency(c.drawerLBP, "LBP")}
+                  </span>
+                </div>
+                <div className="mt-1 text-[11px] text-muted-foreground truncate">
+                  {c.openShift
+                    ? `Held by ${c.openShift.openedByName ?? "—"}`
+                    : "No open shift"}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Active shift mini-card (preserved from original) */}
       {activeShift && shiftDetail && (

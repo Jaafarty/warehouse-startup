@@ -297,6 +297,7 @@ export const create = mutation({
     await recordCashEvent(ctx.db, {
       storeId: args.storeId,
       shiftId: activeShift._id,
+      registerId: activeShift.registerId,
       type: "sale",
       amountUSD: paidUSD,
       amountLBP: paidLBP,
@@ -311,6 +312,7 @@ export const create = mutation({
       await recordCashEvent(ctx.db, {
         storeId: args.storeId,
         shiftId: activeShift._id,
+        registerId: activeShift.registerId,
         type: "change_out",
         amountUSD: -changeDueUSD,
         amountLBP: 0,

@@ -11,9 +11,37 @@ import { getCurrentRate } from "./_helpers/exchangeRate";
 import {
   computeShiftTotals,
   computeStoreDrawer,
+  computeRegisterDrawer,
   getActiveShiftFor,
   recordCashEvent,
 } from "./_helpers/shifts";
+
+/** True when the store has at least one active (selectable) register. */
+async function storeHasActiveRegister(
+  db: import("./_generated/server").DatabaseReader,
+  storeId: Id<"stores">
+): Promise<boolean> {
+  const first = await db
+    .query("registers")
+    .withIndex("by_store_and_active", (q: any) =>
+      q.eq("storeId", storeId).eq("isActive", true)
+    )
+    .first();
+  return first !== null;
+}
+
+/** The open shift currently holding a register, or null. */
+async function getOpenShiftForRegister(
+  db: import("./_generated/server").DatabaseReader,
+  registerId: Id<"registers">
+): Promise<Doc<"shifts"> | null> {
+  return db
+    .query("shifts")
+    .withIndex("by_register_and_status", (q: any) =>
+      q.eq("registerId", registerId).eq("status", "open")
+    )
+    .first();
+}
 
 /** Returns the caller's currently-open shift, or null. */
 export const getActive = query({
@@ -23,22 +51,65 @@ export const getActive = query({
   },
 });
 
-/** Caller's last closed shift in this store (used for carry-over preview). */
-export const getLastClosedForUser = query({
-  args: { storeId: v.id("stores"), userId: v.id("users") },
+/**
+ * Source shift for carry-over preview. Drawer is shared per register:
+ * carry-over follows the last close on the SAME register, regardless of who
+ * closed it. When no register is given (store has no registers defined) it
+ * falls back to the store's last closed shift — the legacy single-drawer
+ * behaviour.
+ */
+export const getCarryOverSource = query({
+  args: {
+    storeId: v.id("stores"),
+    userId: v.id("users"),
+    registerId: v.optional(v.id("registers")),
+  },
   handler: async (ctx, args) => {
-    return ctx.db
+    await assertPageFunction(
+      ctx.db,
+      args.userId,
+      args.storeId,
+      "shifts",
+      "open_shift"
+    );
+    const last = await findLastClosedShift(
+      ctx.db,
+      args.storeId,
+      args.registerId
+    );
+    if (!last) return null;
+    const closer = last.closedBy ? await ctx.db.get(last.closedBy) : null;
+    return {
+      countedUSD: last.countedUSD ?? null,
+      countedLBP: last.countedLBP ?? null,
+      closedByName: closer?.name ?? null,
+    };
+  },
+});
+
+/** Last closed shift on a register (if given) or store-wide otherwise. */
+async function findLastClosedShift(
+  db: import("./_generated/server").DatabaseReader,
+  storeId: Id<"stores">,
+  registerId: Id<"registers"> | undefined
+): Promise<Doc<"shifts"> | null> {
+  if (registerId) {
+    return db
       .query("shifts")
-      .withIndex("by_store_user_status", (q) =>
-        q
-          .eq("storeId", args.storeId)
-          .eq("openedBy", args.userId)
-          .eq("status", "closed")
+      .withIndex("by_register_and_status", (q: any) =>
+        q.eq("registerId", registerId).eq("status", "closed")
       )
       .order("desc")
       .first();
-  },
-});
+  }
+  return db
+    .query("shifts")
+    .withIndex("by_store_and_status", (q) =>
+      q.eq("storeId", storeId).eq("status", "closed")
+    )
+    .order("desc")
+    .first();
+}
 
 export const open = mutation({
   args: {
@@ -47,6 +118,7 @@ export const open = mutation({
     openingUSD: v.float64(),
     openingLBP: v.float64(),
     carryOver: v.boolean(),
+    registerId: v.optional(v.id("registers")),
   },
   handler: async (ctx, args) => {
     await assertPageFunction(
@@ -62,6 +134,46 @@ export const open = mutation({
         code: "INVALID",
         message: "Opening cash cannot be negative.",
       });
+    }
+
+    // Resolve which register this shift opens on. When the store has any active
+    // register, a selection is required; otherwise the store uses the implicit
+    // single drawer and registerId must stay empty.
+    const hasActiveRegister = await storeHasActiveRegister(
+      ctx.db,
+      args.storeId
+    );
+    let registerId: Id<"registers"> | undefined = undefined;
+    if (hasActiveRegister) {
+      if (!args.registerId) {
+        throw new ConvexError({
+          code: "REGISTER_REQUIRED",
+          message: "Select a register to open a shift on.",
+        });
+      }
+      const register = await ctx.db.get(args.registerId);
+      if (
+        !register ||
+        register.storeId !== args.storeId ||
+        !register.isActive
+      ) {
+        throw new ConvexError({
+          code: "INVALID",
+          message: "That register is not available.",
+        });
+      }
+      const registerOpen = await getOpenShiftForRegister(
+        ctx.db,
+        args.registerId
+      );
+      if (registerOpen) {
+        throw new ConvexError({
+          code: "CONFLICT",
+          message:
+            "This register already has an open shift. It must be closed before opening another on this register.",
+        });
+      }
+      registerId = args.registerId;
     }
 
     const existingOpen = await getActiveShiftFor(
@@ -80,16 +192,9 @@ export const open = mutation({
     let openingLBP = args.openingLBP;
     let carriedOver = false;
     if (args.carryOver) {
-      const last = await ctx.db
-        .query("shifts")
-        .withIndex("by_store_user_status", (q) =>
-          q
-            .eq("storeId", args.storeId)
-            .eq("openedBy", args.userId)
-            .eq("status", "closed")
-        )
-        .order("desc")
-        .first();
+      // Carry over from the last closed shift on the same register (or the
+      // store's last closed shift when no register is in play).
+      const last = await findLastClosedShift(ctx.db, args.storeId, registerId);
       if (last && last.countedUSD !== undefined && last.countedLBP !== undefined) {
         openingUSD = last.countedUSD;
         openingLBP = last.countedLBP;
@@ -104,6 +209,7 @@ export const open = mutation({
       storeId: args.storeId,
       openedBy: args.userId,
       status: "open",
+      registerId,
       openingUSD,
       openingLBP,
       openingExchangeRate: rate,
@@ -117,7 +223,7 @@ export const open = mutation({
       action: "shift.open",
       entityType: "shift",
       entityId: shiftId,
-      details: { openingUSD, openingLBP, carriedOver, exchangeRate: rate },
+      details: { openingUSD, openingLBP, carriedOver, exchangeRate: rate, registerId },
     });
 
     return { shiftId };
@@ -279,6 +385,23 @@ export const reopen = mutation({
       });
     }
 
+    // Guard: a register holds one open shift at a time. Someone else may have
+    // opened this register since this shift closed — reopening would create
+    // two open shifts on the same register.
+    if (shift.registerId) {
+      const registerOpen = await getOpenShiftForRegister(
+        ctx.db,
+        shift.registerId
+      );
+      if (registerOpen) {
+        const register = await ctx.db.get(shift.registerId);
+        throw new ConvexError({
+          code: "CONFLICT",
+          message: `${register?.name ?? "This register"} already has an open shift. Close it before reopening this one.`,
+        });
+      }
+    }
+
     await ctx.db.patch(args.shiftId, {
       status: "open",
       closedBy: undefined,
@@ -295,6 +418,7 @@ export const reopen = mutation({
     await recordCashEvent(ctx.db, {
       storeId: shift.storeId,
       shiftId: args.shiftId,
+      registerId: shift.registerId,
       type: "reopen_adjustment",
       amountUSD: 0,
       amountLBP: 0,
@@ -353,11 +477,33 @@ export const recordManualCash = mutation({
       });
     }
 
+    const activeShift = await getActiveShiftFor(
+      ctx.db,
+      args.userId,
+      args.storeId
+    );
+
+    // With registers defined, manual cash targets the register held by the
+    // caller's open shift — so we need to know which register. Require an
+    // active shift.
+    const hasActiveRegister = await storeHasActiveRegister(
+      ctx.db,
+      args.storeId
+    );
+    if (hasActiveRegister && !activeShift) {
+      throw new ConvexError({
+        code: "NO_ACTIVE_SHIFT",
+        message: "Open a shift on a register before recording cash in/out.",
+      });
+    }
+    const registerId = activeShift?.registerId;
+
     if (args.direction === "out") {
-      const { drawerUSD, drawerLBP } = await computeStoreDrawer(
-        ctx.db,
-        args.storeId
-      );
+      // Validate against the specific register's balance when one is in play,
+      // otherwise the store-wide drawer (legacy single-drawer stores).
+      const { drawerUSD, drawerLBP } = registerId
+        ? await computeRegisterDrawer(ctx.db, registerId)
+        : await computeStoreDrawer(ctx.db, args.storeId);
       if (
         args.amountUSD - drawerUSD > 1e-6 ||
         args.amountLBP - drawerLBP > 0.5
@@ -369,16 +515,11 @@ export const recordManualCash = mutation({
       }
     }
 
-    const activeShift = await getActiveShiftFor(
-      ctx.db,
-      args.userId,
-      args.storeId
-    );
-
     const sign = args.direction === "in" ? 1 : -1;
     const eventId = await recordCashEvent(ctx.db, {
       storeId: args.storeId,
       shiftId: activeShift?._id,
+      registerId,
       type: args.direction === "in" ? "manual_in" : "manual_out",
       amountUSD: sign * args.amountUSD,
       amountLBP: sign * args.amountLBP,
@@ -454,13 +595,25 @@ export const listAll = query({
       Id<"users">,
       string
     >;
+    const registerCache: Record<Id<"registers">, string> = {} as Record<
+      Id<"registers">,
+      string
+    >;
     const enriched = await Promise.all(
       result.page.map(async (s) => {
         if (!userCache[s.openedBy]) {
           const u = await ctx.db.get(s.openedBy);
           userCache[s.openedBy] = u?.name ?? "Unknown";
         }
-        return { ...s, openedByName: userCache[s.openedBy] };
+        let registerName: string | null = null;
+        if (s.registerId) {
+          if (!registerCache[s.registerId]) {
+            const r = await ctx.db.get(s.registerId);
+            registerCache[s.registerId] = r?.name ?? "—";
+          }
+          registerName = registerCache[s.registerId];
+        }
+        return { ...s, openedByName: userCache[s.openedBy], registerName };
       })
     );
 
@@ -518,11 +671,15 @@ export const get = query({
 
     const opener = await ctx.db.get(shift.openedBy);
     const closer = shift.closedBy ? await ctx.db.get(shift.closedBy) : null;
+    const register = shift.registerId
+      ? await ctx.db.get(shift.registerId)
+      : null;
 
     return {
       ...shift,
       openedByName: opener?.name ?? "Unknown",
       closedByName: closer?.name ?? null,
+      registerName: register?.name ?? null,
       totals,
       events: eventsEnriched,
     };
@@ -540,6 +697,54 @@ export const getStoreDrawer = query({
       "view_list"
     );
     return computeStoreDrawer(ctx.db, args.storeId);
+  },
+});
+
+/**
+ * Per-register drawer balances for the cash page. Returns one entry per active
+ * register with its running balance and the open shift holding it (if any).
+ * Empty when the store has no registers (callers fall back to getStoreDrawer).
+ */
+export const getRegisterDrawers = query({
+  args: { storeId: v.id("stores"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await assertPageFunction(
+      ctx.db,
+      args.userId,
+      args.storeId,
+      "cash",
+      "view_list"
+    );
+    const registers = await ctx.db
+      .query("registers")
+      .withIndex("by_store_and_active", (q) =>
+        q.eq("storeId", args.storeId).eq("isActive", true)
+      )
+      .collect();
+
+    return Promise.all(
+      registers.map(async (register) => {
+        const { drawerUSD, drawerLBP } = await computeRegisterDrawer(
+          ctx.db,
+          register._id
+        );
+        const openShift = await getOpenShiftForRegister(ctx.db, register._id);
+        let openedByName: string | null = null;
+        if (openShift) {
+          const u = await ctx.db.get(openShift.openedBy);
+          openedByName = u?.name ?? "Unknown";
+        }
+        return {
+          registerId: register._id,
+          name: register.name,
+          drawerUSD,
+          drawerLBP,
+          openShift: openShift
+            ? { shiftId: openShift._id, openedByName }
+            : null,
+        };
+      })
+    );
   },
 });
 

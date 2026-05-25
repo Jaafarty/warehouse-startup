@@ -41,7 +41,7 @@ const SECTIONS: Section[] = [
   {
     id: "operations",
     label: "Operations",
-    pages: ["inventory", "categories", "sales", "returns", "cash", "shifts", "exchange_rate"],
+    pages: ["inventory", "categories", "sales", "returns", "cash", "registers", "shifts", "exchange_rate"],
   },
   { id: "workspace", label: "Workspace", pages: ["members", "roles", "settings"] },
 ];

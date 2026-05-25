@@ -6,6 +6,7 @@ import {
   BarChart3,
   Clock,
   Wallet,
+  CreditCard,
   Users,
   Settings,
   Shield,
@@ -52,6 +53,11 @@ export const PAGE_META: Record<
     label: "Cash",
     description: "Drawer paid-in / paid-out events",
     icon: Wallet,
+  },
+  registers: {
+    label: "Registers",
+    description: "Cash registers / tills",
+    icon: CreditCard,
   },
   members: {
     label: "Members",
@@ -108,4 +114,7 @@ add_product: "Add product",
   reopen_shift: "Reopen closed shift",
   record_in: "Record paid-in",
   record_out: "Record paid-out",
+  create_register: "Create register",
+  edit_register: "Edit register",
+  remove_register: "Archive register",
 };
