@@ -222,17 +222,19 @@ export const splitCategoryPerms = mutation({
 export const dropLegacyCashId = internalMutation({
   args: {},
   handler: async (ctx) => {
+    // `cashId` is no longer in the schema, so cast through `any` to clear the
+    // stray field on rows written before the registers rename.
     let shifts = 0;
     for (const s of await ctx.db.query("shifts").collect()) {
       if ((s as { cashId?: unknown }).cashId !== undefined) {
-        await ctx.db.patch(s._id, { cashId: undefined });
+        await ctx.db.patch(s._id, { cashId: undefined } as any);
         shifts++;
       }
     }
     let events = 0;
     for (const e of await ctx.db.query("shiftCashEvents").collect()) {
       if ((e as { cashId?: unknown }).cashId !== undefined) {
-        await ctx.db.patch(e._id, { cashId: undefined });
+        await ctx.db.patch(e._id, { cashId: undefined } as any);
         events++;
       }
     }
