@@ -1,28 +1,24 @@
 "use client";
 
 import * as React from "react";
-import { useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 import { type LucideIcon } from "lucide-react";
-import {
-  getTweaks,
-  subscribeTweaks,
-  type HeaderStyle,
-  type HeaderPattern,
-} from "./tweaks-store";
+
+type HeaderStyle = "card" | "gradient" | "plain";
+type HeaderPattern = "grid" | "dots" | "stripes" | "blobs" | "none";
 
 interface PageHeaderProps {
   icon?: LucideIcon;
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   right?: React.ReactNode;
-  /** Override the user's tweak setting for this page. */
+  /** Override the fixed gradient style for this page. */
   styleOverride?: HeaderStyle;
   patternOverride?: HeaderPattern;
   className?: string;
 }
 
-function usePatternClass(pattern: HeaderPattern): string {
+function patternToClass(pattern: HeaderPattern): string {
   switch (pattern) {
     case "grid":
       return "wh-pattern-grid";
@@ -47,16 +43,10 @@ export function PageHeader({
   patternOverride,
   className,
 }: PageHeaderProps) {
-  // Subscribe to global tweak store so the component re-renders when settings change.
-  const tweaks = useSyncExternalStore(
-    subscribeTweaks,
-    getTweaks,
-    getTweaks
-  );
-
-  const headerStyle: HeaderStyle = styleOverride ?? tweaks.headerStyle;
-  const pattern: HeaderPattern = patternOverride ?? tweaks.headerPattern;
-  const patternClass = usePatternClass(pattern);
+  // Fixed app style: gradient header with a stripes pattern.
+  const headerStyle: HeaderStyle = styleOverride ?? "gradient";
+  const pattern: HeaderPattern = patternOverride ?? "stripes";
+  const patternClass = patternToClass(pattern);
 
   const isPlain = headerStyle === "plain";
   const isGradient = headerStyle === "gradient";
@@ -117,12 +107,12 @@ export function PageHeader({
           )}
           <div className="min-w-0">
             <h1 className="wh-h1 tracking-tight">{title}</h1>
-            {subtitle && (
-              <div className="wh-body-muted mt-1">{subtitle}</div>
-            )}
+            {subtitle && <div className="wh-body-muted mt-1">{subtitle}</div>}
           </div>
         </div>
-        {right && <div className="flex items-center gap-2 flex-shrink-0">{right}</div>}
+        {right && (
+          <div className="flex items-center gap-2 flex-shrink-0">{right}</div>
+        )}
       </div>
     </div>
   );
