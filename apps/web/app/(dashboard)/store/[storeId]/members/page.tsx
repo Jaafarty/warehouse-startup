@@ -83,9 +83,23 @@ export default function MembersPage() {
     userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
   );
 
+  // Custom roles require the "roles" page permission. Employees/viewers don't
+  // have it, so only fetch when the caller can view roles — otherwise the
+  // query throws FORBIDDEN and crashes the page.
+  const store = useQuery(
+    api.stores.getById,
+    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
+  );
+  const canViewRoles =
+    store?.role === "owner" ||
+    store?.role === "admin" ||
+    (store?.effectivePermissions?.roles?.functions?.view_list ?? false);
+
   const customRoles = useQuery(
     api.storeRoles.listByStore,
-    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
+    userId && canViewRoles
+      ? { storeId: storeId as Id<"stores">, userId }
+      : "skip"
   );
 
   const [inviteOpen, setInviteOpen] = useState(false);
