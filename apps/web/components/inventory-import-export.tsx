@@ -387,8 +387,10 @@ export function InventoryImportExport({
                         }
                     }}
                 >
-                    <DialogTrigger className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm  shadow-xs hover:bg-accent hover:text-accent-foreground">
-                        <ArrowDownToLine className="h-4 w-4" />
+                    <DialogTrigger
+                        render={<Button variant="outline" size="sm" />}
+                    >
+                        <ArrowDownToLine className="h-4 w-4 mr-1.5" />
                         Import
                     </DialogTrigger>
                     <DialogContent className="max-w-lg">
