@@ -214,6 +214,32 @@ export const splitCategoryPerms = mutation({
   },
 });
 
+// Run once after the cashes→registers rename: strip the legacy `cashId` field
+// from existing shifts and shiftCashEvents so the narrowed schema (without
+// cashId) can push. The old value referenced the removed `cashes` table, so
+// it's simply dropped — those rows fall back to the implicit single drawer.
+// Run via: npx convex run migrations:dropLegacyCashId
+export const dropLegacyCashId = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let shifts = 0;
+    for (const s of await ctx.db.query("shifts").collect()) {
+      if ((s as { cashId?: unknown }).cashId !== undefined) {
+        await ctx.db.patch(s._id, { cashId: undefined });
+        shifts++;
+      }
+    }
+    let events = 0;
+    for (const e of await ctx.db.query("shiftCashEvents").collect()) {
+      if ((e as { cashId?: unknown }).cashId !== undefined) {
+        await ctx.db.patch(e._id, { cashId: undefined });
+        events++;
+      }
+    }
+    return { shifts, events };
+  },
+});
+
 // Run once: hydrate custom role docs with any new page/function keys added since they were created.
 // npx convex run migrations:backfillRolesV3
 export const backfillRolesV3 = mutation({
