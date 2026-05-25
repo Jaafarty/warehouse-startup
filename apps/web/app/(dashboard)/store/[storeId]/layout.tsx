@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { currentUser } from "@clerk/nextjs/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -28,6 +29,16 @@ const store = await convex.query(api.stores.getById, {
     redirect("/dashboard");
   }
 
+  const user = await currentUser();
+  const userName =
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
+    user?.username ||
+    "User";
+  const userEmail =
+    user?.primaryEmailAddress?.emailAddress ??
+    user?.emailAddresses[0]?.emailAddress ??
+    "";
+
   return (
     <div className="flex h-[calc(100vh-60px)]">
       <Sidebar
@@ -35,6 +46,8 @@ const store = await convex.query(api.stores.getById, {
         storeName={store.name}
         role={store.role}
         permissions={store.effectivePermissions}
+        userName={userName}
+        userEmail={userEmail}
       />
       <div className="flex-1 overflow-auto">{children}</div>
     </div>
