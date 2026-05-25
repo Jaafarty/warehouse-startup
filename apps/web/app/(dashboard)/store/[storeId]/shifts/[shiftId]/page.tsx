@@ -26,12 +26,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -422,164 +423,165 @@ export default function ShiftDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Close shift dialog */}
-      <Dialog open={closeOpen} onOpenChange={setCloseOpen}>
-        <DialogContent className="sm:max-w-[480px] overflow-hidden p-0">
+      {/* Close shift drawer */}
+      <Sheet open={closeOpen} onOpenChange={setCloseOpen}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-md p-0 gap-0"
+        >
           <div
-            className="h-1 w-full"
+            className="h-1 w-full flex-shrink-0"
             style={{ background: "var(--destructive)" }}
           />
-          <div className="px-6 pt-5 pb-6 space-y-5">
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <div
-                  className="flex h-11 w-11 items-center justify-center rounded-lg flex-shrink-0"
-                  style={{
-                    background: "oklch(0.94 0.04 27)",
-                    color: "var(--destructive)",
-                  }}
+          <SheetHeader className="p-6 pb-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="flex h-11 w-11 items-center justify-center rounded-lg flex-shrink-0"
+                style={{
+                  background: "oklch(0.94 0.04 27)",
+                  color: "var(--destructive)",
+                }}
+              >
+                <Lock className="h-5 w-5" />
+              </div>
+              <div className="flex flex-col text-left">
+                <SheetTitle className="text-[17px] tracking-tight">
+                  Close shift
+                </SheetTitle>
+                <SheetDescription className="text-[12px]">
+                  {closingForOther
+                    ? `Closing on behalf of ${shift.openedByName}. Count the drawer and record the closing balance.`
+                    : "Count the drawer and record the closing balance."}
+                </SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-5">
+            <div className="grid grid-cols-2 gap-3 rounded-md border bg-muted/30 p-3 text-sm">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Expected USD
+                </p>
+                <p className="font-mono font-semibold mt-0.5">
+                  {formatCurrency(totals.expectedClosingUSD, "USD")}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Expected LBP
+                </p>
+                <p className="font-mono font-semibold mt-0.5">
+                  {formatCurrency(totals.expectedClosingLBP, "LBP")}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="counted-usd"
+                  className="text-[10px] uppercase tracking-wider text-muted-foreground"
                 >
-                  <Lock className="h-5 w-5" />
-                </div>
-                <div className="flex flex-col text-left">
-                  <DialogTitle className="text-[17px] tracking-tight">
-                    Close shift
-                  </DialogTitle>
-                  <DialogDescription className="text-[12px]">
-                    {closingForOther
-                      ? `Closing on behalf of ${shift.openedByName}. Count the drawer and record the closing balance.`
-                      : "Count the drawer and record the closing balance."}
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-
-            <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-3 rounded-md border bg-muted/30 p-3 text-sm">
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Expected USD
-                  </p>
-                  <p className="font-mono font-semibold mt-0.5">
-                    {formatCurrency(totals.expectedClosingUSD, "USD")}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Expected LBP
-                  </p>
-                  <p className="font-mono font-semibold mt-0.5">
-                    {formatCurrency(totals.expectedClosingLBP, "LBP")}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="counted-usd"
-                    className="text-[10px] uppercase tracking-wider text-muted-foreground"
-                  >
-                    Counted USD
-                  </Label>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xl font-semibold text-muted-foreground">
-                      $
-                    </span>
-                    <Input
-                      id="counted-usd"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      inputMode="decimal"
-                      value={countedUSD}
-                      onChange={(e) => setCountedUSD(e.target.value)}
-                      placeholder="0.00"
-                      className="pl-8 h-12 text-xl font-mono font-bold tracking-tight"
-                      autoFocus
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="counted-lbp"
-                    className="text-[10px] uppercase tracking-wider text-muted-foreground"
-                  >
-                    Counted LBP
-                  </Label>
+                  Counted USD
+                </Label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xl font-semibold text-muted-foreground">
+                    $
+                  </span>
                   <Input
-                    id="counted-lbp"
+                    id="counted-usd"
                     type="number"
-                    step="1"
+                    step="0.01"
                     min="0"
                     inputMode="decimal"
-                    value={countedLBP}
-                    onChange={(e) => setCountedLBP(e.target.value)}
-                    placeholder="0"
-                    className="h-12 text-xl font-mono font-bold tracking-tight"
+                    value={countedUSD}
+                    onChange={(e) => setCountedUSD(e.target.value)}
+                    placeholder="0.00"
+                    className="pl-8 h-12 text-xl font-mono font-bold tracking-tight"
+                    autoFocus
                   />
                 </div>
               </div>
-
-              {previewHasDisc &&
-                (countedUSD !== "" || countedLBP !== "") && (
-                  <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm space-y-1">
-                    <p className="font-medium text-destructive">
-                      Discrepancy: {previewDiscUSD >= 0 ? "+" : ""}
-                      {formatCurrency(previewDiscUSD, "USD")} ·{" "}
-                      {previewDiscLBP >= 0 ? "+" : ""}
-                      {formatCurrency(previewDiscLBP, "LBP")}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      A note explaining the variance is required.
-                    </p>
-                  </div>
-                )}
-
               <div className="space-y-1.5">
                 <Label
-                  htmlFor="close-note"
+                  htmlFor="counted-lbp"
                   className="text-[10px] uppercase tracking-wider text-muted-foreground"
                 >
-                  Note{" "}
-                  {previewHasDisc && (
-                    <span className="text-destructive normal-case">*</span>
-                  )}
+                  Counted LBP
                 </Label>
-                <Textarea
-                  id="close-note"
-                  value={closeNote}
-                  onChange={(e) => setCloseNote(e.target.value)}
-                  placeholder="Reason if there is a discrepancy"
-                  rows={2}
+                <Input
+                  id="counted-lbp"
+                  type="number"
+                  step="1"
+                  min="0"
+                  inputMode="decimal"
+                  value={countedLBP}
+                  onChange={(e) => setCountedLBP(e.target.value)}
+                  placeholder="0"
+                  className="h-12 text-xl font-mono font-bold tracking-tight"
                 />
               </div>
+            </div>
 
-              <div className="flex justify-end gap-2 pt-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setCloseOpen(false)}
-                  disabled={closing}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleClose}
-                  disabled={closing}
-                  style={{
-                    background: "var(--destructive)",
-                    color: "#ffffff",
-                  }}
-                >
-                  <Lock className="h-4 w-4 mr-1.5" />
-                  {closing ? "Closing…" : "Close shift"}
-                </Button>
-              </div>
+            {previewHasDisc &&
+              (countedUSD !== "" || countedLBP !== "") && (
+                <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm space-y-1">
+                  <p className="font-medium text-destructive">
+                    Discrepancy: {previewDiscUSD >= 0 ? "+" : ""}
+                    {formatCurrency(previewDiscUSD, "USD")} ·{" "}
+                    {previewDiscLBP >= 0 ? "+" : ""}
+                    {formatCurrency(previewDiscLBP, "LBP")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    A note explaining the variance is required.
+                  </p>
+                </div>
+              )}
+
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="close-note"
+                className="text-[10px] uppercase tracking-wider text-muted-foreground"
+              >
+                Note{" "}
+                {previewHasDisc && (
+                  <span className="text-destructive normal-case">*</span>
+                )}
+              </Label>
+              <Textarea
+                id="close-note"
+                value={closeNote}
+                onChange={(e) => setCloseNote(e.target.value)}
+                placeholder="Reason if there is a discrepancy"
+                rows={2}
+              />
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+
+          <SheetFooter className="flex-row justify-end gap-2 border-t p-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCloseOpen(false)}
+              disabled={closing}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleClose}
+              disabled={closing}
+              style={{
+                background: "var(--destructive)",
+                color: "#ffffff",
+              }}
+            >
+              <Lock className="h-4 w-4 mr-1.5" />
+              {closing ? "Closing…" : "Close shift"}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       {/* Reopen shift dialog */}
       <AlertDialog open={reopenOpen} onOpenChange={setReopenOpen}>

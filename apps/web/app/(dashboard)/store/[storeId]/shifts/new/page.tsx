@@ -9,7 +9,8 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { openShift } from "@/app/actions/shifts";
 import { formatCurrency } from "@ware-house/shared";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Clock } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,13 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 
 export default function OpenShiftPage() {
@@ -97,138 +92,178 @@ export default function OpenShiftPage() {
   const carryDisabled = carryOver && canCarry;
 
   return (
-    <div className="p-6 max-w-xl space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href={`/store/${storeId}/shifts`}>
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold">Open shift</h1>
-          <p className="text-muted-foreground">
-            Count the drawer before you start.
-          </p>
-        </div>
-      </div>
-
-      <form action={handleSubmit}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Opening cash</CardTitle>
-            <CardDescription>
-              Enter the cash you start with — both currencies tracked separately.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {hasRegisters && (
-              <div className="space-y-1.5">
-                <Label htmlFor="register-select">Register</Label>
-                <Select
-                  value={registerId}
-                  onValueChange={(v) => {
-                    setRegisterId(v ?? "");
-                    setCarryOver(false);
-                  }}
-                >
-                  <SelectTrigger id="register-select">
-                    <SelectValue placeholder="Select a register">
-                      {(value: string) => registerLabel(value)}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {registers?.map((r) => (
-                      <SelectItem
-                        key={r._id}
-                        value={r._id}
-                        label={r.name}
-                        disabled={r.inUse}
-                      >
-                        <span className="flex items-center justify-between gap-3 w-full">
-                          <span>{r.name}</span>
-                          {r.inUse && (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                              <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-success)]" />
-                              In use{r.heldByName ? ` · ${r.heldByName}` : ""}
-                            </span>
-                          )}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  A register in use has an open shift and can&apos;t be
-                  selected until it&apos;s closed.
-                </p>
-              </div>
-            )}
-
-            {(!hasRegisters || registerId) && canCarry && (
-              <label className="flex items-start gap-3 rounded-md border p-3 cursor-pointer hover:bg-muted/40">
-                <input
-                  name="carryOver"
-                  type="checkbox"
-                  checked={carryOver}
-                  onChange={(e) => setCarryOver(e.target.checked)}
-                  className="mt-1"
-                />
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium">
-                    Carry over from last closed shift
-                    {hasRegisters ? " on this register" : ""}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatCurrency(carriedUSD, "USD")} ·{" "}
-                    {formatCurrency(carriedLBP, "LBP")}
-                    {carrySource?.closedByName
-                      ? ` · closed by ${carrySource.closedByName}`
-                      : ""}
-                  </p>
-                </div>
-              </label>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="openingUSD">Opening USD</Label>
-                <Input
-                  id="openingUSD"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={carryDisabled ? carriedUSD.toFixed(2) : usd}
-                  onChange={(e) => setUsd(e.target.value)}
-                  disabled={carryDisabled}
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="openingLBP">Opening LBP</Label>
-                <Input
-                  id="openingLBP"
-                  type="number"
-                  step="1"
-                  min="0"
-                  value={carryDisabled ? String(carriedLBP) : lbp}
-                  onChange={(e) => setLbp(e.target.value)}
-                  disabled={carryDisabled}
-                  placeholder="0"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="flex justify-end gap-3 mt-4">
+    <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
+      <PageHeader
+        icon={Clock}
+        title="Open shift"
+        subtitle="Count the drawer before you start."
+        right={
           <Link href={`/store/${storeId}/shifts`}>
-            <Button type="button" variant="outline">
-              Cancel
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1.5" />
+              Back to shifts
             </Button>
           </Link>
-          <Button type="submit" disabled={pending || selected?.inUse}>
-            {pending ? "Opening..." : "Open shift"}
-          </Button>
+        }
+      />
+
+      <form action={handleSubmit}>
+        <div className="grid gap-5 lg:grid-cols-4">
+          <div className="lg:col-span-3 space-y-5 min-w-0">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Opening cash</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {hasRegisters && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="register-select">Register</Label>
+                    <Select
+                      value={registerId}
+                      onValueChange={(v) => {
+                        setRegisterId(v ?? "");
+                        setCarryOver(false);
+                      }}
+                    >
+                      <SelectTrigger id="register-select">
+                        <SelectValue placeholder="Select a register">
+                          {(value: string) => registerLabel(value)}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {registers?.map((r) => (
+                          <SelectItem
+                            key={r._id}
+                            value={r._id}
+                            label={r.name}
+                            disabled={r.inUse}
+                          >
+                            <span className="flex items-center justify-between gap-3 w-full">
+                              <span>{r.name}</span>
+                              {r.inUse && (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-success)]" />
+                                  In use{r.heldByName ? ` · ${r.heldByName}` : ""}
+                                </span>
+                              )}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      A register in use has an open shift and can&apos;t be
+                      selected until it&apos;s closed.
+                    </p>
+                  </div>
+                )}
+
+                {(!hasRegisters || registerId) && canCarry && (
+                  <label className="flex items-start gap-3 rounded-md border p-3 cursor-pointer hover:bg-muted/40">
+                    <input
+                      name="carryOver"
+                      type="checkbox"
+                      checked={carryOver}
+                      onChange={(e) => setCarryOver(e.target.checked)}
+                      className="mt-1"
+                    />
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium">
+                        Carry over from last closed shift
+                        {hasRegisters ? " on this register" : ""}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatCurrency(carriedUSD, "USD")} ·{" "}
+                        {formatCurrency(carriedLBP, "LBP")}
+                        {carrySource?.closedByName
+                          ? ` · closed by ${carrySource.closedByName}`
+                          : ""}
+                      </p>
+                    </div>
+                  </label>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="openingUSD">Opening USD</Label>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base font-semibold text-muted-foreground">
+                        $
+                      </span>
+                      <Input
+                        id="openingUSD"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        inputMode="decimal"
+                        value={carryDisabled ? carriedUSD.toFixed(2) : usd}
+                        onChange={(e) => setUsd(e.target.value)}
+                        disabled={carryDisabled}
+                        placeholder="0.00"
+                        className="pl-7 font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="openingLBP">Opening LBP</Label>
+                    <Input
+                      id="openingLBP"
+                      type="number"
+                      step="1"
+                      min="0"
+                      inputMode="decimal"
+                      value={carryDisabled ? String(carriedLBP) : lbp}
+                      onChange={(e) => setLbp(e.target.value)}
+                      disabled={carryDisabled}
+                      placeholder="0"
+                      className="font-mono"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-end gap-3">
+              <Link href={`/store/${storeId}/shifts`}>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </Link>
+              <Button type="submit" disabled={pending || selected?.inUse}>
+                {pending ? "Opening…" : "Open shift"}
+              </Button>
+            </div>
+          </div>
+
+          <aside className="space-y-5 lg:sticky lg:top-4 lg:self-start">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Before you open</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-muted-foreground">
+                {hasRegisters ? (
+                  <p>
+                    Pick the register you&apos;re working. Each holds one open
+                    shift at a time, so in-use registers are greyed out.
+                  </p>
+                ) : (
+                  <p>
+                    This store uses a single shared drawer. Count it before you
+                    start your shift.
+                  </p>
+                )}
+                <p>
+                  Carry over to seed today&apos;s opening from the last closed
+                  shift&apos;s counted total — otherwise enter the count
+                  manually.
+                </p>
+                <p>
+                  Sales and cash events you record will be tracked against this
+                  shift until you close it.
+                </p>
+              </CardContent>
+            </Card>
+          </aside>
         </div>
       </form>
     </div>
