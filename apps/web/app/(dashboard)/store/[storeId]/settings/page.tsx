@@ -7,11 +7,9 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { updateStore, deleteStore } from "@/app/actions/stores";
-import { setShiftsEnabled } from "@/app/actions/shifts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
@@ -36,7 +34,6 @@ import {
   Settings as SettingsIcon,
   Store as StoreIcon,
   ShieldAlert,
-  Clock,
   Info,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
@@ -73,15 +70,6 @@ export default function StoreSettingsPage() {
     setDeleting(false);
     if (result && !result.success) {
       toast.error(result.error ?? "Failed to delete store");
-    }
-  }
-
-  async function handleShiftsToggle(enabled: boolean) {
-    const result = await setShiftsEnabled(storeId, enabled);
-    if (result.success) {
-      toast.success(enabled ? "Shifts enabled" : "Shifts disabled");
-    } else {
-      toast.error(result.error ?? "Failed to update");
     }
   }
 
@@ -131,37 +119,6 @@ export default function StoreSettingsPage() {
               </form>
             </CardContent>
           </Card>
-
-          {canManageStore && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  Cashier Shifts
-                </CardTitle>
-                <CardDescription>
-                  When enabled, cashiers must open a shift before recording
-                  sales or returns. The drawer is reconciled at close.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-medium">Require shifts</p>
-                    <p className="text-xs text-muted-foreground">
-                      {store.shiftsEnabled
-                        ? "Sales and returns are blocked without an active shift."
-                        : "Sales and returns work without a shift."}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={store.shiftsEnabled ?? false}
-                    onCheckedChange={handleShiftsToggle}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {isOwner && (
             <Card className="border-destructive/50">
@@ -244,12 +201,6 @@ export default function StoreSettingsPage() {
               <div>
                 <p className="text-xs text-muted-foreground">Your role</p>
                 <p className="font-medium capitalize">{store.role}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Shifts</p>
-                <p className="font-medium">
-                  {store.shiftsEnabled ? "Required" : "Optional"}
-                </p>
               </div>
               {store._creationTime && (
                 <div>

@@ -19,10 +19,6 @@ import {
 export const getActive = query({
   args: { storeId: v.id("stores"), userId: v.id("users") },
   handler: async (ctx, args) => {
-    // Page-locked function — every member with shifts page enabled can read
-    // their own active shift. Skip the assertion when feature is off.
-    const store = await ctx.db.get(args.storeId);
-    if (!store?.shiftsEnabled) return null;
     return getActiveShiftFor(ctx.db, args.userId, args.storeId);
   },
 });
@@ -60,14 +56,6 @@ export const open = mutation({
       "shifts",
       "open_shift"
     );
-
-    const storeRow = await ctx.db.get(args.storeId);
-    if (!storeRow?.shiftsEnabled) {
-      throw new ConvexError({
-        code: "FEATURE_DISABLED",
-        message: "Shifts are disabled for this store. Enable them in settings first.",
-      });
-    }
 
     if (args.openingUSD < 0 || args.openingLBP < 0) {
       throw new ConvexError({

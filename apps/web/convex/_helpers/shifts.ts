@@ -35,17 +35,14 @@ export async function getActiveShiftFor(
 }
 
 /**
- * Throws when shifts are required (store-level toggle on) and the caller
- * has no open shift. Returns the active shift document, or null when the
- * feature is disabled for this store.
+ * Throws when the caller has no open shift in the store.
+ * Shifts are always required for sales/returns/cash operations.
  */
-export async function requireActiveShiftIfEnabled(
+export async function requireActiveShift(
   db: DatabaseReader,
   userId: Id<"users">,
   storeId: Id<"stores">
-): Promise<Doc<"shifts"> | null> {
-  const store = await db.get(storeId);
-  if (!store?.shiftsEnabled) return null;
+): Promise<Doc<"shifts">> {
   const active = await getActiveShiftFor(db, userId, storeId);
   if (!active) {
     throw new ConvexError({

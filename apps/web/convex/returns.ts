@@ -6,7 +6,7 @@ import { adjustStock } from "./_helpers/stock";
 import { createAuditLog } from "./_helpers/audit";
 import {
   recordCashEvent,
-  requireActiveShiftIfEnabled,
+  requireActiveShift,
 } from "./_helpers/shifts";
 
 const REASON = v.union(
@@ -195,7 +195,7 @@ export const create = mutation({
 
     await assertPageFunction(ctx.db, args.userId, sale.storeId, "returns", "process_return");
 
-    const activeShift = await requireActiveShiftIfEnabled(
+    const activeShift = await requireActiveShift(
       ctx.db,
       args.userId,
       sale.storeId
@@ -330,24 +330,22 @@ export const create = mutation({
       exchangeRate: saleRate,
       refundedUSD: finalRefundedUSD,
       refundedLBP: finalRefundedLBP,
-      shiftId: activeShift?._id,
+      shiftId: activeShift._id,
       createdBy: args.userId,
       createdAt: now,
     });
 
-    if (activeShift) {
-      // Refunds reduce drawer cash → negative deltas.
-      await recordCashEvent(ctx.db, {
-        storeId: sale.storeId,
-        shiftId: activeShift._id,
-        type: "return",
-        amountUSD: -finalRefundedUSD,
-        amountLBP: -finalRefundedLBP,
-        referenceType: "sale_return",
-        referenceId: returnId,
-        performedBy: args.userId,
-      });
-    }
+    // Refunds reduce drawer cash → negative deltas.
+    await recordCashEvent(ctx.db, {
+      storeId: sale.storeId,
+      shiftId: activeShift._id,
+      type: "return",
+      amountUSD: -finalRefundedUSD,
+      amountLBP: -finalRefundedLBP,
+      referenceType: "sale_return",
+      referenceId: returnId,
+      performedBy: args.userId,
+    });
 
     for (const v of validated) {
       await ctx.db.insert("saleReturnItems", {

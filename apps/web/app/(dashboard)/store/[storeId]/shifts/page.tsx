@@ -74,30 +74,6 @@ export default function ShiftsListPage() {
   const loading = currentPage === undefined;
   const count = shifts?.length ?? 0;
 
-  if (store && !store.shiftsEnabled) {
-    return (
-      <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
-        <PageHeader
-          icon={Clock}
-          title="Shifts"
-          subtitle="Cashier sessions and drawer reconciliation."
-        />
-        <Card>
-          <CardContent className="py-6 text-sm text-muted-foreground flex items-center justify-between gap-4">
-            <p>The Shifts feature is disabled for this store.</p>
-            {isPrivileged && (
-              <Link href={`/store/${storeId}/settings`}>
-                <Button variant="outline" size="sm">
-                  Enable in settings
-                </Button>
-              </Link>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
       <PageHeader

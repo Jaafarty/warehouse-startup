@@ -116,8 +116,7 @@ export default function NewSalePage() {
     api.shifts.getActive,
     userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
   );
-  const shiftsEnabled = store?.shiftsEnabled === true;
-  const shiftsBlocking = shiftsEnabled && activeShift === null;
+  const shiftsBlocking = activeShift === null;
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [productSearch, setProductSearch] = useState("");
