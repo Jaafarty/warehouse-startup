@@ -8,10 +8,12 @@ import { useQuery } from "convex/react";
 import {
   LayoutDashboard,
   ChevronRight,
-  ChevronsUpDown,
   Sparkles,
   LogOut,
   Settings,
+  Bell,
+  PanelLeftClose,
+  PanelLeftOpen,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,6 +30,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useCurrentUser } from "@/lib/use-current-user";
 import type { StorePermissions } from "@ware-house/shared";
+import { StoreSwitcher } from "@/components/layout/store-switcher";
 
 interface SidebarProps {
   storeId: string;
@@ -191,58 +194,35 @@ export function Sidebar({
         transition: "width 0.22s cubic-bezier(0.4, 0, 0.2, 1)",
       }}
     >
-      {/* Store switcher — goes to the store list ("All stores"), not a back step */}
+      {/* Store switcher — gradient + stripes strip matching PageHeader */}
       <div
         className={cn(
-          "flex items-center border-b border-sidebar-border",
+          "relative overflow-hidden flex items-center border-b border-sidebar-border",
           collapsed ? "h-14 justify-center px-2" : "h-14 px-3"
         )}
+        style={{
+          background:
+            "linear-gradient(135deg, var(--primary-soft) 0%, var(--accent-soft) 100%)",
+        }}
       >
-        {collapsed ? (
-          <Link
-            href="/dashboard"
-            title="All stores"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-white"
-            style={{
-              background:
-                "linear-gradient(135deg, var(--primary), oklch(0.62 0.16 165))",
-            }}
-          >
-            <span className="text-[12px] font-bold">
-              {storeName.slice(0, 1).toUpperCase()}
-            </span>
-          </Link>
-        ) : (
-          <Link
-            href="/dashboard"
-            title="Switch store"
-            className="flex items-center gap-2.5 min-w-0 w-full rounded-lg px-1.5 py-1 hover:bg-muted transition"
-          >
-            <div
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-white flex-shrink-0"
-              style={{
-                background:
-                  "linear-gradient(135deg, var(--primary), oklch(0.62 0.16 165))",
-              }}
-            >
-              <span className="text-[12px] font-bold">
-                {storeName.slice(0, 1).toUpperCase()}
-              </span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <p
-                className="font-semibold truncate text-[13px] text-sidebar-foreground leading-tight"
-                title={storeName}
-              >
-                {storeName}
-              </p>
-              <p className="text-[10px] text-muted-foreground leading-tight">
-                All stores
-              </p>
-            </div>
-            <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-          </Link>
-        )}
+        <div
+          aria-hidden
+          className="wh-pattern-stripes absolute inset-0 pointer-events-none"
+          style={{
+            maskImage:
+              "linear-gradient(to bottom right, rgba(0,0,0,0.55), rgba(0,0,0,0))",
+            WebkitMaskImage:
+              "linear-gradient(to bottom right, rgba(0,0,0,0.55), rgba(0,0,0,0))",
+          }}
+        />
+        <div className="relative w-full">
+          <StoreSwitcher
+            storeId={storeId}
+            storeName={storeName}
+            role={role}
+            collapsed={collapsed}
+          />
+        </div>
       </div>
 
       {/* Nav */}
@@ -351,26 +331,33 @@ export function Sidebar({
           </div>
         )}
 
-        {/* Profile menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            title={collapsed ? userName : undefined}
-            className={cn(
-              "flex items-center rounded-lg hover:bg-muted transition w-full",
-              collapsed ? "h-10 justify-center" : "gap-2.5 px-1.5 py-1.5"
-            )}
-          >
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-white flex-shrink-0"
-              style={{
-                background:
-                  "linear-gradient(135deg, var(--primary), oklch(0.62 0.16 165))",
-              }}
+        {/* Profile menu + sidebar collapse toggle */}
+        <div
+          className={cn(
+            "flex items-center w-full",
+            collapsed ? "flex-col gap-1" : "gap-1"
+          )}
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              title={collapsed ? userName : undefined}
+              className={cn(
+                "flex items-center rounded-lg hover:bg-muted transition",
+                collapsed
+                  ? "h-10 w-10 justify-center"
+                  : "flex-1 min-w-0 gap-2.5 px-1.5 py-1.5"
+              )}
             >
-              {initials}
-            </div>
-            {!collapsed && (
-              <>
+              <div
+                className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-white flex-shrink-0"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--primary), oklch(0.62 0.16 165))",
+                }}
+              >
+                {initials}
+              </div>
+              {!collapsed && (
                 <div className="min-w-0 flex-1 text-left leading-tight">
                   <p className="text-[12px] font-semibold text-sidebar-foreground truncate">
                     {userName}
@@ -379,47 +366,49 @@ export function Sidebar({
                     {role}
                   </p>
                 </div>
-                <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-              </>
-            )}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" side="top" className="w-56">
-            <div className="px-2 py-1.5">
-              <p className="text-sm font-medium truncate">{userName}</p>
-              <p className="text-xs text-muted-foreground truncate">
-                {userEmail}
-              </p>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push("/settings")}>
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => signOut({ redirectUrl: "/" })}
-              variant="destructive"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="top" className="w-56">
+              <div className="px-2 py-1.5">
+                <p className="text-sm font-medium truncate">{userName}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {userEmail}
+                </p>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push("/notifications")}>
+                <Bell className="h-4 w-4 mr-2" />
+                Notifications
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/settings")}>
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => signOut({ redirectUrl: "/" })}
+                variant="destructive"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        <button
-          onClick={() => setCollapsed((c) => !c)}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className={cn(
-            "flex items-center bg-transparent border-none cursor-pointer rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition text-[12px] font-medium w-full",
-            collapsed ? "h-10 justify-center" : "h-9 gap-2 px-2.5"
-          )}
-        >
-          <ChevronRight
-            className="h-4 w-4 transition-transform duration-200"
-            style={{ transform: collapsed ? "rotate(0deg)" : "rotate(180deg)" }}
-          />
-          {!collapsed && <span>Collapse</span>}
-        </button>
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition bg-transparent border-none cursor-pointer"
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       </div>
     </aside>
   );
