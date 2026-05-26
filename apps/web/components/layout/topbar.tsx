@@ -5,7 +5,15 @@ import { useRouter, usePathname } from "next/navigation";
 import { useClerk } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Bell, LogOut, User, Boxes, Search, ChevronRight } from "lucide-react";
+import {
+  Bell,
+  LogOut,
+  User,
+  Boxes,
+  Search,
+  ChevronRight,
+  ChevronLeft,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -88,10 +96,23 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
     .toUpperCase()
     .slice(0, 2);
 
+  const canGoBack = pathname !== "/dashboard" && pathname !== "/";
+
   return (
     <header className="flex h-[60px] items-center justify-between border-b bg-card px-6 flex-shrink-0">
-      {/* Left: logomark + breadcrumb (in store) */}
+      {/* Left: back + logomark + breadcrumb (in store) */}
       <div className="flex items-center gap-3 min-w-0">
+        {canGoBack && (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Go back"
+            onClick={() => router.back()}
+            className="text-muted-foreground hover:text-foreground flex-shrink-0"
+          >
+            <ChevronLeft className="h-[18px] w-[18px]" />
+          </Button>
+        )}
         <Link href="/dashboard" className="flex items-center gap-2.5 group flex-shrink-0">
           <div
             className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-white"
@@ -160,7 +181,7 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
         </div>
       )}
 
-      {/* Right: notifications + (profile only off-store; in-store it lives in the sidebar) */}
+      {/* Right: notifications + profile */}
       <div className="flex items-center gap-1">
         <Link href="/notifications">
           <Button
@@ -176,9 +197,8 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
           </Button>
         </Link>
 
-        {!inStore && (
-          <DropdownMenu>
-            <DropdownMenuTrigger className="inline-flex items-center gap-2 rounded-lg p-1 pr-2.5 hover:bg-muted transition">
+        <DropdownMenu>
+          <DropdownMenuTrigger className="inline-flex items-center gap-2 rounded-lg p-1 pr-2.5 hover:bg-muted transition">
               <div
                 className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-[11px] font-bold text-white"
                 style={{
@@ -212,9 +232,8 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
               </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
