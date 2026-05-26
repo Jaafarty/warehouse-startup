@@ -26,26 +26,46 @@ export const list = query({
       )
     ),
     search: v.optional(v.string()),
+    dateFrom: v.optional(v.number()),
+    dateTo: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await assertPageFunction(ctx.db, args.userId, args.storeId, "sales", "view_list");
 
     const status = args.status;
-    const sales = status
+    const { dateFrom, dateTo } = args;
+    const rawSales = status
       ? await ctx.db
           .query("sales")
           .withIndex("by_store_and_status", (q) =>
             q.eq("storeId", args.storeId).eq("status", status)
           )
           .order("desc")
-          .take(200)
+          .take(500)
       : await ctx.db
           .query("sales")
-          .withIndex("by_store_and_date", (q) =>
-            q.eq("storeId", args.storeId)
-          )
+          .withIndex("by_store_and_date", (q) => {
+            const base = q.eq("storeId", args.storeId);
+            if (dateFrom !== undefined && dateTo !== undefined) {
+              return base.gte("createdAt", dateFrom).lte("createdAt", dateTo);
+            }
+            if (dateFrom !== undefined) return base.gte("createdAt", dateFrom);
+            if (dateTo !== undefined) return base.lte("createdAt", dateTo);
+            return base;
+          })
           .order("desc")
           .take(200);
+
+    const sales =
+      status && (dateFrom !== undefined || dateTo !== undefined)
+        ? rawSales
+            .filter(
+              (s) =>
+                (dateFrom === undefined || s.createdAt >= dateFrom) &&
+                (dateTo === undefined || s.createdAt <= dateTo)
+            )
+            .slice(0, 200)
+        : rawSales.slice(0, 200);
 
     // Resolve creators
     const userCache: Record<string, string> = {};

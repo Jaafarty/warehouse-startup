@@ -47,6 +47,13 @@ export default function SalesPage() {
   const { userId } = useCurrentUser();
   const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "returned" | "partially_returned">("all");
   const [search, setSearch] = useState<string>("");
+  const [fromDate, setFromDate] = useState<string>("");
+  const [toDate, setToDate] = useState<string>("");
+
+  const fromMs = fromDate ? new Date(fromDate).getTime() : undefined;
+  const toMs = toDate
+    ? new Date(toDate).getTime() + 24 * 60 * 60 * 1000 - 1
+    : undefined;
 
   const sales = useQuery(
     api.sales.list,
@@ -56,6 +63,8 @@ export default function SalesPage() {
           userId,
           status: statusFilter !== "all" ? statusFilter : undefined,
           search: search || undefined,
+          dateFrom: fromMs,
+          dateTo: toMs,
         }
       : "skip"
   );
@@ -119,7 +128,7 @@ export default function SalesPage() {
         </Card>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-end gap-3">
         <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -143,6 +152,24 @@ export default function SalesPage() {
             <SelectItem value="returned">Returned</SelectItem>
           </SelectContent>
         </Select>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">From</label>
+          <Input
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="w-[160px]"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">To</label>
+          <Input
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="w-[160px]"
+          />
+        </div>
       </div>
 
       <Card>
