@@ -1,25 +1,37 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Space_Grotesk } from "next/font/google";
+import { Nav } from "@/components/landing/nav";
+import { Hero } from "@/components/landing/hero";
+import { Industries } from "@/components/landing/industries";
+import { Features } from "@/components/landing/features";
+import { Bento } from "@/components/landing/bento";
+import { HowItWorks } from "@/components/landing/how-it-works";
+import { Pricing } from "@/components/landing/pricing";
+import { Faq } from "@/components/landing/faq";
+import { FinalCta } from "@/components/landing/cta";
+import { Footer } from "@/components/landing/footer";
+
+const display = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-display",
+  display: "swap",
+});
 
 export default function HomePage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
-      <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold tracking-tight">Ware-House</h1>
-        <p className="text-lg text-muted-foreground max-w-md">
-          Modern inventory and sales management for small and medium businesses.
-        </p>
-      </div>
-      <div className="flex gap-4">
-        <Link href="/auth/sign-in">
-          <Button variant="outline" size="lg">
-            Sign In
-          </Button>
-        </Link>
-        <Link href="/auth/sign-up">
-          <Button size="lg">Get Started</Button>
-        </Link>
-      </div>
+    <div className={`${display.variable} bg-background text-foreground`}>
+      <Nav />
+      <main>
+        <Hero />
+        <Industries />
+        <Features />
+        <Bento />
+        <HowItWorks />
+        <Pricing />
+        <Faq />
+        <FinalCta />
+      </main>
+      <Footer />
     </div>
   );
 }
