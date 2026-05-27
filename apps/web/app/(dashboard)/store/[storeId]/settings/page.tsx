@@ -35,9 +35,30 @@ import {
   Store as StoreIcon,
   ShieldAlert,
   Info,
+  type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { formatDate } from "@ware-house/shared";
+
+// Small colored chip so each section reads with a hint of color rather than grey.
+function HeaderChip({
+  icon: Icon,
+  fg,
+  bg,
+}: {
+  icon: LucideIcon;
+  fg: string;
+  bg: string;
+}) {
+  return (
+    <div
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+      style={{ background: bg, color: fg }}
+    >
+      <Icon className="h-[18px] w-[18px]" />
+    </div>
+  );
+}
 
 export default function StoreSettingsPage() {
   const { storeId } = useParams<{ storeId: string }>();
@@ -78,6 +99,13 @@ export default function StoreSettingsPage() {
   const canManageStore = isOwner || store.role === "admin";
   const canDelete = isOwner && confirmText === store.name;
 
+  const roleTint =
+    store.role === "owner"
+      ? { fg: "var(--color-role-owner)", bg: "var(--primary-soft)" }
+      : store.role === "admin"
+        ? { fg: "var(--color-role-admin)", bg: "oklch(0.95 0.05 235)" }
+        : { fg: "var(--muted-foreground)", bg: "var(--muted)" };
+
   return (
     <div style={{ padding: "var(--wh-density-pad)" }} className="space-y-5">
       <PageHeader
@@ -90,8 +118,17 @@ export default function StoreSettingsPage() {
         <div className="lg:col-span-2 space-y-5 min-w-0">
           <Card>
             <CardHeader>
-              <CardTitle>General</CardTitle>
-              <CardDescription>Update your store details.</CardDescription>
+              <div className="flex items-center gap-3">
+                <HeaderChip
+                  icon={StoreIcon}
+                  fg="var(--primary)"
+                  bg="var(--primary-soft)"
+                />
+                <div className="min-w-0">
+                  <CardTitle>General</CardTitle>
+                  <CardDescription>Update your store details.</CardDescription>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <form action={handleUpdate} className="space-y-4">
@@ -123,13 +160,22 @@ export default function StoreSettingsPage() {
           {isOwner && (
             <Card className="border-destructive/50">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-destructive">
-                  <ShieldAlert className="h-4 w-4" />
-                  Danger Zone
-                </CardTitle>
-                <CardDescription>
-                  Deleting the store hides it from everyone and cannot be undone.
-                </CardDescription>
+                <div className="flex items-center gap-3">
+                  <HeaderChip
+                    icon={ShieldAlert}
+                    fg="var(--destructive)"
+                    bg="oklch(0.94 0.04 27)"
+                  />
+                  <div className="min-w-0">
+                    <CardTitle className="text-destructive">
+                      Danger Zone
+                    </CardTitle>
+                    <CardDescription>
+                      Deleting the store hides it from everyone and cannot be
+                      undone.
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <AlertDialog
@@ -188,10 +234,14 @@ export default function StoreSettingsPage() {
         <aside className="space-y-5 lg:sticky lg:top-4 lg:self-start">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <StoreIcon className="h-4 w-4 text-muted-foreground" />
-                Store info
-              </CardTitle>
+              <div className="flex items-center gap-3">
+                <HeaderChip
+                  icon={StoreIcon}
+                  fg="var(--primary)"
+                  bg="var(--primary-soft)"
+                />
+                <CardTitle className="text-base">Store info</CardTitle>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div>
@@ -199,8 +249,13 @@ export default function StoreSettingsPage() {
                 <p className="font-medium truncate">{store.name}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Your role</p>
-                <p className="font-medium capitalize">{store.role}</p>
+                <p className="text-xs text-muted-foreground mb-1">Your role</p>
+                <span
+                  className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize"
+                  style={{ background: roleTint.bg, color: roleTint.fg }}
+                >
+                  {store.role}
+                </span>
               </div>
               {store._creationTime && (
                 <div>
@@ -215,10 +270,14 @@ export default function StoreSettingsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Info className="h-4 w-4 text-muted-foreground" />
-                Need more?
-              </CardTitle>
+              <div className="flex items-center gap-3">
+                <HeaderChip
+                  icon={Info}
+                  fg="var(--accent-foreground)"
+                  bg="var(--accent-soft)"
+                />
+                <CardTitle className="text-base">Need more?</CardTitle>
+              </div>
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-muted-foreground">
               <p>

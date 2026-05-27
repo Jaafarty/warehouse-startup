@@ -25,12 +25,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -759,8 +760,8 @@ function CashEntryModal({
   const accentFg = isIn ? "var(--color-success)" : "var(--destructive)";
   const accentBg = isIn ? "var(--color-success-bg)" : "oklch(0.94 0.04 27)";
 
-  async function handleSubmit(ev: React.FormEvent) {
-    ev.preventDefault();
+  async function handleSubmit(ev?: React.FormEvent) {
+    ev?.preventDefault();
     if (!valid) return;
     const label = REASON_LABELS[reasonValue] ?? reasonValue;
     const reasonText = note.trim() ? `${label} — ${note.trim()}` : label;
@@ -776,40 +777,46 @@ function CashEntryModal({
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[480px] overflow-hidden p-0">
+    <Sheet open onOpenChange={(open) => !open && onClose()}>
+      <SheetContent side="right" className="w-full sm:max-w-md p-0 gap-0">
         {/* Accent bar */}
-        <div className="h-1 w-full" style={{ background: accentFg }} />
+        <div
+          className="h-1 w-full flex-shrink-0"
+          style={{ background: accentFg }}
+        />
 
-        <div className="px-6 pt-5 pb-6 space-y-5">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div
-                className="flex h-11 w-11 items-center justify-center rounded-lg flex-shrink-0"
-                style={{ background: accentBg, color: accentFg }}
-              >
-                {isIn ? (
-                  <ArrowDownToLine className="h-5 w-5" />
-                ) : (
-                  <ArrowUpFromLine className="h-5 w-5" />
-                )}
-              </div>
-              <div className="flex flex-col text-left">
-                <DialogTitle className="text-[17px] tracking-tight">
-                  {isIn ? "Cash In" : "Cash Out"}
-                </DialogTitle>
-                <DialogDescription className="text-[12px]">
-                  {isIn
-                    ? "Record money added to the drawer."
-                    : "Record money taken from the drawer."}
-                </DialogDescription>
-              </div>
+        <SheetHeader className="p-6 pb-4">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex h-11 w-11 items-center justify-center rounded-lg flex-shrink-0"
+              style={{ background: accentBg, color: accentFg }}
+            >
+              {isIn ? (
+                <ArrowDownToLine className="h-5 w-5" />
+              ) : (
+                <ArrowUpFromLine className="h-5 w-5" />
+              )}
             </div>
-          </DialogHeader>
+            <div className="flex flex-col text-left">
+              <SheetTitle className="text-[17px] tracking-tight">
+                {isIn ? "Cash In" : "Cash Out"}
+              </SheetTitle>
+              <SheetDescription className="text-[12px]">
+                {isIn
+                  ? "Record money added to the drawer."
+                  : "Record money taken from the drawer."}
+              </SheetDescription>
+            </div>
+          </div>
+        </SheetHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Amount inputs — prominent */}
-            <div className="grid grid-cols-2 gap-3">
+        <form
+          id="cash-entry-form"
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto px-6 pb-6 space-y-5"
+        >
+          {/* Amount inputs — prominent */}
+          <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label
                   htmlFor="cash-usd"
@@ -907,29 +914,35 @@ function CashEntryModal({
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-1">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={!valid || submitting}
-                style={{
-                  background: accentFg,
-                  color: "var(--primary-foreground)",
-                }}
-              >
-                {isIn ? (
-                  <Plus className="h-4 w-4 mr-1.5" />
-                ) : (
-                  <Minus className="h-4 w-4 mr-1.5" />
-                )}
-                {submitting ? "Saving…" : isIn ? "Cash In" : "Cash Out"}
-              </Button>
-            </div>
-          </form>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </form>
+
+        <SheetFooter className="flex-row justify-end gap-2 border-t p-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={submitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={() => handleSubmit()}
+            disabled={!valid || submitting}
+            style={{
+              background: accentFg,
+              color: "var(--primary-foreground)",
+            }}
+          >
+            {isIn ? (
+              <Plus className="h-4 w-4 mr-1.5" />
+            ) : (
+              <Minus className="h-4 w-4 mr-1.5" />
+            )}
+            {submitting ? "Saving…" : isIn ? "Cash In" : "Cash Out"}
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

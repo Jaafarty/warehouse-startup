@@ -36,6 +36,24 @@ interface PermissionEditorProps {
   onChange: (p: StorePermissions) => void;
 }
 
+// Per-page accent tints so the access list reads as a colorful map of the app
+// rather than a wall of grey. Hues stay clear of purple/violet per brand rules.
+const PAGE_TINT: Record<string, { fg: string; bg: string }> = {
+  inventory: { fg: "oklch(0.55 0.17 255)", bg: "oklch(0.96 0.04 255)" },
+  categories: { fg: "oklch(0.60 0.15 75)", bg: "oklch(0.96 0.06 80)" },
+  sales: { fg: "oklch(0.57 0.15 160)", bg: "oklch(0.95 0.05 160)" },
+  returns: { fg: "oklch(0.60 0.20 25)", bg: "oklch(0.96 0.04 27)" },
+  analytics: { fg: "oklch(0.56 0.16 235)", bg: "oklch(0.96 0.04 235)" },
+  shifts: { fg: "oklch(0.56 0.13 200)", bg: "oklch(0.96 0.04 200)" },
+  cash: { fg: "oklch(0.55 0.13 185)", bg: "oklch(0.95 0.05 185)" },
+  registers: { fg: "oklch(0.60 0.16 50)", bg: "oklch(0.96 0.05 55)" },
+  members: { fg: "oklch(0.56 0.15 140)", bg: "oklch(0.95 0.05 140)" },
+  settings: { fg: "oklch(0.58 0.17 350)", bg: "oklch(0.96 0.04 350)" },
+  roles: { fg: "oklch(0.58 0.20 15)", bg: "oklch(0.96 0.04 18)" },
+  exchange_rate: { fg: "oklch(0.58 0.15 110)", bg: "oklch(0.95 0.06 115)" },
+};
+const DEFAULT_TINT = { fg: "var(--muted-foreground)", bg: "var(--muted)" };
+
 type ConfirmState = {
   open: boolean;
   dep: (typeof FUNCTION_DEPENDENCIES)[number] | null;
@@ -175,13 +193,25 @@ export function PermissionEditor({ permissions, onChange }: PermissionEditorProp
           const isEnabled = pagePerm.enabled;
           const locked = LOCKED_FUNCTIONS[page] ?? [];
           const fns = PAGE_FUNCTIONS[page];
+          const tint = PAGE_TINT[page] ?? DEFAULT_TINT;
 
           return (
-            <Card key={page}>
+            <Card
+              key={page}
+              className="transition-shadow"
+              style={
+                isEnabled
+                  ? { boxShadow: `inset 4px 0 0 0 ${tint.fg}` }
+                  : undefined
+              }
+            >
               <CardHeader className="border-b">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                    <div
+                      className="flex size-8 shrink-0 items-center justify-center rounded-md"
+                      style={{ background: tint.bg, color: tint.fg }}
+                    >
                       <Icon className="size-4" />
                     </div>
                     <div className="min-w-0">
@@ -191,7 +221,10 @@ export function PermissionEditor({ permissions, onChange }: PermissionEditorProp
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     {isEnabled && (
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge
+                        className="text-xs border-transparent"
+                        style={{ background: tint.bg, color: tint.fg }}
+                      >
                         Enabled
                       </Badge>
                     )}

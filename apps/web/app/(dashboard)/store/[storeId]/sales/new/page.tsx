@@ -15,6 +15,7 @@ import {
   ShoppingCart,
   Search,
   Receipt,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -273,21 +274,44 @@ export default function NewSalePage() {
           title="New Sale"
           subtitle="You need an active shift to record a sale."
         />
-        <div className="max-w-2xl">
-          <Card>
-            <CardHeader>
-              <CardTitle>No active shift</CardTitle>
-              <CardDescription>
-                This store requires cashiers to open a shift before recording
-                sales.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link href={`/store/${storeId}/shifts/new`}>
-                <Button>Open shift</Button>
+        <div className="mx-auto mt-2 max-w-md">
+          <div
+            className="flex flex-col items-center px-8 py-12 text-center"
+            style={{
+              background: "var(--card)",
+              borderRadius: "var(--radius-xl)",
+              boxShadow: "var(--shadow-card)",
+              border: "1px solid var(--border)",
+            }}
+          >
+            <div
+              className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl"
+              style={{
+                background: "var(--primary-soft)",
+                color: "var(--primary)",
+              }}
+            >
+              <Clock className="h-7 w-7" />
+            </div>
+            <h2 className="text-[17px] font-semibold tracking-tight">
+              No active shift
+            </h2>
+            <p className="mt-2 max-w-xs text-[13px] leading-relaxed text-muted-foreground">
+              This store requires cashiers to open a shift before recording
+              sales. Open one to start ringing up customers.
+            </p>
+            <div className="mt-6 flex items-center gap-2">
+              <Link href={`/store/${storeId}/sales`}>
+                <Button variant="outline">Back to sales</Button>
               </Link>
-            </CardContent>
-          </Card>
+              <Link href={`/store/${storeId}/shifts/new`}>
+                <Button>
+                  <Clock className="h-4 w-4 mr-1.5" />
+                  Open shift
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     );
