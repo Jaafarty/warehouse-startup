@@ -87,8 +87,8 @@ export function PageHeader({
 
       <div
         className={cn(
-          "relative flex flex-wrap items-center gap-4",
-          isPlain ? "py-4" : "px-6 py-5",
+          "relative flex flex-wrap items-center gap-3 sm:gap-4",
+          isPlain ? "py-4" : "px-4 py-4 sm:px-6 sm:py-5",
           right ? "justify-between" : "justify-start"
         )}
       >

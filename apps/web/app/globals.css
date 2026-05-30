@@ -188,6 +188,13 @@
   --wh-density-pad: 28px 32px;
 }
 
+/* Tighter page padding on phones so content isn't squeezed. */
+@media (max-width: 640px) {
+  :root {
+    --wh-density-pad: 16px 16px;
+  }
+}
+
 /* ─────────────────────────────────────────
    DARK MODE
    ───────────────────────────────────────── */
