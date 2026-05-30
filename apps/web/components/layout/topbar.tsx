@@ -13,7 +13,9 @@ import {
   Search,
   ChevronRight,
   ChevronLeft,
+  Menu,
 } from "lucide-react";
+import { useMobileNav } from "@/components/layout/mobile-nav-context";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -83,6 +85,8 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
   const inStore = segments[0] === "store";
   const crumbs = inStore ? buildCrumbs(segments) : [];
 
+  const { setOpen: setMobileNavOpen } = useMobileNav();
+
   const { userId } = useCurrentUser();
   const unreadCount = useQuery(
     api.notifications.unreadCount,
@@ -99,9 +103,20 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
   const canGoBack = pathname !== "/dashboard" && pathname !== "/";
 
   return (
-    <header className="flex h-[60px] items-center justify-between border-b bg-card px-6 flex-shrink-0">
-      {/* Left: back + logomark + breadcrumb (in store) */}
-      <div className="flex items-center gap-3 min-w-0">
+    <header className="flex h-[60px] items-center justify-between border-b bg-card px-3 sm:px-6 flex-shrink-0">
+      {/* Left: menu (mobile) + back + logomark + breadcrumb (in store) */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        {inStore && (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Open menu"
+            onClick={() => setMobileNavOpen(true)}
+            className="md:hidden text-muted-foreground hover:text-foreground flex-shrink-0"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        )}
         {canGoBack && (
           <Button
             variant="ghost"
@@ -132,7 +147,7 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
         {crumbs.length > 0 && (
           <nav
             aria-label="Breadcrumb"
-            className="flex items-center gap-1.5 min-w-0 border-l pl-3 text-[13px]"
+            className="hidden sm:flex items-center gap-1.5 min-w-0 border-l pl-3 text-[13px]"
           >
             {crumbs.map((c, i) => {
               const isLast = i === crumbs.length - 1;
