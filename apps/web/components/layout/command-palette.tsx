@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import {
+  Command,
   CommandDialog,
   CommandInput,
   CommandList,
@@ -201,8 +202,9 @@ export function CommandPalette({
       title="Command palette"
       description="Search actions and pages"
     >
-      <CommandInput placeholder="Type a command or search… (e.g. add product)" />
-      <CommandList>
+      <Command>
+        <CommandInput placeholder="Type a command or search… (e.g. add product)" />
+        <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
 
         {actions.length > 0 && (
@@ -244,7 +246,8 @@ export function CommandPalette({
             })}
           </CommandGroup>
         )}
-      </CommandList>
+        </CommandList>
+      </Command>
     </CommandDialog>
   );
 }
