@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useClerk } from "@clerk/nextjs";
@@ -11,7 +10,6 @@ import {
   LogOut,
   User,
   Boxes,
-  Search,
   ChevronRight,
   ChevronLeft,
 } from "lucide-react";
@@ -85,20 +83,6 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
   const inStore = segments[0] === "store";
   const storeId = inStore ? segments[1] : undefined;
   const crumbs = inStore ? buildCrumbs(segments) : [];
-
-  // Command palette open state + ⌘K / Ctrl+K toggle.
-  const [paletteOpen, setPaletteOpen] = React.useState(false);
-  React.useEffect(() => {
-    if (!inStore) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setPaletteOpen((o) => !o);
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [inStore]);
 
   const { userId } = useCurrentUser();
   const unreadCount = useQuery(
@@ -183,28 +167,8 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
         )}
       </div>
 
-      {/* Center: command palette trigger — only inside store */}
-      {inStore && storeId && (
-        <>
-          <button
-            type="button"
-            onClick={() => setPaletteOpen(true)}
-            aria-label="Open command palette"
-            className="relative hidden md:flex items-center w-[360px] max-w-[40vw] h-9 rounded-lg border bg-background-subtle pl-9 pr-12 text-[13px] text-muted-foreground outline-none hover:border-primary transition cursor-pointer"
-          >
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <span className="truncate">Search actions…</span>
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 rounded border bg-card px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
-              ⌘K
-            </span>
-          </button>
-          <CommandPalette
-            storeId={storeId}
-            open={paletteOpen}
-            onOpenChange={setPaletteOpen}
-          />
-        </>
-      )}
+      {/* Center: inline command palette (combobox, not modal) — only in store */}
+      {inStore && storeId && <CommandPalette storeId={storeId} />}
 
       {/* Right: notifications + profile */}
       <div className="flex items-center gap-1">
