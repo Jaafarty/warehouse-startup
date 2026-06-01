@@ -2,6 +2,7 @@
 
 import { ArrowRight } from "lucide-react";
 import { Container, Display, Eyebrow, PrimaryCTA, SecondaryCTA } from "./ui";
+import { dashboardLinks } from "@/lib/links";
 import { Stagger, StaggerItem, Reveal, Parallax } from "./reveal";
 import { HeroDashboard } from "./previews";
 
@@ -40,7 +41,7 @@ export function Hero() {
           </StaggerItem>
           <StaggerItem>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <PrimaryCTA href="/auth/sign-up">
+              <PrimaryCTA href={dashboardLinks.signUp}>
                 Start free
                 <ArrowRight size={17} strokeWidth={2} />
               </PrimaryCTA>

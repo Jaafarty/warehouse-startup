@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { Boxes, Menu, X } from "lucide-react";
 import { Container, PrimaryCTA } from "./ui";
+import { dashboardLinks } from "@/lib/links";
 
 const LINKS = [
     { label: "Features", href: "#features" },
@@ -87,7 +88,7 @@ export function Nav() {
                 <div className="hidden items-center gap-3 md:flex">
                     {!isLoaded ? null : isSignedIn ? (
                         <PrimaryCTA
-                            href="/dashboard"
+                            href={dashboardLinks.dashboard}
                             className="h-10 px-5 text-sm"
                         >
                             Dashboard
@@ -95,13 +96,13 @@ export function Nav() {
                     ) : (
                         <>
                             <Link
-                                href="/auth/sign-in"
+                                href={dashboardLinks.signIn}
                                 className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
                             >
                                 Sign in
                             </Link>
                             <PrimaryCTA
-                                href="/auth/sign-up"
+                                href={dashboardLinks.signUp}
                                 className="h-10 px-5 text-sm"
                             >
                                 Start free
@@ -139,18 +140,18 @@ export function Nav() {
                         ))}
                         <div className="mt-2 flex flex-col gap-2 border-t border-border pt-3">
                             {!isLoaded ? null : isSignedIn ? (
-                                <PrimaryCTA href="/dashboard" className="h-11">
+                                <PrimaryCTA href={dashboardLinks.dashboard} className="h-11">
                                     Dashboard
                                 </PrimaryCTA>
                             ) : (
                                 <>
                                     <Link
-                                        href="/auth/sign-in"
+                                        href={dashboardLinks.signIn}
                                         className="rounded-xl px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
                                     >
                                         Sign in
                                     </Link>
-                                    <PrimaryCTA href="/auth/sign-up" className="h-11">
+                                    <PrimaryCTA href={dashboardLinks.signUp} className="h-11">
                                         Start free
                                     </PrimaryCTA>
                                 </>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Boxes } from "lucide-react";
 import { Container } from "./ui";
+import { dashboardLinks } from "@/lib/links";
 
 const COLUMNS = [
   {
@@ -15,8 +16,8 @@ const COLUMNS = [
   {
     title: "Account",
     links: [
-      { label: "Sign in", href: "/auth/sign-in" },
-      { label: "Start free", href: "/auth/sign-up" },
+      { label: "Sign in", href: dashboardLinks.signIn },
+      { label: "Start free", href: dashboardLinks.signUp },
     ],
   },
   {

@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 import { Container, Display, PrimaryCTA, SecondaryCTA } from "./ui";
+import { dashboardLinks } from "@/lib/links";
 import { Reveal, Stagger, StaggerItem } from "./reveal";
 
 /* TODO: placeholder pricing — replace amounts/limits with your real plans. */
@@ -16,7 +17,7 @@ const TIERS = [
       "Sales, returns & basic analytics",
     ],
     cta: "Start free",
-    href: "/auth/sign-up",
+    href: dashboardLinks.signUp,
     highlight: false,
   },
   {
@@ -31,7 +32,7 @@ const TIERS = [
       "CSV import & export",
     ],
     cta: "Start free",
-    href: "/auth/sign-up",
+    href: dashboardLinks.signUp,
     highlight: true,
   },
   {
@@ -46,7 +47,7 @@ const TIERS = [
       "Priority support",
     ],
     cta: "Contact sales",
-    href: "/auth/sign-up",
+    href: dashboardLinks.signUp,
     highlight: false,
   },
 ];
