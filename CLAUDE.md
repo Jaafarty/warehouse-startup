@@ -3,10 +3,11 @@
 ## Commands
 
 - `npm run dev` — Start all dev servers (turbo)
-- From `apps/web`: `npx next dev` — Start Next.js only
-- From `apps/web`: `npx convex dev` — Start Convex dev server (requires account)
-- From `apps/web`: `npx next build` — Verify build
-- `npx shadcn@latest add <component>` — Add shadcn components (run from apps/web)
+- From `apps/dashboard`: `npx next dev` — Start dashboard app only
+- From `apps/dashboard`: `npx convex dev` — Start Convex dev server (requires account)
+- From `apps/dashboard`: `npx next build` — Verify dashboard build
+- From `apps/landing`: `npx next dev` — Start landing app only
+- `npx shadcn@latest add <component>` — Add shadcn components (run from apps/dashboard)
 
 ## Project Overview
 
@@ -27,7 +28,7 @@ Cloud-based inventory and sales management SaaS for small/medium businesses. Sto
 
 ```
 Ware-House/
-├── apps/web/                       # Next.js frontend + Convex backend (consolidated)
+├── apps/dashboard/                 # Authenticated dashboard + Convex backend
 │   ├── app/                        # App Router pages
 │   │   ├── (dashboard)/            # Auth-guarded route group
 │   │   │   ├── dashboard/          # Store selector
@@ -77,6 +78,7 @@ Ware-House/
 │   │   ├── convex.tsx              # ConvexProviderWithClerk wrapper
 │   │   └── utils.ts
 │   └── proxy.ts                    # Clerk middleware for route protection (Next.js 16 "proxy" filename)
+├── apps/landing/                   # Public marketing site
 ├── packages/shared/src/            # @ware-house/shared
 │   ├── types/                      # auth, store, product, sale
 │   ├── validation/                 # Zod schemas
@@ -111,7 +113,7 @@ Ware-House/
 
 ### Convex
 
-- `convex/` lives inside `apps/web/` — no separate backend app
+- `convex/` lives inside `apps/dashboard/` — no separate backend app
 - `convex/_generated/` has stub files; run `npx convex dev` to generate real types
 - `convex/` excluded from Next.js tsconfig
 - Use `(q: any) =>` for query index callbacks (stubs lack full types)
@@ -124,7 +126,7 @@ Ware-House/
 
 ### Required Env Vars
 
-`apps/web/.env.local`:
+`apps/dashboard/.env.local`:
 - `NEXT_PUBLIC_CONVEX_URL`
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`
 - `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/auth/sign-in`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/auth/sign-up`
