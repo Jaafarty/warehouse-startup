@@ -78,9 +78,13 @@ export default function StoreDashboardPage() {
     isPrivileged || (shiftFns.view_own ?? false);
   const canOpenShift = isPrivileged || (shiftFns.open_shift ?? false);
 
+  const canViewRate =
+    isPrivileged ||
+    (store?.effectivePermissions?.exchange_rate?.functions?.view_list ?? false) ||
+    (store?.effectivePermissions?.sales?.functions?.create_sale ?? false);
   const rate = useQuery(
     api.exchangeRates.getCurrent,
-    userId ? { storeId: storeId as Id<"stores">, userId } : "skip"
+    userId && canViewRate ? { storeId: storeId as Id<"stores">, userId } : "skip"
   );
   const canSetRate =
     isPrivileged ||

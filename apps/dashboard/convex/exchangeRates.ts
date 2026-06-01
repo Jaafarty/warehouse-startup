@@ -11,6 +11,8 @@ export const getCurrent = query({
     await assertAnyPageFunction(ctx.db, args.userId, args.storeId, [
       ["exchange_rate", "view_list"],
       ["sales", "create_sale"],
+      ["inventory", "add_product"],
+      ["inventory", "edit_product"],
     ]);
     const row = await getCurrentRateRow(ctx.db, args.storeId);
     if (!row) return null;
