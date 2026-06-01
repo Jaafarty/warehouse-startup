@@ -203,6 +203,11 @@ function SidebarFooter({
     onToggleCollapse?: () => void;
 }) {
     const { signOut } = useClerk();
+    const { userId } = useCurrentUser();
+    const unreadCount = useQuery(
+        api.notifications.unreadCount,
+        userId ? { userId } : "skip",
+    );
     return (
         <div
             className={cn(
@@ -278,6 +283,19 @@ function SidebarFooter({
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
+
+                <button
+                    type="button"
+                    onClick={() => onProfileNavigate("/notifications")}
+                    aria-label="Notifications"
+                    title="Notifications"
+                    className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition bg-transparent border-none cursor-pointer"
+                >
+                    <Bell className="h-4 w-4" />
+                    {unreadCount != null && unreadCount > 0 && (
+                        <span className="absolute right-2 top-2 h-2 min-w-2 rounded-full bg-destructive ring-2 ring-sidebar" />
+                    )}
+                </button>
 
                 {onToggleCollapse && (
                     <button

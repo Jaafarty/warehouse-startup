@@ -388,8 +388,8 @@ export default function CashPage() {
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2.5">
-        <div className="relative flex-1 min-w-[240px]">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5">
+        <div className="relative w-full sm:flex-1 sm:min-w-[240px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             value={search}
@@ -398,13 +398,13 @@ export default function CashPage() {
             className="pl-9"
           />
         </div>
-        <div className="inline-flex items-center gap-1.5">
+        <div className="flex w-full sm:w-auto sm:inline-flex items-center gap-1.5">
           <Input
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
             aria-label="From date"
-            className="w-[158px]"
+            className="flex-1 sm:flex-none sm:w-[158px]"
           />
           <span className="text-[12px] text-muted-foreground">–</span>
           <Input
@@ -412,7 +412,7 @@ export default function CashPage() {
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
             aria-label="To date"
-            className="w-[158px]"
+            className="flex-1 sm:flex-none sm:w-[158px]"
           />
           {dateActive && (
             <Button
@@ -701,7 +701,7 @@ function SegmentedTypeFilter({
   ];
   return (
     <div
-      className="inline-flex p-[3px] gap-0.5 rounded-lg border"
+      className="inline-flex w-full sm:w-auto p-[3px] gap-0.5 rounded-lg border"
       style={{
         background: "var(--card)",
         borderColor: "var(--border)",
@@ -715,7 +715,7 @@ function SegmentedTypeFilter({
             key={o.v}
             type="button"
             onClick={() => onChange(o.v)}
-            className="h-[30px] px-3.5 rounded-md text-[12px] font-semibold border-none cursor-pointer transition"
+            className="flex-1 sm:flex-none h-[30px] px-3.5 rounded-md text-[12px] font-semibold border-none cursor-pointer transition"
             style={{
               background: active ? "var(--secondary)" : "transparent",
               color: active ? "var(--foreground)" : "var(--muted-foreground)",

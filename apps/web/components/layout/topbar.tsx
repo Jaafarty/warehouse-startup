@@ -185,7 +185,9 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
       {/* Center: inline command palette (combobox, not modal) — only in store */}
       {inStore && storeId && <CommandPalette storeId={storeId} />}
 
-      {/* Right: notifications + profile */}
+      {/* Right: notifications + profile — only outside a store.
+          In a store these live in the sidebar footer (bottom-left). */}
+      {!inStore && (
       <div className="flex items-center gap-1">
         <Link href="/notifications">
           <Button
@@ -239,6 +241,7 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      )}
     </header>
   );
 }

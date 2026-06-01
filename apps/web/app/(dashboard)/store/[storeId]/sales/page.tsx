@@ -128,8 +128,8 @@ export default function SalesPage() {
         </Card>
       )}
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="relative flex-1 min-w-[240px]">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3">
+        <div className="relative w-full sm:flex-1 sm:min-w-[240px]">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={search}
@@ -142,7 +142,7 @@ export default function SalesPage() {
           value={statusFilter}
           onValueChange={(v) => setStatusFilter((v ?? "all") as "all" | "completed" | "returned" | "partially_returned")}
         >
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full sm:w-[200px]">
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -152,22 +152,22 @@ export default function SalesPage() {
             <SelectItem value="returned">Returned</SelectItem>
           </SelectContent>
         </Select>
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 w-full sm:w-auto">
           <label className="text-xs text-muted-foreground">From</label>
           <Input
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="w-[160px]"
+            className="w-full sm:w-[160px]"
           />
         </div>
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 w-full sm:w-auto">
           <label className="text-xs text-muted-foreground">To</label>
           <Input
             type="date"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="w-[160px]"
+            className="w-full sm:w-[160px]"
           />
         </div>
       </div>

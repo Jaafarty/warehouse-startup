@@ -211,7 +211,7 @@ function SegmentedScope({
   ];
   return (
     <div
-      className="inline-flex p-[3px] gap-0.5 rounded-lg border"
+      className="inline-flex w-full sm:w-auto p-[3px] gap-0.5 rounded-lg border"
       style={{
         background: "var(--card)",
         borderColor: "var(--border)",
@@ -225,7 +225,7 @@ function SegmentedScope({
             key={o.v}
             type="button"
             onClick={() => onChange(o.v)}
-            className="h-[30px] px-3.5 rounded-md text-[12px] font-semibold border-none cursor-pointer transition"
+            className="flex-1 sm:flex-none h-[30px] px-3.5 rounded-md text-[12px] font-semibold border-none cursor-pointer transition"
             style={{
               background: active ? "var(--secondary)" : "transparent",
               color: active ? "var(--foreground)" : "var(--muted-foreground)",

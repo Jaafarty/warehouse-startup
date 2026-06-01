@@ -188,8 +188,8 @@ export default function InventoryPage() {
       />
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[240px]">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+        <div className="relative w-full sm:flex-1 sm:min-w-[240px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search products..."
@@ -199,7 +199,7 @@ export default function InventoryPage() {
           />
         </div>
         <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v ?? "all")}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="All categories">
               {(value: string) => !value || value === "all" ? "All categories" : (categories?.find((cat) => cat._id === value)?.name ?? value)}
             </SelectValue>
@@ -217,7 +217,7 @@ export default function InventoryPage() {
           value={stockFilter}
           onValueChange={(v) => setStockFilter((v ?? "all") as "all" | "low" | "out")}
         >
-          <SelectTrigger className="w-[170px]">
+          <SelectTrigger className="w-full sm:w-[170px]">
             <SelectValue placeholder="All stock">
               {(value: string) =>
                 value === "low"
@@ -248,6 +248,7 @@ export default function InventoryPage() {
           variant={showArchived ? "secondary" : "outline"}
           size="sm"
           onClick={() => setShowArchived(!showArchived)}
+          className="w-full sm:w-auto"
         >
           <Archive className="h-4 w-4 mr-1" />
           {showArchived ? "Showing Archived" : "Show Archived"}

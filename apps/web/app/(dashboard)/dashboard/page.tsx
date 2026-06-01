@@ -58,7 +58,7 @@ export default function DashboardPage() {
 
     return (
         <div className="p-6 max-w-4xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-bold">Your Stores</h1>
                     <p className="text-muted-foreground">
@@ -139,21 +139,28 @@ export default function DashboardPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                     {stores.map((store) => (
                         <Link key={store._id} href={`/store/${store._id}`}>
-                            <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
+                            <Card className="hover:border-primary/50 hover:shadow-md transition-all cursor-pointer h-full">
                                 <CardHeader>
-                                    <div className="flex items-center justify-between">
-                                        <CardTitle className="text-lg">
-                                            {store.name}
-                                        </CardTitle>
-                                        <Badge variant="secondary">
-                                            {store.role}
-                                        </Badge>
+                                    <div className="flex items-start gap-4">
+                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                            <Store className="h-6 w-6" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <CardTitle className="text-lg truncate">
+                                                    {store.name}
+                                                </CardTitle>
+                                                <Badge variant="secondary">
+                                                    {store.role}
+                                                </Badge>
+                                            </div>
+                                            {store.description && (
+                                                <CardDescription className="mt-1 line-clamp-2">
+                                                    {store.description}
+                                                </CardDescription>
+                                            )}
+                                        </div>
                                     </div>
-                                    {store.description && (
-                                        <CardDescription>
-                                            {store.description}
-                                        </CardDescription>
-                                    )}
                                 </CardHeader>
                             </Card>
                         </Link>
