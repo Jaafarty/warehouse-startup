@@ -239,7 +239,7 @@ export function CommandPalette({ storeId }: CommandPaletteProps) {
             onValueChange={setQuery}
             onFocus={() => setOpen(true)}
             placeholder="Search actions…"
-            className="h-full w-full bg-transparent pl-9 pr-12 text-[13px] text-foreground placeholder:text-muted-foreground outline-none"
+            className="h-full w-full bg-transparent pl-9 pr-12 text-[13px] text-foreground placeholder:text-muted-foreground outline-none focus-visible:shadow-none"
           />
           <kbd
             className={cn(
