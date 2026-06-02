@@ -95,12 +95,12 @@ export function Nav() {
                         </PrimaryCTA>
                     ) : (
                         <>
-                            <Link
+                            <a
                                 href={dashboardLinks.signIn}
                                 className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
                             >
                                 Sign in
-                            </Link>
+                            </a>
                             <PrimaryCTA
                                 href={dashboardLinks.signUp}
                                 className="h-10 px-5 text-sm"
@@ -145,12 +145,12 @@ export function Nav() {
                                 </PrimaryCTA>
                             ) : (
                                 <>
-                                    <Link
+                                    <a
                                         href={dashboardLinks.signIn}
                                         className="rounded-xl px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
                                     >
                                         Sign in
-                                    </Link>
+                                    </a>
                                     <PrimaryCTA href={dashboardLinks.signUp} className="h-11">
                                         Start free
                                     </PrimaryCTA>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Boxes } from "lucide-react";
 import { Container } from "./ui";
-import { dashboardLinks } from "@/lib/links";
+import { dashboardLinks, isExternalLink } from "@/lib/links";
 
 const COLUMNS = [
   {
@@ -52,16 +52,27 @@ export function Footer() {
                 {col.title}
               </h4>
               <ul className="mt-4 space-y-2.5">
-                {col.links.map((l) => (
-                  <li key={l.label}>
-                    <Link
-                      href={l.href}
-                      className="text-sm text-foreground/80 transition-colors hover:text-foreground"
-                    >
-                      {l.label}
-                    </Link>
-                  </li>
-                ))}
+                {col.links.map((l) =>
+                  isExternalLink(l.href) ? (
+                    <li key={l.label}>
+                      <a
+                        href={l.href}
+                        className="text-sm text-foreground/80 transition-colors hover:text-foreground"
+                      >
+                        {l.label}
+                      </a>
+                    </li>
+                  ) : (
+                    <li key={l.label}>
+                      <Link
+                        href={l.href}
+                        className="text-sm text-foreground/80 transition-colors hover:text-foreground"
+                      >
+                        {l.label}
+                      </Link>
+                    </li>
+                  )
+                )}
               </ul>
             </div>
           ))}

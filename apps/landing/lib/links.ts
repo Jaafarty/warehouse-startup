@@ -10,3 +10,10 @@ export const dashboardLinks = {
   signIn: `${DASHBOARD_URL}/auth/sign-in`,
   signUp: `${DASHBOARD_URL}/auth/sign-up`,
 };
+
+// Cross-origin links (the dashboard subdomain) must be plain <a> anchors so the
+// browser performs a real navigation to the other origin. next/link is for
+// internal client-side routing only.
+export function isExternalLink(href: string) {
+  return /^https?:\/\//.test(href);
+}
