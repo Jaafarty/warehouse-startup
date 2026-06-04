@@ -16,7 +16,6 @@ import {
     type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { landingUrl } from "@/lib/links";
 import { PAGE_KEYS, type PageKey } from "@ware-house/shared";
 import { PAGE_META } from "@/components/permissions/page-meta";
 import {
@@ -276,7 +275,7 @@ function SidebarFooter({
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                            onClick={() => signOut({ redirectUrl: landingUrl })}
+                            onClick={() => signOut({ redirectUrl: process.env.NEXT_PUBLIC_LANDING_URL })}
                             variant="destructive"
                         >
                             <LogOut className="h-4 w-4 mr-2" />
