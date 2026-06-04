@@ -31,7 +31,7 @@ const TIERS = [
       "Customers & full analytics",
       "CSV import & export",
     ],
-    cta: "Start free",
+    cta: "Contact sales",
     href: dashboardLinks.signUp,
     highlight: true,
   },
