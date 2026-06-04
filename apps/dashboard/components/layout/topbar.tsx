@@ -15,6 +15,7 @@ import {
   Menu,
 } from "lucide-react";
 import { useMobileNav } from "@/components/layout/mobile-nav-context";
+import { landingUrl } from "@/lib/links";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -232,7 +233,7 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => signOut({ redirectUrl: "/" })}
+                onClick={() => signOut({ redirectUrl: landingUrl })}
                 variant="destructive"
               >
                 <LogOut className="h-4 w-4 mr-2" />
