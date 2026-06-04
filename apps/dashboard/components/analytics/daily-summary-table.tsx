@@ -35,6 +35,35 @@ function dateLabel(iso: string): string {
   });
 }
 
+function HeaderBtn({
+  k,
+  label,
+  right,
+  sortKey,
+  sortDir,
+  onToggle,
+}: {
+  k: SortKey;
+  label: string;
+  right?: boolean;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  onToggle: (key: SortKey) => void;
+}) {
+  const Icon =
+    sortKey !== k ? ArrowUpDown : sortDir === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(k)}
+      className={`flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground ${right ? "ml-auto" : ""}`}
+    >
+      {label}
+      <Icon className="h-3 w-3" />
+    </button>
+  );
+}
+
 export function DailySummaryTable({ data }: { data: DailyRow[] | undefined }) {
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -82,37 +111,49 @@ export function DailySummaryTable({ data }: { data: DailyRow[] | undefined }) {
     }
   };
 
-  const HeaderBtn = ({ k, label, right }: { k: SortKey; label: string; right?: boolean }) => {
-    const Icon =
-      sortKey !== k ? ArrowUpDown : sortDir === "asc" ? ArrowUp : ArrowDown;
-    return (
-      <button
-        type="button"
-        onClick={() => toggle(k)}
-        className={`flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground ${right ? "ml-auto" : ""}`}
-      >
-        {label}
-        <Icon className="h-3 w-3" />
-      </button>
-    );
-  };
-
   return (
     <div className="flex flex-col">
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>
-              <HeaderBtn k="date" label="Date" />
+              <HeaderBtn
+                k="date"
+                label="Date"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onToggle={toggle}
+              />
             </TableHead>
             <TableHead className="text-right">
-              <HeaderBtn k="orders" label="Orders" right />
+              <HeaderBtn
+                k="orders"
+                label="Orders"
+                right
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onToggle={toggle}
+              />
             </TableHead>
             <TableHead className="text-right">
-              <HeaderBtn k="revenue" label="Revenue" right />
+              <HeaderBtn
+                k="revenue"
+                label="Revenue"
+                right
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onToggle={toggle}
+              />
             </TableHead>
             <TableHead className="text-right">
-              <HeaderBtn k="avgOrderValue" label="Avg Order" right />
+              <HeaderBtn
+                k="avgOrderValue"
+                label="Avg Order"
+                right
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onToggle={toggle}
+              />
             </TableHead>
           </TableRow>
         </TableHeader>

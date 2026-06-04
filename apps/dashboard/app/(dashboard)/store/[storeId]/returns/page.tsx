@@ -148,7 +148,7 @@ export default function ReturnsListPage() {
               <RotateCcw className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium">No returns</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Returns will appear here once they're processed.
+                Returns will appear here once they&apos;re processed.
               </p>
             </div>
           ) : (

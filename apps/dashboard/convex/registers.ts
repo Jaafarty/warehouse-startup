@@ -26,7 +26,7 @@ export const list = query({
       registers.map(async (r) => {
         const openShift = await ctx.db
           .query("shifts")
-          .withIndex("by_register_and_status", (q: any) =>
+          .withIndex("by_register_and_status", (q) =>
             q.eq("registerId", r._id).eq("status", "open")
           )
           .first();
@@ -68,7 +68,7 @@ export const listActive = query({
       registers.map(async (r) => {
         const openShift = await ctx.db
           .query("shifts")
-          .withIndex("by_register_and_status", (q: any) =>
+          .withIndex("by_register_and_status", (q) =>
             q.eq("registerId", r._id).eq("status", "open")
           )
           .first();
@@ -266,7 +266,7 @@ async function assertNoOpenShift(
 ) {
   const open = await db
     .query("shifts")
-    .withIndex("by_register_and_status", (q: any) =>
+    .withIndex("by_register_and_status", (q) =>
       q.eq("registerId", registerId).eq("status", "open")
     )
     .first();

@@ -24,6 +24,35 @@ type Row = {
 type SortKey = "name" | "qtySold" | "revenue" | "orderCount";
 type SortDir = "asc" | "desc";
 
+function HeaderBtn({
+  k,
+  label,
+  right,
+  sortKey,
+  sortDir,
+  onToggle,
+}: {
+  k: SortKey;
+  label: string;
+  right?: boolean;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  onToggle: (key: SortKey) => void;
+}) {
+  const Icon =
+    sortKey !== k ? ArrowUpDown : sortDir === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(k)}
+      className={`flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground ${right ? "ml-auto" : ""}`}
+    >
+      {label}
+      <Icon className="h-3 w-3" />
+    </button>
+  );
+}
+
 export function TopProductsTable({ data }: { data: Row[] | undefined }) {
   const [sortKey, setSortKey] = useState<SortKey>("revenue");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -66,36 +95,48 @@ export function TopProductsTable({ data }: { data: Row[] | undefined }) {
     }
   };
 
-  const HeaderBtn = ({ k, label, right }: { k: SortKey; label: string; right?: boolean }) => {
-    const Icon =
-      sortKey !== k ? ArrowUpDown : sortDir === "asc" ? ArrowUp : ArrowDown;
-    return (
-      <button
-        type="button"
-        onClick={() => toggle(k)}
-        className={`flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground ${right ? "ml-auto" : ""}`}
-      >
-        {label}
-        <Icon className="h-3 w-3" />
-      </button>
-    );
-  };
-
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>
-            <HeaderBtn k="name" label="Product" />
+            <HeaderBtn
+              k="name"
+              label="Product"
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onToggle={toggle}
+            />
           </TableHead>
           <TableHead className="text-right">
-            <HeaderBtn k="qtySold" label="Qty Sold" right />
+            <HeaderBtn
+              k="qtySold"
+              label="Qty Sold"
+              right
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onToggle={toggle}
+            />
           </TableHead>
           <TableHead className="text-right">
-            <HeaderBtn k="revenue" label="Revenue" right />
+            <HeaderBtn
+              k="revenue"
+              label="Revenue"
+              right
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onToggle={toggle}
+            />
           </TableHead>
           <TableHead className="text-right">
-            <HeaderBtn k="orderCount" label="Orders" right />
+            <HeaderBtn
+              k="orderCount"
+              label="Orders"
+              right
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onToggle={toggle}
+            />
           </TableHead>
         </TableRow>
       </TableHeader>

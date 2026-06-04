@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
@@ -87,13 +87,13 @@ export default function ProductDetailPage() {
 
   const [categoryId, setCategoryId] = useState<string>("");
 
-  useEffect(() => {
-    if (product && product.categoryId) {
-      setCategoryId(product.categoryId as string);
-    } else if (product) {
-      setCategoryId("");
-    }
-  }, [product]);
+  // Reset the editable category when a different product loads. Adjusting state
+  // during render (instead of in an effect) avoids a cascading re-render.
+  const [syncedProductId, setSyncedProductId] = useState<string | null>(null);
+  if (product && product._id !== syncedProductId) {
+    setSyncedProductId(product._id);
+    setCategoryId((product.categoryId as string | undefined) ?? "");
+  }
 
   const [editPending, setEditPending] = useState(false);
   const [stockDialogOpen, setStockDialogOpen] = useState(false);

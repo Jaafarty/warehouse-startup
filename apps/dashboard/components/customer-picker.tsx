@@ -161,7 +161,7 @@ export function CustomerPicker({ storeId, value, onChange }: Props) {
       )}
       {search && customers && customers.length === 0 && (
         <p className="text-xs text-muted-foreground px-1">
-          No matches. Use "+ New" to create a customer.
+          No matches. Use &quot;+ New&quot; to create a customer.
         </p>
       )}
     </div>

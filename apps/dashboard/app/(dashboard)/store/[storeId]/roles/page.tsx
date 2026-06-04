@@ -97,7 +97,9 @@ export default function RolesPage() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Delete "{role.name}"?</AlertDialogTitle>
+                          <AlertDialogTitle>
+                            Delete &quot;{role.name}&quot;?
+                          </AlertDialogTitle>
                           <AlertDialogDescription>
                             {role.memberCount > 0
                               ? `${role.memberCount} member(s) have this role. Reassign them first.`

@@ -23,7 +23,7 @@ async function storeHasActiveRegister(
 ): Promise<boolean> {
   const first = await db
     .query("registers")
-    .withIndex("by_store_and_active", (q: any) =>
+    .withIndex("by_store_and_active", (q) =>
       q.eq("storeId", storeId).eq("isActive", true)
     )
     .first();
@@ -37,7 +37,7 @@ async function getOpenShiftForRegister(
 ): Promise<Doc<"shifts"> | null> {
   return db
     .query("shifts")
-    .withIndex("by_register_and_status", (q: any) =>
+    .withIndex("by_register_and_status", (q) =>
       q.eq("registerId", registerId).eq("status", "open")
     )
     .first();
@@ -96,7 +96,7 @@ async function findLastClosedShift(
   if (registerId) {
     return db
       .query("shifts")
-      .withIndex("by_register_and_status", (q: any) =>
+      .withIndex("by_register_and_status", (q) =>
         q.eq("registerId", registerId).eq("status", "closed")
       )
       .order("desc")

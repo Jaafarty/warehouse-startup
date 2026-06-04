@@ -227,14 +227,18 @@ export const dropLegacyCashId = internalMutation({
     let shifts = 0;
     for (const s of await ctx.db.query("shifts").collect()) {
       if ((s as { cashId?: unknown }).cashId !== undefined) {
-        await ctx.db.patch(s._id, { cashId: undefined } as any);
+        await ctx.db.patch(s._id, {
+          cashId: undefined,
+        } as unknown as Partial<Doc<"shifts">>);
         shifts++;
       }
     }
     let events = 0;
     for (const e of await ctx.db.query("shiftCashEvents").collect()) {
       if ((e as { cashId?: unknown }).cashId !== undefined) {
-        await ctx.db.patch(e._id, { cashId: undefined } as any);
+        await ctx.db.patch(e._id, {
+          cashId: undefined,
+        } as unknown as Partial<Doc<"shiftCashEvents">>);
         events++;
       }
     }

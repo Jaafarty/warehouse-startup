@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -42,10 +43,13 @@ export default function NotificationsPage() {
     userId ? { userId } : "skip"
   );
 
-  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-  const notifications = allNotifications
-    ? allNotifications.filter((n) => n.createdAt >= Date.now() - SEVEN_DAYS_MS)
-    : undefined;
+  // Snapshot "now" once at mount so the 7-day window is stable across renders
+  // (Date.now() is impure and not allowed during render).
+  const [cutoff] = useState(() => Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const notifications = useMemo(() => {
+    if (!allNotifications) return undefined;
+    return allNotifications.filter((n) => n.createdAt >= cutoff);
+  }, [allNotifications, cutoff]);
 
   const markAsRead = useMutation(api.notifications.markAsRead);
   const markAllAsRead = useMutation(api.notifications.markAllAsRead);
@@ -108,7 +112,7 @@ export default function NotificationsPage() {
             <Bell className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium">No notifications</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              You'll see alerts here when something needs your attention.
+              You&apos;ll see alerts here when something needs your attention.
             </p>
           </CardContent>
         </Card>
