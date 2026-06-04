@@ -1,12 +1,17 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
+import { useAuth } from "@clerk/nextjs";
 import { Container, Display, Eyebrow, PrimaryCTA, SecondaryCTA } from "./ui";
 import { dashboardLinks } from "@/lib/links";
 import { Stagger, StaggerItem, Reveal, Parallax } from "./reveal";
 import { HeroDashboard } from "./previews";
 
 export function Hero() {
+  // Signed-in visitors get a single "Dashboard" CTA (no "Start free" / demo);
+  // signed-out visitors get the marketing CTAs.
+  const { isLoaded, isSignedIn } = useAuth();
+
   return (
     <section className="relative flex min-h-[100dvh] items-center overflow-hidden pt-24 pb-16">
       {/* subtle backdrop: fading grid + soft teal glow */}
@@ -40,12 +45,21 @@ export function Hero() {
             </p>
           </StaggerItem>
           <StaggerItem>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <PrimaryCTA href={dashboardLinks.signUp}>
-                Start free
-                <ArrowRight size={17} strokeWidth={2} />
-              </PrimaryCTA>
-              <SecondaryCTA href="#features">Book a demo</SecondaryCTA>
+            <div className="mt-8 flex min-h-12 flex-col gap-3 sm:flex-row">
+              {!isLoaded ? null : isSignedIn ? (
+                <PrimaryCTA href={dashboardLinks.dashboard}>
+                  Go to Dashboard
+                  <ArrowRight size={17} strokeWidth={2} />
+                </PrimaryCTA>
+              ) : (
+                <>
+                  <PrimaryCTA href={dashboardLinks.signUp}>
+                    Start free
+                    <ArrowRight size={17} strokeWidth={2} />
+                  </PrimaryCTA>
+                  <SecondaryCTA href="#features">Book a demo</SecondaryCTA>
+                </>
+              )}
             </div>
           </StaggerItem>
         </Stagger>
