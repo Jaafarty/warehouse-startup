@@ -6,6 +6,17 @@ import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
+// Section accents — keep these as literal class strings so Tailwind keeps them.
+export type Accent = "teal" | "emerald" | "indigo" | "amber" | "rose";
+
+const ACCENT_ICON: Record<Accent, string> = {
+  teal: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+  emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  indigo: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+  amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  rose: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+};
+
 type Props = {
   label: string;
   value: ReactNode;
@@ -13,9 +24,10 @@ type Props = {
   icon?: ReactNode;
   trendPct?: number | null;
   loading?: boolean;
+  accent?: Accent;
 };
 
-export function KpiCard({ label, value, sub, icon, trendPct, loading }: Props) {
+export function KpiCard({ label, value, sub, icon, trendPct, loading, accent }: Props) {
   const trendKind =
     trendPct == null || Number.isNaN(trendPct)
       ? "neutral"
@@ -41,7 +53,16 @@ export function KpiCard({ label, value, sub, icon, trendPct, loading }: Props) {
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {label}
         </CardTitle>
-        {icon ? <span className="text-muted-foreground">{icon}</span> : null}
+        {icon ? (
+          <span
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-lg",
+              accent ? ACCENT_ICON[accent] : "text-muted-foreground"
+            )}
+          >
+            {icon}
+          </span>
+        ) : null}
       </CardHeader>
       <CardContent>
         {loading ? (
