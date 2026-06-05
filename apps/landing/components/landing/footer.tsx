@@ -24,9 +24,10 @@ const LEGAL_COLUMN = {
   ],
 };
 
+// WhatsApp chat links (digits only, no "+", drop the trunk "0", per wa.me).
 const PHONE_NUMBERS = [
-  { label: "+961 78972772", href: "tel:+96178972772" },
-  { label: "+961 03657244", href: "tel:+96103657244" },
+  { label: "+961 78972772", href: "https://wa.me/96178972772" },
+  { label: "+961 03657244", href: "https://wa.me/9613657244" },
 ];
 
 export function Footer() {
@@ -72,6 +73,8 @@ export function Footer() {
                   <li key={p.href}>
                     <a
                       href={p.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="text-sm text-foreground/80 transition-colors hover:text-foreground"
                     >
                       {p.label}
