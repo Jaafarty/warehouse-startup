@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
 import { Container, Display, PrimaryCTA, SecondaryCTA } from "./ui";
-import { dashboardLinks } from "@/lib/links";
+import { dashboardLinks, whatsappSalesLink } from "@/lib/links";
 import { Reveal, Stagger, StaggerItem } from "./reveal";
 
 /* TODO: placeholder pricing — replace amounts/limits with your real plans. */
@@ -32,7 +32,7 @@ const TIERS = [
       "CSV import & export",
     ],
     cta: "Contact sales",
-    href: dashboardLinks.signUp,
+    href: whatsappSalesLink,
     highlight: true,
   },
   {
@@ -47,7 +47,7 @@ const TIERS = [
       "Priority support",
     ],
     cta: "Contact sales",
-    href: dashboardLinks.signUp,
+    href: whatsappSalesLink,
     highlight: false,
   },
 ];
@@ -111,11 +111,19 @@ export function Pricing() {
 
               <div className="mt-7">
                 {t.highlight ? (
-                  <PrimaryCTA href={t.href} className="w-full">
+                  <PrimaryCTA
+                    href={t.href}
+                    className="w-full"
+                    newTab={t.href === whatsappSalesLink}
+                  >
                     {t.cta}
                   </PrimaryCTA>
                 ) : (
-                  <SecondaryCTA href={t.href} className="w-full">
+                  <SecondaryCTA
+                    href={t.href}
+                    className="w-full"
+                    newTab={t.href === whatsappSalesLink}
+                  >
                     {t.cta}
                   </SecondaryCTA>
                 )}

@@ -9,14 +9,20 @@ function CTALink({
   href,
   className,
   children,
+  newTab,
 }: {
   href: string;
   className?: string;
   children: ReactNode;
+  newTab?: boolean;
 }) {
   if (isExternalLink(href)) {
     return (
-      <a href={href} className={className}>
+      <a
+        href={href}
+        className={className}
+        {...(newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      >
         {children}
       </a>
     );
@@ -90,14 +96,17 @@ export function PrimaryCTA({
   href,
   children,
   className,
+  newTab,
 }: {
   href: string;
   children: ReactNode;
   className?: string;
+  newTab?: boolean;
 }) {
   return (
     <CTALink
       href={href}
+      newTab={newTab}
       className={cn(
         "inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-7 text-[15px] font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:brightness-[1.08] active:translate-y-px focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30",
         className
@@ -112,14 +121,17 @@ export function SecondaryCTA({
   href,
   children,
   className,
+  newTab,
 }: {
   href: string;
   children: ReactNode;
   className?: string;
+  newTab?: boolean;
 }) {
   return (
     <CTALink
       href={href}
+      newTab={newTab}
       className={cn(
         "inline-flex h-12 items-center justify-center gap-2 rounded-full border border-border bg-background px-7 text-[15px] font-semibold text-foreground transition-all duration-200 hover:bg-muted active:translate-y-px focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20",
         className

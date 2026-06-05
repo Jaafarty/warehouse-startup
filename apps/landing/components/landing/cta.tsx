@@ -1,9 +1,17 @@
+"use client";
+
 import { ArrowRight } from "lucide-react";
+import { useAuth } from "@clerk/nextjs";
 import { Container, Display } from "./ui";
 import { dashboardLinks } from "@/lib/links";
 import { Reveal } from "./reveal";
 
 export function FinalCta() {
+  // Signed-in visitors jump straight to their dashboard; signed-out visitors
+  // get the "Start free" sign-up CTA.
+  const { isLoaded, isSignedIn } = useAuth();
+  const signedIn = isLoaded && isSignedIn;
+
   return (
     <section className="py-24 md:py-32">
       <Container>
@@ -25,10 +33,10 @@ export function FinalCta() {
               </p>
               <div className="mt-8 flex justify-center">
                 <a
-                  href={dashboardLinks.signUp}
+                  href={signedIn ? dashboardLinks.dashboard : dashboardLinks.signUp}
                   className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-background px-8 text-[15px] font-semibold text-primary shadow-sm transition-all duration-200 hover:brightness-95 active:translate-y-px focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-background/40"
                 >
-                  Start free
+                  {signedIn ? "Go to your Dashboard" : "Start free"}
                   <ArrowRight size={17} strokeWidth={2} />
                 </a>
               </div>

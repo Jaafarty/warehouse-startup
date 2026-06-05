@@ -1,35 +1,53 @@
+"use client";
+
 import Link from "next/link";
 import { Boxes } from "lucide-react";
+import { useAuth } from "@clerk/nextjs";
 import { Container } from "./ui";
 import { dashboardLinks, isExternalLink } from "@/lib/links";
 
-const COLUMNS = [
-  {
-    title: "Product",
-    links: [
-      { label: "Features", href: "/#features" },
-      { label: "Analytics", href: "/#analytics" },
-      { label: "Pricing", href: "/#pricing" },
-      { label: "FAQ", href: "/#faq" },
-    ],
-  },
-  {
-    title: "Account",
-    links: [
-      { label: "Sign in", href: dashboardLinks.signIn },
-      { label: "Start free", href: dashboardLinks.signUp },
-    ],
-  },
-  {
-    title: "Legal",
-    links: [
-      { label: "Privacy", href: "/privacy" },
-      { label: "Terms", href: "/terms" },
-    ],
-  },
+const PRODUCT_COLUMN = {
+  title: "Product",
+  links: [
+    { label: "Features", href: "/#features" },
+    { label: "Analytics", href: "/#analytics" },
+    { label: "Pricing", href: "/#pricing" },
+    { label: "FAQ", href: "/#faq" },
+  ],
+};
+
+const LEGAL_COLUMN = {
+  title: "Legal",
+  links: [
+    { label: "Privacy", href: "/privacy" },
+    { label: "Terms", href: "/terms" },
+  ],
+};
+
+const PHONE_NUMBERS = [
+  { label: "+961 78972772", href: "tel:+96178972772" },
+  { label: "+961 03657244", href: "tel:+96103657244" },
 ];
 
 export function Footer() {
+  // Signed-in visitors get a single "Dashboard" link; signed-out visitors get
+  // the "Sign in" / "Start free" marketing links. While auth loads, fall back
+  // to the signed-out links so the column is never empty.
+  const { isLoaded, isSignedIn } = useAuth();
+
+  const accountColumn = {
+    title: "Account",
+    links:
+      isLoaded && isSignedIn
+        ? [{ label: "Dashboard", href: dashboardLinks.dashboard }]
+        : [
+            { label: "Sign in", href: dashboardLinks.signIn },
+            { label: "Start free", href: dashboardLinks.signUp },
+          ],
+  };
+
+  const columns = [PRODUCT_COLUMN, accountColumn, LEGAL_COLUMN];
+
   return (
     <footer className="border-t border-border bg-background-subtle py-14">
       <Container>
@@ -44,9 +62,27 @@ export function Footer() {
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
               Inventory and sales management for small and medium businesses.
             </p>
+
+            <div className="mt-6">
+              <h4 className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Contact us
+              </h4>
+              <ul className="mt-3 space-y-2">
+                {PHONE_NUMBERS.map((p) => (
+                  <li key={p.href}>
+                    <a
+                      href={p.href}
+                      className="text-sm text-foreground/80 transition-colors hover:text-foreground"
+                    >
+                      {p.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
 
-          {COLUMNS.map((col) => (
+          {columns.map((col) => (
             <div key={col.title}>
               <h4 className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 {col.title}

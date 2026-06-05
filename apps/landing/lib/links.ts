@@ -11,6 +11,10 @@ export const dashboardLinks = {
   signUp: `${DASHBOARD_URL}/auth/sign-up`,
 };
 
+// "Contact sales" CTAs open a WhatsApp chat with the sales line (digits only,
+// no "+" or spaces, per the wa.me format).
+export const whatsappSalesLink = "https://wa.me/96178972772";
+
 // Cross-origin links (the dashboard subdomain) must be plain <a> anchors so the
 // browser performs a real navigation to the other origin. next/link is for
 // internal client-side routing only.
